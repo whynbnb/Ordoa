@@ -26,6 +26,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public MainViewModel(AppServices services)
     {
         _services = services;
+        Preview = new FilePreviewViewModel(services);
         _sidebarVisible = services.Settings.Current.ShowSidebar;
         _sidebarWidth = services.Settings.Current.SidebarWidth;
         _isTransferPanelOpen = false;
@@ -41,6 +42,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     public AppServices Services => _services;
+    public FilePreviewViewModel Preview { get; }
 
     public ObservableCollection<TabViewModel> Tabs { get; } = [];
     public ObservableCollection<SidebarSectionViewModel> SidebarSections { get; } = [];
@@ -71,6 +73,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (!SetProperty(ref _activeTab, value))
                 return;
 
+            if (Preview.IsOpen)
+                Preview.Close();
             if (value is not null)
                 value.IsActive = true;
 
@@ -382,6 +386,47 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void ToggleTransferPanel() => IsTransferPanelOpen = !IsTransferPanelOpen;
+
+    public async Task TogglePreviewAsync()
+    {
+        if (Preview.IsOpen)
+        {
+            Preview.Close();
+            return;
+        }
+
+        var pane = ActivePane;
+        if (pane?.PrimarySelection is not { } item)
+            return;
+        await Preview.OpenAsync(pane, item).ConfigureAwait(true);
+    }
+
+    public async Task OpenPreviewedAsync()
+    {
+        if (Preview is not { Pane: { } pane, Item: { } item })
+            return;
+        Preview.Close();
+        await pane.OpenAsync(item).ConfigureAwait(true);
+    }
+
+    private async void OnPanePreviewRequested(PaneViewModel pane)
+    {
+        if (pane.PrimarySelection is not { } item)
+            return;
+        await Preview.OpenAsync(pane, item).ConfigureAwait(true);
+    }
+
+    private async void OnPaneSelectionChanged(PaneViewModel pane)
+    {
+        if (!Preview.IsOpen || !ReferenceEquals(pane, ActivePane))
+            return;
+        if (pane.PrimarySelection is not { } item)
+        {
+            Preview.Close();
+            return;
+        }
+        await Preview.OpenAsync(pane, item).ConfigureAwait(true);
+    }
 
     [RelayCommand]
     private async Task RefreshAllAsync() => await RefreshAllPanesAsync().ConfigureAwait(true);
@@ -1254,6 +1299,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
         if (e.PropertyName is nameof(TabViewModel.ActivePane) or nameof(TabViewModel.Title))
         {
+            if (e.PropertyName == nameof(TabViewModel.ActivePane) && Preview.IsOpen)
+                Preview.Close();
             OnPropertyChanged(nameof(ActivePane));
             UpdateWindowTitle();
             UpdateSidebarActive();
@@ -1269,6 +1316,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         pane.OperationStarted += OnOperationStarted;
         pane.PropertyChanged += OnPanePropertyChanged;
         pane.Navigated += OnPaneNavigated;
+        pane.SelectionChanged += OnPaneSelectionChanged;
+        pane.PreviewRequested += OnPanePreviewRequested;
     }
 
     private void UnsubscribePane(PaneViewModel pane)
@@ -1280,6 +1329,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         pane.OperationStarted -= OnOperationStarted;
         pane.PropertyChanged -= OnPanePropertyChanged;
         pane.Navigated -= OnPaneNavigated;
+        pane.SelectionChanged -= OnPaneSelectionChanged;
+        pane.PreviewRequested -= OnPanePreviewRequested;
     }
 
     private void OnPaneNotification(string title, string message, bool error)
@@ -1324,6 +1375,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         if (!ReferenceEquals(pane, ActivePane))
             return;
+        if (Preview.IsOpen)
+            Preview.Close();
         RefreshRecentSection();
         UpdateSidebarActive();
         UpdateWindowTitle();
@@ -1487,6 +1540,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         UpdateSidebarActive();
         foreach (var pane in Tabs.SelectMany(t => t.Panes))
             pane.RefreshLocalization();
+        if (Preview.IsOpen)
+            _ = Preview.RefreshAsync();
     }
 
     private void BuildPaletteCommands()
@@ -1549,6 +1604,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             ToggleHidden();
             return Task.CompletedTask;
         });
+        Add(L10n.T("快速预览"), L10n.T("按空格预览选中的文件"), "Space", "IconEye", TogglePreviewAsync);
         Add(L10n.T("属性"), L10n.T("查看选中项目的详细信息"), "Alt+Enter", "IconInfo", () => PaneAction(p => p.PropertiesAsync()));
         Add(L10n.T("计算 SHA-256"), L10n.T("计算选中文件的校验和"), null, "IconCheckCircle", () => PaneAction(p => p.ChecksumAsync()));
         Add(L10n.T("压缩为 ZIP"), L10n.T("将选中的项目压缩为 zip"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(false)));
@@ -1601,6 +1657,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _services.Operations.Operations.CollectionChanged -= OnOperationsChanged;
         _services.FileSystems.Connections.Changed -= OnConnectionsChanged;
 
+        Preview.Dispose();
         foreach (var tab in Tabs.ToList())
         {
             foreach (var pane in tab.Panes.ToList())

@@ -299,6 +299,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _showTransferPanel = settings.ShowTransferPanel;
         _searchDepth = settings.SearchDepth;
         _maxSearchResults = settings.MaxSearchResults;
+        _ffmpegPath = settings.FfmpegPath;
 
         var hidden = new HashSet<string>(settings.HiddenPlaces ?? [], StringComparer.OrdinalIgnoreCase);
         foreach (var place in KnownFolders.GetPlaces())
@@ -356,6 +357,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     [ObservableProperty]
     private decimal _maxSearchResults;
 
+    [ObservableProperty]
+    private string _ffmpegPath = string.Empty;
+
     public string SettingsPath => AppPaths.SettingsFile;
 
     public AppSettings ToSettings()
@@ -375,6 +379,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.ShowTransferPanel = ShowTransferPanel;
         settings.SearchDepth = Math.Clamp((int)SearchDepth, 1, 64);
         settings.MaxSearchResults = Math.Clamp((int)MaxSearchResults, 100, 20000);
+        settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
         return settings;
     }
@@ -396,6 +401,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         ShowTransferPanel = defaults.ShowTransferPanel;
         SearchDepth = defaults.SearchDepth;
         MaxSearchResults = defaults.MaxSearchResults;
+        FfmpegPath = defaults.FfmpegPath;
         ResetPlaces();
     }
 

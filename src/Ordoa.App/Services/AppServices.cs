@@ -23,6 +23,7 @@ public sealed class AppServices : IAsyncDisposable
         Search = new SearchService();
         Session = new SessionService();
         Thumbnails = new ThumbnailService();
+        Previews = new PreviewService();
         Shell = new ShellLauncher();
         Clipboard = new ClipboardService(() => MainWindow);
         Dialogs = new DialogService(() => MainWindow);
@@ -40,6 +41,7 @@ public sealed class AppServices : IAsyncDisposable
     public BookmarkService Bookmarks { get; }
     public SessionService Session { get; }
     public ThumbnailService Thumbnails { get; }
+    public PreviewService Previews { get; }
     public ClipboardService Clipboard { get; }
     public ShellLauncher Shell { get; }
     public DialogService Dialogs { get; }

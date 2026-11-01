@@ -45,13 +45,13 @@
           <TextBlock Grid.Row="2" Text="{loc:Tr · zip / tar / tar.gz 压缩与解压}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="2" Grid.Column="1" Text="{loc:Tr · SHA-256 校验和与权限查看}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="3" Text="{loc:Tr · 递归搜索、自然排序、缩略图}" Classes="shortcutdesc" />
-          <TextBlock Grid.Row="3" Grid.Column="1" Text="{loc:Tr · 命令面板与完整键盘操作}" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="3" Grid.Column="1" Text="{loc:Tr · 空格快速预览与命令面板}" Classes="shortcutdesc" />
         </Grid>
 
         <Border Classes="divider" />
 
         <TextBlock Text="{loc:Tr 快捷键}" Classes="section" />
-        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
               ColumnSpacing="18" RowSpacing="6">
           <TextBlock Text="Ctrl+T" Classes="shortcut" /><TextBlock Grid.Column="1" Text="{loc:Tr 新建标签页}" Classes="shortcutdesc" />
           <TextBlock Grid.Column="2" Text="Ctrl+W" Classes="shortcut" /><TextBlock Grid.Column="3" Text="{loc:Tr 关闭标签页}" Classes="shortcutdesc" />
@@ -88,12 +88,15 @@
 
           <TextBlock Grid.Row="11" Text="{loc:Tr 拖到回收站}" Classes="shortcut" /><TextBlock Grid.Row="11" Grid.Column="1" Text="{loc:Tr 直接移到回收站；Shift 永久删除}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="11" Grid.Column="2" Text="{loc:Tr Ctrl/Shift+单击}" Classes="shortcut" /><TextBlock Grid.Row="11" Grid.Column="3" Text="{loc:Tr 加选 / 连选}" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="12" Text="Space" Classes="shortcut" /><TextBlock Grid.Row="12" Grid.Column="1" Text="{loc:Tr 快速预览选中的文件}" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="12" Grid.Column="2" Text="Esc" Classes="shortcut" /><TextBlock Grid.Row="12" Grid.Column="3" Text="{loc:Tr 关闭预览}" Classes="shortcutdesc" />
         </Grid>
 
         <Border Classes="divider" />
 
         <TextBlock Text="{loc:Tr 技术}" Classes="section" />
-        <TextBlock Text="Avalonia 12 · C# 14 / .NET 10 · CommunityToolkit.Mvvm · FluentFTP · SSH.NET · SMBLibrary · Skia" Classes="tiny" TextWrapping="Wrap" />
+        <TextBlock Text="Avalonia 12 · C# 14 / .NET 10 · CommunityToolkit.Mvvm · FluentFTP · SSH.NET · SMBLibrary · SkiaSharp · SimdCodecs" Classes="tiny" TextWrapping="Wrap" />
         <TextBlock Text="{Binding Platform}" Classes="tiny" />
 
         <TextBlock Text="{loc:Tr Ordoa 是一个开源项目。图标、界面与代码均可自由修改。远程连接密码优先保存在系统密钥环（libsecret / Keychain）；不可用时回退到仅当前用户可读的配置文件。}" Classes="tiny" TextWrapping="Wrap" />

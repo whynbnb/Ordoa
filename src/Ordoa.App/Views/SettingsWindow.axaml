@@ -188,6 +188,18 @@
 
         <Border Classes="divider" />
 
+        <!-- Preview -->
+        <TextBlock Text="{loc:Tr 预览}" Classes="section" />
+        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" RowSpacing="6">
+          <TextBlock Text="{loc:Tr ffmpeg 路径}" Classes="fieldlabel" VerticalAlignment="Center" />
+          <TextBox Grid.Column="1" Text="{Binding FfmpegPath, Mode=TwoWay}"
+                   PlaceholderText="{loc:Tr 留空则自动从 PATH / FFMPEG_PATH 查找}" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Classes="fieldhint" TextWrapping="Wrap"
+                     Text="{loc:Tr 用于视频缩略图与音视频信息；Ordoa 不附带 ffmpeg。图片预览不依赖它。}" />
+        </Grid>
+
+        <Border Classes="divider" />
+
         <StackPanel Spacing="4">
           <TextBlock Text="{loc:Tr 设置保存在}" Classes="section" />
           <TextBlock Text="{Binding SettingsPath}" Classes="tiny" FontFamily="{DynamicResource MonoFontFamily}" />

@@ -35,7 +35,7 @@ public partial class MainWindow : Window
     /// <summary>Mouse back/forward buttons navigate the pane under the pointer.</summary>
     private void OnWindowPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_viewModel is null || _viewModel.IsCommandPaletteOpen)
+        if (_viewModel is null || _viewModel.IsCommandPaletteOpen || _viewModel.Preview.IsOpen)
             return;
 
         var pane = _viewModel.ActivePane;
@@ -64,6 +64,29 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         }
+    }
+
+    private void OnPreviewBackdropPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_viewModel is null)
+            return;
+        if (e.Source is Visual visual)
+        {
+            for (var current = visual; current is not null; current = current.GetVisualParent())
+            {
+                if (ReferenceEquals(current, PreviewCard))
+                    return;
+            }
+        }
+        _viewModel.Preview.Close();
+    }
+
+    private void OnPreviewCloseClick(object? sender, RoutedEventArgs e) => _viewModel?.Preview.Close();
+
+    private void OnPreviewOpenClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is not null)
+            Run(_viewModel.OpenPreviewedAsync);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -326,11 +349,41 @@ public partial class MainWindow : Window
             }
         }
 
+        if (_viewModel.Preview.IsOpen)
+        {
+            if (ctrl && e.Key is Key.C or Key.A)
+                return;
+
+            switch (e.Key)
+            {
+                case Key.Escape:
+                case Key.Space:
+                    _viewModel.Preview.Close();
+                    e.Handled = true;
+                    return;
+                case Key.Enter:
+                    Run(_viewModel.OpenPreviewedAsync);
+                    e.Handled = true;
+                    return;
+            }
+
+            // The overlay owns the keyboard while it is visible.
+            e.Handled = true;
+            return;
+        }
+
         var focused = FocusManager?.GetFocusedElement();
         var inTextBox = focused is TextBox;
 
         if (inTextBox)
             return;
+
+        if (e.Key == Key.Space && !ctrl && !shift && !alt)
+        {
+            Run(_viewModel.TogglePreviewAsync);
+            e.Handled = true;
+            return;
+        }
 
         if (e.Key == Key.Escape)
         {

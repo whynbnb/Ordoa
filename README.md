@@ -49,6 +49,17 @@
 - 选择修饰键：`Ctrl+单击` 加选/取消，`Shift+单击` 连选；在空白处拖动可框选，按住 `Ctrl` / `Shift` 框选为追加。
 - 系统剪贴板：复制/剪切本地文件会同时写入文件列表与文本路径，可与其他文件管理器互操作。
 
+### 快速预览
+
+- 选中文件后按 `Space` 打开快速预览，再按 `Space` / `Esc` 关闭，`Enter` 直接打开文件；右键菜单和命令面板也可进入。
+- 文本、源码、配置、CSV、SVG 等按文本读取，限制读取大小，自动识别 UTF-8 / UTF-16 / UTF-32 / GB18030，并提供文件名、编码、行数等信息。
+- 图片使用 Avalonia / Skia 原生解码，并用纯托管 [SimdCodecs](https://www.nuget.org/packages/Sdcb.SimdCodecs) 补充 TIFF、JPEG 2000、QOI、Netpbm 等格式；支持 EXIF 方向、缩放与动图首帧。
+- 视频显示首帧缩略图与时长、分辨率、编码、码率、音轨等信息；音频显示容器、时长、编码、采样率与声道。二者通过可选的 ffmpeg / ffprobe 完成，软件不附带它们。
+- ZIP / JAR / tar / tar.gz 直接列出前 200 个条目；文件夹预览列出内容。
+- PDF 在系统安装 poppler-utils（`pdftoppm`）时渲染首页；Office/ODF/EPUB 会尝试读取文档内嵌缩略图。
+- 其他二进制文件显示类型、大小、时间和文件头十六进制；未知格式不会静默失败。
+- 不引入 WebView、浏览器内核或原生图像处理依赖。
+
 ### 文件操作
 
 - 复制、剪切、粘贴、移动、重命名、新建文件夹/空文件、永久删除。
@@ -107,6 +118,7 @@
 - [.NET 10 SDK](https://dotnet.microsoft.com/)（C# 14）
 - Linux：原生 Wayland（Avalonia 12.1 实验性后端，可用时优先启用）或 X11/XWayland；fontconfig；可选 `libsecret` / `secret-tool` 用于系统密钥环
 - 构建不依赖系统原生文件管理器组件
+- 快速预览可选：视频/音频信息与缩略图需要 `ffmpeg` / `ffprobe`（可通过设置或 `ORDOA_FFMPEG` / `FFMPEG_PATH` 指定）；PDF 首页需要 `pdftoppm`（poppler-utils）
 
 ### 命令
 
@@ -170,6 +182,8 @@ PREFIX=/usr/local sudo -E ./scripts/install.sh
 | `Ctrl+1` / `Ctrl+2` | 列表 / 网格视图 |
 | `Ctrl+Shift+P` | 命令面板 |
 | `Ctrl+,` | 设置 |
+| `Space` | 快速预览选中的文件 / 关闭预览 |
+| `Enter` / `Esc` | 预览中打开文件 / 关闭预览 |
 | `Enter` / `Backspace` | 打开 / 上一级 |
 | `Alt+←` / `Alt+→` / `Alt+↑` | 后退 / 前进 / 上一级 |
 | `Alt+Home` | 主目录 |

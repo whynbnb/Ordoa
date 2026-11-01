@@ -41,6 +41,8 @@ public sealed class AppSettings
     public bool ShowTransferPanel { get; set; } = true;
     public int SearchDepth { get; set; } = 12;
     public int MaxSearchResults { get; set; } = 3000;
+    /// <summary>Optional path to the ffmpeg executable used for media previews.</summary>
+    public string FfmpegPath { get; set; } = string.Empty;
     public double WindowWidth { get; set; } = 1200;
     public double WindowHeight { get; set; } = 760;
     public bool WindowMaximized { get; set; }
@@ -107,5 +109,6 @@ public sealed class SettingsService
             .ToList();
         Current.SearchDepth = Math.Clamp(Current.SearchDepth, 1, 64);
         Current.MaxSearchResults = Math.Clamp(Current.MaxSearchResults, 100, 20000);
+        Current.FfmpegPath = (Current.FfmpegPath ?? string.Empty).Trim();
     }
 }

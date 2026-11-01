@@ -344,6 +344,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public event Action<PaneViewModel>? FocusLocationRequested;
     public event Action<PaneViewModel>? SelectAllRequested;
     public event Action<PaneViewModel>? OperationStarted;
+    public event Action<PaneViewModel>? SelectionChanged;
+    public event Action<PaneViewModel>? PreviewRequested;
     public event Action<string, string, bool>? NotificationRequested;
 
     public async Task InitializeAsync()
@@ -619,6 +621,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     }
 
     public void RequestSearchFocus() => FocusSearchRequested?.Invoke(this);
+    public void RequestPreview() => PreviewRequested?.Invoke(this);
     public void RequestLocationFocus() => FocusLocationRequested?.Invoke(this);
     public void RequestSelectAll() => SelectAllRequested?.Invoke(this);
 
@@ -778,6 +781,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanRestore));
         UpdateSelectionText();
+        SelectionChanged?.Invoke(this);
     }
 
     private void UpdateSelectionText()
