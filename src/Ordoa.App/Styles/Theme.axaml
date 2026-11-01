@@ -222,6 +222,9 @@
     <Setter Property="Margin" Value="0,0,2,0"/>
     <Setter Property="VerticalAlignment" Value="Stretch"/>
   </Style>
+  <Style Selector="ContextMenu ScrollViewer">
+    <Setter Property="VerticalScrollBarVisibility" Value="Hidden"/>
+  </Style>
   <Style Selector="MenuFlyoutPresenter">
     <Setter Property="Margin" Value="0,0,2,0"/>
     <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}"/>

@@ -512,7 +512,7 @@ public partial class PaneView : UserControl
         menu.Items.Add(MenuItem("刷新", pane.RefreshAsync, true));
 
         host.ContextMenu = menu;
-        PopupHelper.OpenContextMenu(menu, host);
+        menu.Open(host);
         e.Handled = true;
     }
 
