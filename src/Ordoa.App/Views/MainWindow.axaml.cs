@@ -29,6 +29,41 @@ public partial class MainWindow : Window
         Closing += OnClosing;
         Resized += OnResized;
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(PointerPressedEvent, OnWindowPointerPressed, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>Mouse back/forward buttons navigate the pane under the pointer.</summary>
+    private void OnWindowPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_viewModel is null || _viewModel.IsCommandPaletteOpen)
+            return;
+
+        var pane = _viewModel.ActivePane;
+        if (e.Source is Visual visual &&
+            visual.FindAncestorOfType<PaneView>(includeSelf: true)?.DataContext is PaneViewModel hovered &&
+            !ReferenceEquals(hovered, pane))
+        {
+            _viewModel.ActiveTab?.ActivatePane(hovered);
+            pane = hovered;
+        }
+
+        var properties = e.GetCurrentPoint(this).Properties;
+        if (properties.IsXButton1Pressed)
+        {
+            if (pane is { CanGoBack: true })
+            {
+                pane.GoBackCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
+        else if (properties.IsXButton2Pressed)
+        {
+            if (pane is { CanGoForward: true })
+            {
+                pane.GoForwardCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
