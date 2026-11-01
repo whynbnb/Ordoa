@@ -215,7 +215,14 @@
   </Style>
 
   <!-- Menus -->
+  <!-- Keep the popup border off the surface edge: at fractional scaling the
+       X11 popup can be a pixel or two narrower than the menu's desired size,
+       which clips the right border. -->
+  <Style Selector="ContextMenu /template/ Border">
+    <Setter Property="Margin" Value="0,0,2,0"/>
+  </Style>
   <Style Selector="MenuFlyoutPresenter">
+    <Setter Property="Margin" Value="0,0,2,0"/>
     <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
