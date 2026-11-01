@@ -235,6 +235,15 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private bool _isDropTarget;
 
     [ObservableProperty]
+    private string _dropHint = string.Empty;
+
+    [ObservableProperty]
+    private string _dropDestination = string.Empty;
+
+    [ObservableProperty]
+    private bool _dropShowsModifiers;
+
+    [ObservableProperty]
     private bool _isActive;
 
     /// <summary>True while this pane shares a tab with a second pane.</summary>
@@ -1598,6 +1607,19 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         Toast(move ? L10n.T("正在移动") : L10n.T("正在复制"), L10n.Format("{0} 个项目", sources.Count), false);
     }
 
+    /// <summary>Drop onto a Trash pane: move local sources to the XDG trash.</summary>
+    public void EnqueueTrashDrop(IReadOnlyList<OperationSource> sources)
+    {
+        if (sources.Count == 0 || !_services.Trash.IsSupported)
+            return;
+        if (sources.Any(s => !s.FileSystem.IsLocal || s.FileSystem is TrashFileSystem))
+            return;
+
+        _services.Operations.Delete(sources, permanent: false);
+        OperationStarted?.Invoke(this);
+        Toast(L10n.T("正在移到回收站"), L10n.Format("{0} 个项目", sources.Count), false);
+    }
+
     public void Activate()
     {
         if (!IsActive)
@@ -1606,7 +1628,23 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     public void Deactivate() => IsActive = false;
 
-    public void SetDropTarget(bool value) => IsDropTarget = value;
+    public void SetDropTarget(bool value, bool move = false, string? destination = null, bool trash = false)
+    {
+        IsDropTarget = value;
+        if (!value)
+        {
+            DropHint = string.Empty;
+            DropDestination = string.Empty;
+            DropShowsModifiers = false;
+            return;
+        }
+
+        DropHint = trash
+            ? L10n.T("松开以移到回收站")
+            : move ? L10n.T("松开以移动到") : L10n.T("松开以复制到");
+        DropDestination = destination ?? string.Empty;
+        DropShowsModifiers = !trash;
+    }
 
     public IReadOnlyList<FileItemViewModel> SelectedItems => _selected;
 

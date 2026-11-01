@@ -387,7 +387,7 @@
  "在当前位置创建空文件": "Create an empty file in the current location",
  "在当前位置启动终端": "Open a terminal in the current location",
  "将剪贴板中的项目粘贴到此处": "Paste the clipboard items here",
- "将文件拖到这里即可复制": "Drop files here to copy them",
+ "将文件拖到这里即可复制": "Drop files here to copy",
  "松开以复制到": "Release to copy to",
  "隐藏当前标签页的第二个面板": "Hide the second pane of the current tab",
  "键盘快捷键与关于": "Keyboard Shortcuts & About",
@@ -487,5 +487,16 @@
  "语言": "Language",
  "文件夹名称": "Folder name",
  "新名称": "New name",
- "未命名.txt": "Untitled.txt"
+ "未命名.txt": "Untitled.txt",
+ "松开以移动到": "Release to move to",
+ "松开以移到回收站": "Release to move to Trash",
+ "Ctrl 复制 · Shift 移动": "Ctrl copy · Shift move",
+ "无法移到回收站": "Unable to move to Trash",
+ "将文件拖到这里即可移动或复制": "Drop files here to move or copy",
+ "拖到回收站": "Drop on Trash",
+ "直接移到回收站": "Move to Trash directly",
+ "拖拽文件": "Drag files",
+ "默认移动；Ctrl 复制 · Shift 移动": "Moves by default; Ctrl copies, Shift moves",
+ "Ctrl/Shift+单击": "Ctrl/Shift+click",
+ "加选 / 连选": "Add to / extend selection"
 }

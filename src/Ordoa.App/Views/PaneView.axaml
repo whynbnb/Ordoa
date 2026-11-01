@@ -308,7 +308,7 @@
         </Border>
 
         <ListBox x:Name="FileList" Grid.Row="1" Classes="files" ItemsSource="{Binding VisibleItems}"
-                 SelectionMode="Multiple" DragDrop.AllowDrop="True"
+                 Background="Transparent" SelectionMode="Multiple" DragDrop.AllowDrop="True"
                  SelectionChanged="OnListSelectionChanged"
                  DoubleTapped="OnListDoubleTapped"
                  ContextRequested="OnFileContextRequested"
@@ -365,7 +365,7 @@
       </Grid>
 
       <ListBox x:Name="FileGrid" Classes="tiles" IsVisible="{Binding IsGrid}" ItemsSource="{Binding VisibleItems}"
-               SelectionMode="Multiple" DragDrop.AllowDrop="True"
+               Background="Transparent" SelectionMode="Multiple" DragDrop.AllowDrop="True"
                SelectionChanged="OnGridSelectionChanged"
                DoubleTapped="OnListDoubleTapped"
                ContextRequested="OnFileContextRequested"
@@ -396,6 +396,13 @@
         </ListBox.ItemTemplate>
       </ListBox>
 
+      <!-- Rubber-band selection -->
+      <Canvas x:Name="MarqueeLayer" Grid.Row="1" IsHitTestVisible="False"
+              IsVisible="False" ClipToBounds="True">
+        <Border x:Name="MarqueeRect" Background="{DynamicResource AccentSoftBrush}"
+                BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="2" />
+      </Canvas>
+
       <!-- Loading -->
       <Border Background="{DynamicResource SurfaceBrush}" Opacity="0.88" IsVisible="{Binding IsLoading}">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="9">
@@ -421,7 +428,7 @@
           <Path Data="{StaticResource IconFolderOpen}" Width="42" Height="42" Stretch="Uniform"
                 Fill="{DynamicResource BorderStrongBrush}" HorizontalAlignment="Center" />
           <TextBlock Text="{Binding EmptyHint}" Classes="muted" HorizontalAlignment="Center" />
-          <TextBlock Text="{loc:Tr 将文件拖到这里即可复制}" Classes="tiny" HorizontalAlignment="Center" />
+          <TextBlock Text="{loc:Tr 将文件拖到这里即可移动或复制}" Classes="tiny" HorizontalAlignment="Center" />
         </StackPanel>
       </Border>
 
@@ -433,8 +440,12 @@
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
           <Path Data="{StaticResource IconDownload}" Width="28" Height="28" Stretch="Uniform"
                 Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
-          <TextBlock Text="{loc:Tr 松开以复制到}" HorizontalAlignment="Center" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding DisplayPath}" HorizontalAlignment="Center" Classes="caption" />
+          <TextBlock Text="{Binding DropHint}" HorizontalAlignment="Center" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding DropDestination}" HorizontalAlignment="Center" Classes="caption"
+                     TextTrimming="CharacterEllipsis" MaxWidth="360"
+                     IsVisible="{Binding DropDestination, Converter={StaticResource NotNullConverter}}" />
+          <TextBlock Text="{loc:Tr Ctrl 复制 · Shift 移动}" HorizontalAlignment="Center" Classes="tiny"
+                     IsVisible="{Binding DropShowsModifiers}" />
         </StackPanel>
       </Border>
     </Panel>

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Ordoa.App.Views.AboutWindow"
         Title="{loc:Tr 关于 Ordoa 安序}"
-        Width="700" Height="690" CanResize="False" ShowInTaskbar="False"
+        Width="700" Height="740" CanResize="False" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
   <Window.Styles>
     <Style Selector="TextBlock.shortcut">
@@ -51,7 +51,7 @@
         <Border Classes="divider" />
 
         <TextBlock Text="{loc:Tr 快捷键}" Classes="section" />
-        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
               ColumnSpacing="18" RowSpacing="6">
           <TextBlock Text="Ctrl+T" Classes="shortcut" /><TextBlock Grid.Column="1" Text="{loc:Tr 新建标签页}" Classes="shortcutdesc" />
           <TextBlock Grid.Column="2" Text="Ctrl+W" Classes="shortcut" /><TextBlock Grid.Column="3" Text="{loc:Tr 关闭标签页}" Classes="shortcutdesc" />
@@ -84,6 +84,10 @@
           <TextBlock Grid.Row="9" Grid.Column="2" Text="Ctrl+," Classes="shortcut" /><TextBlock Grid.Row="9" Grid.Column="3" Text="{loc:Tr 设置}" Classes="shortcutdesc" />
 
           <TextBlock Grid.Row="10" Text="F11" Classes="shortcut" /><TextBlock Grid.Row="10" Grid.Column="1" Text="{loc:Tr 全屏}" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="10" Grid.Column="2" Text="{loc:Tr 拖拽文件}" Classes="shortcut" /><TextBlock Grid.Row="10" Grid.Column="3" Text="{loc:Tr 默认移动；Ctrl 复制 · Shift 移动}" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="11" Text="{loc:Tr 拖到回收站}" Classes="shortcut" /><TextBlock Grid.Row="11" Grid.Column="1" Text="{loc:Tr 直接移到回收站}" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="11" Grid.Column="2" Text="{loc:Tr Ctrl/Shift+单击}" Classes="shortcut" /><TextBlock Grid.Row="11" Grid.Column="3" Text="{loc:Tr 加选 / 连选}" Classes="shortcutdesc" />
         </Grid>
 
         <Border Classes="divider" />

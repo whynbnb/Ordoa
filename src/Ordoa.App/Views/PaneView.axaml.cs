@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Selection;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -20,7 +22,13 @@ public partial class PaneView : UserControl
     private PointerPressedEventArgs? _dragTrigger;
     private Point _dragStart;
     private FileItemViewModel? _dragItem;
+    private IReadOnlyList<FileItemViewModel>? _dragSelection;
     private bool _dragging;
+    private bool _marqueePending;
+    private bool _marqueeActive;
+    private bool _marqueeAdditive;
+    private Point _marqueeStart;
+    private ListBox? _marqueeList;
 
     public PaneView()
     {
@@ -32,6 +40,30 @@ public partial class PaneView : UserControl
             ScrollBreadcrumbToEnd();
         };
         AddHandler(PointerReleasedEvent, OnAnyPointerReleased, RoutingStrategies.Tunnel);
+        FileList.AddHandler(PointerPressedEvent, OnListPointerPressedTunnel, RoutingStrategies.Tunnel);
+        FileGrid.AddHandler(PointerPressedEvent, OnListPointerPressedTunnel, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>
+    /// Avalonia collapses a multi-selection as soon as one of its items is
+    /// pressed. Snapshot the selection before that happens so a group drag can
+    /// restore and carry all selected files.
+    /// </summary>
+    private void OnListPointerPressedTunnel(object? sender, PointerPressedEventArgs e)
+    {
+        _dragSelection = null;
+        if (_pane is null || sender is not ListBox list)
+            return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            return;
+        if (GetItemAt(e.Source) is not { } item)
+            return;
+        if (list.SelectedItems is not { Count: > 1 } selected || !selected.Contains(item))
+            return;
+
+        _dragSelection = selected.OfType<FileItemViewModel>().ToList();
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -159,11 +191,115 @@ public partial class PaneView : UserControl
             _dragTrigger = e;
             _dragStart = e.GetPosition(this);
             _dragItem = item;
+            return;
         }
+
+        if (point.Properties.IsLeftButtonPressed && item is null && list is not null &&
+            !IsScrollBarSource(e.Source))
+        {
+            BeginMarquee(list, e.GetPosition(list), e.KeyModifiers, e.Pointer);
+        }
+    }
+
+    private static bool IsScrollBarSource(object? source)
+        => source is Visual visual &&
+           visual.FindAncestorOfType<ScrollBar>(includeSelf: true) is not null;
+
+    private void BeginMarquee(ListBox list, Point start, KeyModifiers modifiers, IPointer? pointer)
+    {
+        _marqueePending = true;
+        _marqueeActive = false;
+        _marqueeList = list;
+        _marqueeStart = start;
+        _marqueeAdditive = modifiers.HasFlag(KeyModifiers.Control) ||
+                           modifiers.HasFlag(KeyModifiers.Shift);
+        if (!_marqueeAdditive)
+            list.Selection.Clear();
+        list.Focus();
+        pointer?.Capture(list);
+    }
+
+    private void UpdateMarquee(Point current)
+    {
+        var list = _marqueeList;
+        if (list is null)
+            return;
+
+        if (!_marqueeActive)
+        {
+            if (Math.Abs(current.X - _marqueeStart.X) < 4 &&
+                Math.Abs(current.Y - _marqueeStart.Y) < 4)
+                return;
+            _marqueeActive = true;
+            MarqueeLayer.IsVisible = true;
+        }
+
+        var x1 = Math.Min(_marqueeStart.X, current.X);
+        var y1 = Math.Min(_marqueeStart.Y, current.Y);
+        var x2 = Math.Max(_marqueeStart.X, current.X);
+        var y2 = Math.Max(_marqueeStart.Y, current.Y);
+        var rect = new Rect(x1, y1, x2 - x1, y2 - y1).Intersect(new Rect(list.Bounds.Size));
+
+        var topLeft = list.TranslatePoint(rect.TopLeft, MarqueeLayer);
+        if (topLeft is not null)
+        {
+            Canvas.SetLeft(MarqueeRect, topLeft.Value.X);
+            Canvas.SetTop(MarqueeRect, topLeft.Value.Y);
+        }
+        MarqueeRect.Width = Math.Max(0, rect.Width);
+        MarqueeRect.Height = Math.Max(0, rect.Height);
+
+        var indexes = new List<int>();
+        foreach (var container in list.GetRealizedContainers().OfType<ListBoxItem>())
+        {
+            var index = list.IndexFromContainer(container);
+            if (index < 0)
+                continue;
+            var origin = container.TranslatePoint(new Point(0, 0), list);
+            if (origin is null)
+                continue;
+            if (new Rect(origin.Value, container.Bounds.Size).Intersects(rect))
+                indexes.Add(index);
+        }
+        indexes.Sort();
+
+        using (list.Selection.BatchUpdate())
+        {
+            if (!_marqueeAdditive)
+                list.Selection.Clear();
+            foreach (var index in indexes)
+                list.Selection.Select(index);
+            if (indexes.Count > 0)
+                list.Selection.AnchorIndex = indexes[^1];
+        }
+    }
+
+    private void EndMarquee(IPointer? pointer)
+    {
+        if (!_marqueePending && !_marqueeActive)
+            return;
+
+        _marqueePending = false;
+        _marqueeActive = false;
+        MarqueeLayer.IsVisible = false;
+        _marqueeList = null;
+        pointer?.Capture(null);
     }
 
     private void OnFilePointerMoved(object? sender, PointerEventArgs e)
     {
+        if (_marqueePending)
+        {
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                UpdateMarquee(e.GetPosition(_marqueeList));
+                return;
+            }
+
+            EndMarquee(e.Pointer);
+            return;
+        }
+
         if (_pane is null || _dragTrigger is null || _dragItem is null || _dragging)
             return;
 
@@ -178,24 +314,42 @@ public partial class PaneView : UserControl
         if (Math.Abs(position.X - _dragStart.X) < 7 && Math.Abs(position.Y - _dragStart.Y) < 7)
             return;
 
+        // The pressed item may have been toggled off with Ctrl before the
+        // pointer moved; never drag a deselected item.
+        if (_pane.SelectedItems.Count == 0 || !_pane.SelectedItems.Contains(_dragItem))
+        {
+            _dragSelection = null;
+            _dragTrigger = null;
+            _dragItem = null;
+            return;
+        }
+
         _dragging = true;
         var trigger = _dragTrigger;
         var item = _dragItem;
+        var group = _dragSelection;
+        _dragSelection = null;
         _dragTrigger = null;
         _dragItem = null;
-        _ = StartDragAsync(trigger, item);
+        _ = StartDragAsync(trigger, item, group);
     }
 
-    private async Task StartDragAsync(PointerPressedEventArgs trigger, FileItemViewModel item)
+    private async Task StartDragAsync(PointerPressedEventArgs trigger, FileItemViewModel item,
+        IReadOnlyList<FileItemViewModel>? groupSelection)
     {
         try
         {
             if (_pane is null)
                 return;
 
-            var sources = _pane.SelectedItems.Count > 0 && _pane.SelectedItems.Contains(item)
-                ? _pane.SelectedItems.Select(i => new OperationSource(_pane.FileSystem, i.Entry)).ToList()
-                : [new OperationSource(_pane.FileSystem, item.Entry)];
+            if (groupSelection is { Count: > 0 })
+                RestoreSelection(groupSelection);
+
+            var sources = groupSelection is { Count: > 0 }
+                ? groupSelection.Select(i => new OperationSource(_pane.FileSystem, i.Entry)).ToList()
+                : _pane.SelectedItems.Count > 0 && _pane.SelectedItems.Contains(item)
+                    ? _pane.SelectedItems.Select(i => new OperationSource(_pane.FileSystem, i.Entry)).ToList()
+                    : [new OperationSource(_pane.FileSystem, item.Entry)];
 
             var payload = new FileDragPayload(sources);
             FileDragContext.Current = payload;
@@ -239,34 +393,74 @@ public partial class PaneView : UserControl
 
     private void OnAnyPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        EndMarquee(e.Pointer);
+        _dragSelection = null;
         _dragTrigger = null;
         _dragItem = null;
     }
 
+    private void RestoreSelection(IReadOnlyList<FileItemViewModel> selection)
+    {
+        var list = GetActiveList();
+        if (list is null)
+            return;
+
+        var indexes = selection.Select(item => list.Items.IndexOf(item)).Where(index => index >= 0).ToList();
+        if (indexes.Count == 0)
+            return;
+
+        using (list.Selection.BatchUpdate())
+        {
+            list.Selection.Clear();
+            foreach (var index in indexes)
+                list.Selection.Select(index);
+            list.Selection.AnchorIndex = indexes[^1];
+        }
+    }
+
     private void OnFileDragOver(object? sender, DragEventArgs e)
     {
-        if (_pane is null || _pane.IsTrash)
+        if (_pane is null)
         {
             e.DragEffects = DragDropEffects.None;
             return;
         }
 
-        var payload = e.DataTransfer.TryGetValue(FileDragContext.Format) ?? FileDragContext.Current;
-        var hasData = payload is { Sources.Count: > 0 } ||
-                      e.DataTransfer.Contains(DataFormat.File) ||
-                      e.DataTransfer.Contains(DataFormat.Text);
-        if (!hasData)
+        var payload = FileDropHelper.GetPayload(e.DataTransfer);
+        var sources = payload?.Sources;
+        if (!FileDropHelper.HasData(e.DataTransfer, payload))
         {
             e.DragEffects = DragDropEffects.None;
             _pane.SetDropTarget(false);
             return;
         }
 
-        var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
-        var move = payload is not null && !ctrl &&
-                   payload.Sources.All(s => s.FileSystem.Id == _pane.FileSystem.Id);
+        if (_pane.IsTrash)
+        {
+            var canTrash = payload is null
+                ? _pane.Services.Trash.IsSupported
+                : FileDropHelper.IsTrashable(sources) && _pane.Services.Trash.IsSupported;
+            if (!canTrash)
+            {
+                e.DragEffects = DragDropEffects.None;
+                _pane.SetDropTarget(false);
+                return;
+            }
+
+            e.DragEffects = DragDropEffects.Move;
+            _pane.SetDropTarget(true, destination: L10n.T("回收站"), trash: true);
+            e.Handled = true;
+            return;
+        }
+
+        var target = GetItemAt(e.Source);
+        var destination = target is { IsDirectory: true } ? target.Path : _pane.CurrentPath;
+        var destinationLabel = target is { IsDirectory: true }
+            ? _pane.FileSystem.GetDisplayPath(destination)
+            : _pane.DisplayPath;
+        var move = FileDropHelper.IsMove(e.KeyModifiers, sources, _pane.FileSystem.Id, payload is null);
         e.DragEffects = move ? DragDropEffects.Move : DragDropEffects.Copy;
-        _pane.SetDropTarget(true);
+        _pane.SetDropTarget(true, move, destinationLabel);
         e.Handled = true;
     }
 
@@ -282,60 +476,24 @@ public partial class PaneView : UserControl
 
         _pane.SetDropTarget(false);
         e.Handled = true;
-        if (_pane.IsTrash)
-            return;
 
         try
         {
-            var targetItem = GetItemAt(e.Source);
-            var destination = targetItem is { IsDirectory: true } ? targetItem.Path : _pane.CurrentPath;
-            var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
-            var payload = e.DataTransfer.TryGetValue(FileDragContext.Format) ?? FileDragContext.Current;
+            var sources = await FileDropHelper.ResolveSourcesAsync(e.DataTransfer);
+            if (sources.Count == 0)
+                return;
 
-            if (payload is { Sources.Count: > 0 })
+            if (_pane.IsTrash)
             {
-                var move = !ctrl && payload.Sources.All(s => s.FileSystem.Id == _pane.FileSystem.Id);
-                _pane.EnqueueDropTransfer(payload.Sources, destination, move);
+                _pane.EnqueueTrashDrop(sources);
                 return;
             }
 
-            var sources = new List<OperationSource>();
-            var files = e.DataTransfer.TryGetFiles();
-            if (files is not null)
-            {
-                foreach (var file in files)
-                {
-                    var path = file.TryGetLocalPath();
-                    if (string.IsNullOrWhiteSpace(path))
-                        continue;
-                    var entry = await LocalFileSystem.Instance.GetEntryAsync(path);
-                    if (entry is not null)
-                        sources.Add(new OperationSource(LocalFileSystem.Instance, entry));
-                }
-            }
-
-            if (sources.Count == 0)
-            {
-                var text = e.DataTransfer.TryGetText();
-                if (!string.IsNullOrWhiteSpace(text))
-                {
-                    foreach (var line in text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        var path = line.Trim();
-                        if (path.StartsWith("file://", StringComparison.OrdinalIgnoreCase) &&
-                            Uri.TryCreate(path, UriKind.Absolute, out var uri))
-                            path = uri.LocalPath;
-                        if (!Path.IsPathRooted(path))
-                            continue;
-                        var entry = await LocalFileSystem.Instance.GetEntryAsync(path);
-                        if (entry is not null)
-                            sources.Add(new OperationSource(LocalFileSystem.Instance, entry));
-                    }
-                }
-            }
-
-            if (sources.Count > 0)
-                _pane.EnqueueDropTransfer(sources, destination, false);
+            var target = GetItemAt(e.Source);
+            var destination = target is { IsDirectory: true } ? target.Path : _pane.CurrentPath;
+            var move = FileDropHelper.IsMove(e.KeyModifiers, sources, _pane.FileSystem.Id,
+                FileDropHelper.GetPayload(e.DataTransfer) is not { Sources.Count: > 0 });
+            _pane.EnqueueDropTransfer(sources, destination, move);
         }
         catch (Exception ex)
         {

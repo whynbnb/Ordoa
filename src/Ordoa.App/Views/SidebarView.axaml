@@ -34,6 +34,12 @@
     <Style Selector="Button.sidebaritem.active /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
     </Style>
+    <Style Selector="Button.sidebaritem.drop /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    </Style>
+    <Style Selector="Button.sidebaritem.drop TextBlock.sidebarlabel">
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
     <Style Selector="Button.sidebaritem.active TextBlock.sidebarlabel">
       <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
       <Setter Property="FontWeight" Value="SemiBold" />
@@ -79,9 +85,14 @@
                   <DataTemplate DataType="{x:Type vm:SidebarEntryViewModel}">
                     <Button Classes="sidebaritem"
                             Classes.active="{Binding IsActive}"
+                            Classes.drop="{Binding IsDropTarget}"
                             Click="OnEntryClick"
                             ContextRequested="OnEntryContextRequested"
-                            ToolTip.Tip="{Binding Detail}">
+                            ToolTip.Tip="{Binding Detail}"
+                            DragDrop.AllowDrop="True"
+                            DragDrop.DragOver="OnEntryDragOver"
+                            DragDrop.DragLeave="OnEntryDragLeave"
+                            DragDrop.Drop="OnEntryDrop">
                       <Panel>
                         <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,2" VerticalAlignment="Center">
                           <Path Data="{Binding Icon}" Fill="{Binding IconBrush}"

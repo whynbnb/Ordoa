@@ -751,6 +751,39 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ActivePane));
     }
 
+    /// <summary>Drop onto a sidebar folder: copy or move the sources there.</summary>
+    public void EnqueueDropTransfer(IReadOnlyList<OperationSource> sources, IFileSystem destinationFileSystem,
+        string destinationPath, bool move)
+    {
+        if (sources.Count == 0)
+            return;
+        _services.Operations.Copy(sources, destinationFileSystem, destinationPath, move);
+        if (_services.Settings.Current.ShowTransferPanel)
+            IsTransferPanelOpen = true;
+        AddToast(move ? L10n.T("正在移动") : L10n.T("正在复制"),
+            L10n.Format("{0} 个项目", sources.Count), ToastKind.Info);
+    }
+
+    /// <summary>Drop onto the Trash entry: move local sources to the XDG trash.</summary>
+    public void MoveDroppedSourcesToTrash(IReadOnlyList<OperationSource> sources)
+    {
+        if (sources.Count == 0)
+            return;
+
+        if (!_services.Trash.IsSupported ||
+            sources.Any(s => !s.FileSystem.IsLocal || s.FileSystem is TrashFileSystem))
+        {
+            AddToast(L10n.T("无法移到回收站"), L10n.T("当前平台不支持回收站"), ToastKind.Info);
+            return;
+        }
+
+        _services.Operations.Delete(sources, permanent: false);
+        if (_services.Settings.Current.ShowTransferPanel)
+            IsTransferPanelOpen = true;
+        AddToast(L10n.T("正在移到回收站"),
+            L10n.Format("{0} 个项目", sources.Count), ToastKind.Info);
+    }
+
     public void AddToast(string title, string message, ToastKind kind = ToastKind.Info)
     {
         var toast = new ToastViewModel { Title = title, Message = message, Kind = kind };

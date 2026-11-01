@@ -41,6 +41,9 @@ public sealed partial class SidebarEntryViewModel : ObservableObject
     [ObservableProperty]
     private bool _isHovered;
 
+    [ObservableProperty]
+    private bool _isDropTarget;
+
     public Task InvokeAsync() => ActivateAsync?.Invoke(this) ?? Task.CompletedTask;
 
     public static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color));
