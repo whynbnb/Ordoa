@@ -1173,9 +1173,34 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void UpdateSidebarActive()
     {
         var pane = ActivePane;
-        var entries = SidebarSections.SelectMany(s => s.Items);
+        var entries = SidebarSections.SelectMany(s => s.Items).ToList();
         if (SystemSection is not null)
-            entries = entries.Concat(SystemSection.Items);
+            entries.AddRange(SystemSection.Items);
+
+        // Highlight only the deepest matching place/volume. Every path under the
+        // home folder also matches Home, which made Home look permanently active.
+        SidebarEntryViewModel? deepestLocal = null;
+        var deepestLength = -1;
+        if (pane is not null && pane.FileSystem.IsLocal)
+        {
+            foreach (var entry in entries)
+            {
+                if (entry.Kind is not (SidebarEntryKind.Place or SidebarEntryKind.Volume))
+                    continue;
+
+                var root = entry.Path ?? string.Empty;
+                if (!IsSameOrUnder(pane.CurrentPath, root))
+                    continue;
+
+                var length = root.TrimEnd(Path.DirectorySeparatorChar).Length;
+                if (length > deepestLength)
+                {
+                    deepestLength = length;
+                    deepestLocal = entry;
+                }
+            }
+        }
+
         foreach (var entry in entries)
         {
             var active = false;
@@ -1185,8 +1210,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 {
                     case SidebarEntryKind.Place:
                     case SidebarEntryKind.Volume:
-                        active = pane.FileSystem.IsLocal &&
-                                 IsSameOrUnder(pane.CurrentPath, entry.Path ?? string.Empty);
+                        active = ReferenceEquals(entry, deepestLocal);
                         break;
                     case SidebarEntryKind.Bookmark:
                     case SidebarEntryKind.Recent:
