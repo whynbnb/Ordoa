@@ -152,7 +152,7 @@ public sealed class CredentialStore : ICredentialStore
             if (!File.Exists(AppPaths.CredentialsFile))
                 return new Dictionary<string, string>(StringComparer.Ordinal);
             var json = File.ReadAllText(AppPaths.CredentialsFile);
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonFile.Options) ?? new Dictionary<string, string>();
         }
         catch
         {

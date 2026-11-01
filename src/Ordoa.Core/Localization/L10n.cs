@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
+using Ordoa.Core.Util;
 
 namespace Ordoa.Core.Localization;
 
@@ -82,7 +83,7 @@ public static class L10n
                 using var stream = assembly.GetManifestResourceStream("Ordoa.Core.Localization.en.json");
                 if (stream is not null)
                 {
-                    var loaded = JsonSerializer.Deserialize<Dictionary<string, string>>(stream);
+                    var loaded = JsonSerializer.Deserialize<Dictionary<string, string>>(stream, JsonFile.Options);
                     if (loaded is not null)
                     {
                         foreach (var pair in loaded)

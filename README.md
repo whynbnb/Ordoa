@@ -140,15 +140,55 @@ dotnet run --project src/Ordoa.App/Ordoa.App.csproj -- /home/user/Downloads
 dotnet run --project src/Ordoa.App/Ordoa.App.csproj -- sftp://user@example.com/
 ```
 
-发布：
+### 发布脚本
+
+类 Unix 使用 `scripts/publish.sh`：
 
 ```bash
-# 依赖系统 .NET 运行时
-dotnet publish src/Ordoa.App/Ordoa.App.csproj -c Release -r linux-x64 --self-contained false
+# 托管发布：多文件，目标机需要 .NET 10 Desktop Runtime
+./scripts/publish.sh framework
 
-# 自包含
-dotnet publish src/Ordoa.App/Ordoa.App.csproj -c Release -r linux-x64 --self-contained true
+# 托管单文件：目标机需要 .NET 10 Desktop Runtime
+./scripts/publish.sh single --rid linux-arm64
+
+# NativeAOT：自包含，不需要 .NET 运行时
+./scripts/publish.sh aot
 ```
+
+Windows 提供批处理和 PowerShell 两套入口（需要 Windows PowerShell 5.1 或 PowerShell 7；`publish.bat` 会自动选择可用的那个）：
+
+```bat
+scripts\publish.bat framework
+scripts\publish.bat single -Rid win-x64
+scripts\publish.bat aot
+```
+
+也可以直接运行 PowerShell：
+
+```powershell
+.\scripts\publish.ps1 aot -Rid win-x64 -Configuration Release
+```
+
+三种模式：
+
+| 模式 | 运行时 | 输出 |
+| --- | --- | --- |
+| `framework` | 依赖 .NET 10 Desktop Runtime | 多文件；默认自动检测当前 RID，加 `--portable` 可输出可移植版本 |
+| `single` | 依赖 .NET 10 Desktop Runtime | 单文件；原生库首次启动时自解压 |
+| `aot` | 不依赖 .NET | NativeAOT 原生程序，仍需携带 SkiaSharp / HarfBuzz 原生库 |
+
+默认输出到 `artifacts/publish/<模式>/<RID|portable>`。省略 `RID` 时会自动检测当前平台；framework 模式可用 `--portable` 生成不绑定 RID 的版本（会包含多个平台的原生资源，目录更大）。常用选项：
+
+```bash
+./scripts/publish.sh framework --rid linux-x64 --configuration Release
+./scripts/publish.sh framework --portable
+./scripts/publish.sh single --output /tmp/ordoa-single --no-clean
+./scripts/publish.sh aot --no-restore
+```
+
+NativeAOT 需要本机 C/C++ 工具链：Linux 上为 clang 或 gcc，Windows 上为 Visual Studio C++ 生成工具与 Windows SDK。AOT 输出不是单文件，`libSkiaSharp.so` / `libHarfBuzzSharp.so`（Windows 为对应 DLL）需要与可执行文件放在同一目录。
+
+AOT 发布时可能看到较多 `IL2026` / `IL3050` 裁剪警告，主要来自 Avalonia 的反射绑定；项目已通过 `TrimmerRootAssembly` 保留应用程序集，发布脚本仍会完成构建。release 输出会自动移除 `*.pdb`。
 
 macOS 与 Windows 使用对应的 RID（`osx-arm64`、`osx-x64`、`win-x64`）即可构建。
 

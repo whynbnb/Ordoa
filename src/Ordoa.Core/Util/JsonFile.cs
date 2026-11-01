@@ -12,6 +12,7 @@ public static class JsonFile
         PropertyNameCaseInsensitive = true,
         AllowTrailingCommas = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
+        TypeInfoResolver = CoreJsonContext.Default,
     };
 
     public static T? Load<T>(string path) where T : class

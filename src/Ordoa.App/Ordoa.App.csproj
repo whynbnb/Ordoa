@@ -32,4 +32,12 @@
   <ItemGroup>
     <ProjectReference Include="..\Ordoa.Core\Ordoa.Core.csproj" />
   </ItemGroup>
+
+  <!-- Reflection bindings are used throughout the XAML. Root the application
+       assemblies so NativeAOT keeps the view-model members those bindings need. -->
+  <ItemGroup Condition="'$(PublishAot)' == 'true'">
+    <TrimmerRootAssembly Include="Ordoa" />
+    <TrimmerRootAssembly Include="Ordoa.Core" />
+    <TrimmerRootAssembly Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
 </Project>
