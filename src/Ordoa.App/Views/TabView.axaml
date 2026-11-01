@@ -11,10 +11,14 @@
     <Border Grid.Column="0" Classes="panehost">
       <views:PaneView DataContext="{Binding PrimaryPane}" />
     </Border>
-    <GridSplitter x:Name="Splitter" Grid.Column="1" Width="4" IsVisible="{Binding IsSplit}"
-                  Background="Transparent" ResizeDirection="Columns" />
     <Border x:Name="SecondaryHost" Grid.Column="2" Classes="panehost" IsVisible="{Binding IsSplit}">
       <views:PaneView DataContext="{Binding SecondaryPane}" />
     </Border>
+    <GridSplitter x:Name="Splitter" Grid.Column="1" Classes="pane" Width="6"
+                  HorizontalAlignment="Center" IsVisible="{Binding IsSplit}"
+                  ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+    <Border x:Name="SplitLine" Grid.Column="1" Width="1" HorizontalAlignment="Center"
+            Background="{DynamicResource BorderBrush}" IsHitTestVisible="False"
+            IsVisible="{Binding IsSplit}" />
   </Grid>
 </UserControl>

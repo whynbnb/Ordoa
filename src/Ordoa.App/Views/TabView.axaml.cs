@@ -42,7 +42,7 @@ public partial class TabView : UserControl
         SecondaryHost.IsVisible = split;
         if (Content is Grid grid && grid.ColumnDefinitions.Count >= 3)
         {
-            grid.ColumnDefinitions[1].Width = split ? new GridLength(4) : new GridLength(0);
+            grid.ColumnDefinitions[1].Width = split ? new GridLength(1) : new GridLength(0);
             grid.ColumnDefinitions[2].Width = split ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
         }
     }
