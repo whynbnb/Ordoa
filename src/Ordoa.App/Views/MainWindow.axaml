@@ -73,16 +73,12 @@
     </Style>
   </Window.Styles>
 
-  <Grid x:Name="RootGrid" ColumnDefinitions="Auto,Auto,*">
+  <Grid x:Name="RootGrid" ColumnDefinitions="Auto,0,*">
     <Border x:Name="SidebarBorder" Grid.Column="0" Background="{DynamicResource SidebarBrush}"
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0"
             IsVisible="{Binding IsSidebarVisible}">
       <views:SidebarView />
     </Border>
-
-    <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="1" ResizeDirection="Columns"
-                  IsVisible="{Binding IsSidebarVisible}" Background="{DynamicResource BorderBrush}"
-                  DragCompleted="OnSidebarSplitterDragCompleted" />
 
     <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto">
       <Border Grid.Row="0" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -182,6 +178,12 @@
       <views:TransferPanelView Grid.Row="2" IsVisible="{Binding IsTransferPanelOpen}"
                                DataContext="{Binding}" />
     </Grid>
+
+    <!-- Overlays both the sidebar and the content so it keeps a 6px drag
+         target without reserving visual space. -->
+    <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Classes="pane" Width="6" MinWidth="0"
+                  HorizontalAlignment="Center" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                  IsVisible="{Binding IsSidebarVisible}" DragCompleted="OnSidebarSplitterDragCompleted" />
 
     <!-- Splash -->
     <Grid Grid.ColumnSpan="3" Background="{DynamicResource WindowBackgroundBrush}"
