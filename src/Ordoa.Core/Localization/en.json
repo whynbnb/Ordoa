@@ -501,5 +501,7 @@
  "加选 / 连选": "Add to / extend selection",
  "松开以永久删除": "Release to delete permanently",
  "将永久删除 {0} 个项目，此操作无法撤销。": "Permanently delete {0} items? This cannot be undone.",
- "直接移到回收站；Shift 永久删除": "Move to Trash; Shift deletes permanently"
+ "直接移到回收站；Shift 永久删除": "Move to Trash; Shift deletes permanently",
+ "耗时操作时自动展开传输队列": "Auto-expand the transfer queue for long operations",
+ "{0} 个已完成": "{0} completed"
 }

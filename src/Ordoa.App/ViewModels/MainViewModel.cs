@@ -179,9 +179,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _activeTransferCount, value);
     }
 
-    public string TransferSummary => ActiveTransferCount > 0
-        ? L10n.Format("{0} 个进行中", ActiveTransferCount)
-        : HasTransfers ? L10n.T("传输队列") : L10n.T("没有传输任务");
+    public string TransferSummary
+    {
+        get
+        {
+            if (ActiveTransferCount > 0)
+                return L10n.Format("{0} 个进行中", ActiveTransferCount);
+            if (!HasTransfers)
+                return L10n.T("没有传输任务");
+            var finished = _services.Operations.Operations.Count(
+                o => o.IsCompleted || o.IsFailed || o.IsCancelled);
+            return finished > 0 ? L10n.Format("{0} 个已完成", finished) : L10n.T("传输队列");
+        }
+    }
 
     public event Action? CloseWindowRequested;
     public event Action? CommandPaletteOpened;
@@ -758,8 +768,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (sources.Count == 0)
             return;
         _services.Operations.Copy(sources, destinationFileSystem, destinationPath, move);
-        if (_services.Settings.Current.ShowTransferPanel)
-            IsTransferPanelOpen = true;
+        MaybeAutoShowTransferPanel();
         AddToast(move ? L10n.T("正在移动") : L10n.T("正在复制"),
             L10n.Format("{0} 个项目", sources.Count), ToastKind.Info);
     }
@@ -784,8 +793,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         _services.Operations.Delete(sources, permanent: true);
-        if (_services.Settings.Current.ShowTransferPanel)
-            IsTransferPanelOpen = true;
+        MaybeAutoShowTransferPanel();
         AddToast(L10n.T("正在删除"), L10n.Format("{0} 个项目", sources.Count), ToastKind.Info);
     }
 
@@ -803,8 +811,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         _services.Operations.Delete(sources, permanent: false);
-        if (_services.Settings.Current.ShowTransferPanel)
-            IsTransferPanelOpen = true;
+        MaybeAutoShowTransferPanel();
         AddToast(L10n.T("正在移到回收站"),
             L10n.Format("{0} 个项目", sources.Count), ToastKind.Info);
     }
@@ -1259,9 +1266,25 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void OnOperationStarted(PaneViewModel pane)
     {
-        if (_services.Settings.Current.ShowTransferPanel)
-            IsTransferPanelOpen = true;
         RefreshTransferState();
+        MaybeAutoShowTransferPanel();
+    }
+
+    /// <summary>
+    /// Only expand the transfer queue for operations that keep running after a
+    /// short delay. Moving a couple of small files should stay out of the way.
+    /// </summary>
+    private async void MaybeAutoShowTransferPanel()
+    {
+        if (IsTransferPanelOpen || !_services.Settings.Current.ShowTransferPanel)
+            return;
+
+        await Task.Delay(700).ConfigureAwait(true);
+
+        if (IsTransferPanelOpen || !_services.Settings.Current.ShowTransferPanel)
+            return;
+        if (_services.Operations.Operations.Any(operation => operation.IsRunning))
+            IsTransferPanelOpen = true;
     }
 
     private void OnPaneNavigated(PaneViewModel pane)
@@ -1348,7 +1371,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         RefreshTransferState();
     }
 
-    private void OnOperationItemChanged(object? sender, PropertyChangedEventArgs e) => RefreshTransferState();
+    private void OnOperationItemChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        RefreshTransferState();
+        if (e.PropertyName == nameof(FileOperationItem.State) &&
+            sender is FileOperationItem { IsRunning: true })
+            MaybeAutoShowTransferPanel();
+    }
 
     private void RefreshTransferState()
     {
