@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Ordoa.App.Services;
 using Ordoa.Core.Models;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.ViewModels;
 
@@ -29,10 +30,18 @@ public sealed partial class FileItemViewModel : ObservableObject
     public Geometry Icon => _visual.Geometry;
     public IBrush IconBrush => _visual.Brush;
 
+    public void RefreshLocalization()
+    {
+        OnPropertyChanged(nameof(TypeText));
+        OnPropertyChanged(nameof(GridSubtitle));
+        OnPropertyChanged(nameof(ModifiedText));
+        OnPropertyChanged(nameof(TooltipText));
+    }
+
     public string SizeText => Entry.IsDirectory ? "—" : Humanize.Size(Entry.Size);
     public string ModifiedText => Humanize.Date(Entry.Modified);
     public string TypeText => Entry.TypeDescription;
-    public string GridSubtitle => Entry.IsDirectory ? "文件夹" : Humanize.Size(Entry.Size);
+    public string GridSubtitle => Entry.IsDirectory ? L10n.T("文件夹") : Humanize.Size(Entry.Size);
     public string? OriginalPath => Entry.OriginalPath;
     public string? LinkTarget => Entry.LinkTarget;
 
@@ -44,7 +53,7 @@ public sealed partial class FileItemViewModel : ObservableObject
             if (!string.IsNullOrEmpty(LinkTarget))
                 text += $"\n→ {LinkTarget}";
             if (Entry.IsDirectory && Entry.OriginalPath is not null)
-                text += $"\n原位置: {Entry.OriginalPath}";
+                text += "\n" + L10n.Format("原位置: {0}", Entry.OriginalPath);
             return text;
         }
     }

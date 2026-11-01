@@ -2,6 +2,7 @@ using FluentFTP;
 using Ordoa.Core.Abstractions;
 using Ordoa.Core.Models;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.FileSystems.Remote;
 
@@ -138,7 +139,7 @@ public sealed class FtpFileSystem : FileSystemBase
             path = NormalizePath(path);
             var exists = await _client.FileExists(path, cancellationToken).ConfigureAwait(false);
             if (!overwrite && exists)
-                throw new IOException("目标文件已存在");
+                throw new IOException(L10n.T("目标文件已存在"));
             if (overwrite && exists)
                 await _client.DeleteFile(path, cancellationToken).ConfigureAwait(false);
 

@@ -1,3 +1,4 @@
+using Ordoa.Core.Localization;
 using System.Runtime.InteropServices;
 using Ordoa.Core.Abstractions;
 using Ordoa.Core.Models;
@@ -15,7 +16,7 @@ public sealed class LocalFileSystem : FileSystemBase
 
     private LocalFileSystem() : base("local", "file", Environment.MachineName)
     {
-        DisplayName = "本机";
+        DisplayName = L10n.T("本机");
     }
 
     public override bool IsLocal => true;
@@ -95,7 +96,7 @@ public sealed class LocalFileSystem : FileSystemBase
         {
             var directory = new DirectoryInfo(path);
             if (!directory.Exists)
-                throw new DirectoryNotFoundException($"目录不存在: {path}");
+                throw new DirectoryNotFoundException(L10n.Format("目录不存在: {0}", path));
 
             var options = new EnumerationOptions
             {

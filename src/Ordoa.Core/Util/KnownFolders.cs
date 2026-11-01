@@ -1,3 +1,4 @@
+using Ordoa.Core.Localization;
 using System.Text;
 
 namespace Ordoa.Core.Util;
@@ -21,18 +22,42 @@ public static class KnownFolders
     {
         var all = new List<KnownFolder>
         {
-            new("home", "主目录", Home),
-            new("desktop", "桌面", Desktop),
-            new("documents", "文档", Documents),
-            new("downloads", "下载", Downloads),
-            new("pictures", "图片", Pictures),
-            new("music", "音乐", Music),
-            new("videos", "视频", Videos),
-            new("public", "公共", Public),
-            new("templates", "模板", Templates),
+            new("home", L10n.T("主目录"), Home),
+            new("desktop", L10n.T("桌面"), Desktop),
+            new("documents", L10n.T("文档"), Documents),
+            new("downloads", L10n.T("下载"), Downloads),
+            new("pictures", L10n.T("图片"), Pictures),
+            new("music", L10n.T("音乐"), Music),
+            new("videos", L10n.T("视频"), Videos),
+            new("public", L10n.T("公共"), Public),
+            new("templates", L10n.T("模板"), Templates),
         };
 
         return all.Where(f => Directory.Exists(f.Path)).ToList();
+    }
+
+    /// <summary>Localized label for a well-known folder path, or null.</summary>
+    public static string? GetDisplayName(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+        string full;
+        try { full = Path.GetFullPath(path); }
+        catch { return null; }
+
+        foreach (var folder in GetPlaces())
+        {
+            try
+            {
+                if (string.Equals(Path.GetFullPath(folder.Path), full, StringComparison.Ordinal))
+                    return folder.Label;
+            }
+            catch
+            {
+                // Ignore malformed paths.
+            }
+        }
+        return null;
     }
 
     private static string Get(string xdgKey, string fallbackName, string chineseName)

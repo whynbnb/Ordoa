@@ -8,6 +8,7 @@ using Ordoa.Core.FileSystems;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.ViewModels.Dialogs;
 
@@ -45,33 +46,33 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
 
     private void BuildItems()
     {
-        Items.Add(new PropertyItem("类型", KindText));
-        Items.Add(new PropertyItem("位置", LocationText));
-        Items.Add(new PropertyItem("完整路径", PathText, true));
-        Items.Add(new PropertyItem("大小", SizeText));
+        Items.Add(new PropertyItem(L10n.T("类型"), KindText));
+        Items.Add(new PropertyItem(L10n.T("位置"), LocationText));
+        Items.Add(new PropertyItem(L10n.T("完整路径"), PathText, true));
+        Items.Add(new PropertyItem(L10n.T("大小"), SizeText));
         if (!IsDirectory)
-            Items.Add(new PropertyItem("精确大小", ExactSizeText));
-        Items.Add(new PropertyItem("修改时间", ModifiedText));
-        Items.Add(new PropertyItem("创建时间", CreatedText));
-        Items.Add(new PropertyItem("访问时间", AccessedText));
+            Items.Add(new PropertyItem(L10n.T("精确大小"), ExactSizeText));
+        Items.Add(new PropertyItem(L10n.T("修改时间"), ModifiedText));
+        Items.Add(new PropertyItem(L10n.T("创建时间"), CreatedText));
+        Items.Add(new PropertyItem(L10n.T("访问时间"), AccessedText));
         if (!IsDirectory)
-            Items.Add(new PropertyItem("MIME 类型", MimeText, true));
+            Items.Add(new PropertyItem(L10n.T("MIME 类型"), MimeText, true));
         if (HasUnixMode)
         {
-            Items.Add(new PropertyItem("权限", PermissionsText, true));
-            Items.Add(new PropertyItem("八进制", OctalText, true));
+            Items.Add(new PropertyItem(L10n.T("权限"), PermissionsText, true));
+            Items.Add(new PropertyItem(L10n.T("八进制"), OctalText, true));
         }
         if (HasOwner)
-            Items.Add(new PropertyItem("所有者", OwnerText));
+            Items.Add(new PropertyItem(L10n.T("所有者"), OwnerText));
         if (HasGroup)
-            Items.Add(new PropertyItem("用户组", GroupText));
+            Items.Add(new PropertyItem(L10n.T("用户组"), GroupText));
         if (HasLink)
-            Items.Add(new PropertyItem("链接目标", LinkTarget!, true));
+            Items.Add(new PropertyItem(L10n.T("链接目标"), LinkTarget!, true));
         if (HasOriginalPath)
-            Items.Add(new PropertyItem("原位置", OriginalPath!, true));
+            Items.Add(new PropertyItem(L10n.T("原位置"), OriginalPath!, true));
         if (DeletedText is not null)
-            Items.Add(new PropertyItem("删除时间", DeletedText));
-        Items.Add(new PropertyItem("文件系统", FsLabel));
+            Items.Add(new PropertyItem(L10n.T("删除时间"), DeletedText));
+        Items.Add(new PropertyItem(L10n.T("文件系统"), FsLabel));
     }
 
     public FileEntry Entry { get; private set; }
@@ -82,7 +83,7 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
     public string PathText => _fileSystem.GetDisplayPath(Entry.Path);
     public string LocationText => _fileSystem.GetDisplayPath(_fileSystem.GetParent(Entry.Path));
     public string SizeText => Entry.IsDirectory ? "—" : Humanize.Size(Entry.Size);
-    public string ExactSizeText => Entry.IsDirectory ? "—" : $"{Entry.Size:N0} 字节";
+    public string ExactSizeText => Entry.IsDirectory ? "—" : L10n.Format("{0:N0} 字节", Entry.Size);
     public string ModifiedText => Humanize.DateTimeFull(Entry.Modified);
     public string CreatedText => Humanize.DateTimeFull(Entry.Created);
     public string AccessedText => Humanize.DateTimeFull(Entry.Accessed);
@@ -103,7 +104,7 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
     public bool HasOriginalPath { get; }
     public bool HasOwner { get; }
     public bool HasGroup { get; }
-    public string FsLabel => IsTrash ? "回收站" : IsRemote ? "远程" : "本机";
+    public string FsLabel => IsTrash ? L10n.T("回收站") : IsRemote ? L10n.T("远程") : L10n.T("本机");
     public string MimeText => Entry.MimeType ?? "—";
 
     private string _octalInput;
@@ -125,7 +126,7 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
         var text = OctalInput.Trim();
         if (text.Length is < 3 or > 4 || text.Any(c => c is < '0' or > '7'))
         {
-            PermissionStatus = "请输入 3 或 4 位八进制数字，例如 755";
+            PermissionStatus = L10n.T("请输入 3 或 4 位八进制数字，例如 755");
             return;
         }
 
@@ -135,7 +136,7 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
             _mode = (UnixFileMode)(bits & 0xFFF);
             await _fileSystem.SetUnixModeAsync(Entry.Path, _mode.Value, _cts.Token).ConfigureAwait(true);
             Entry = Entry with { UnixMode = _mode };
-            PermissionStatus = "权限已更新";
+            PermissionStatus = L10n.T("权限已更新");
             OnPropertyChanged(nameof(PermissionsText));
             OnPropertyChanged(nameof(OctalText));
             Items.Clear();
@@ -147,7 +148,7 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
         }
         catch (Exception ex)
         {
-            PermissionStatus = "更新失败: " + ex.Message;
+            PermissionStatus = L10n.T("更新失败: ") + ex.Message;
         }
     }
 
@@ -171,7 +172,7 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
         try
         {
             var result = await ChecksumService.MeasureAsync(_fileSystem, Entry, _cts.Token).ConfigureAwait(true);
-            ContentSummary = $"{result.Files:N0} 个文件 · {result.Directories:N0} 个文件夹 · {Humanize.Size(result.Bytes)}";
+            ContentSummary = L10n.Format("{0:N0} 个文件 · {1:N0} 个文件夹 · {2}", result.Files, result.Directories, Humanize.Size(result.Bytes));
         }
         catch (OperationCanceledException)
         {
@@ -234,7 +235,7 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
             {
                 Name = source.Name,
                 Path = source.FileSystem.GetDisplayPath(source.Path),
-                SizeText = source.IsDirectory ? "文件夹" : Humanize.Size(source.Entry.Size),
+                SizeText = source.IsDirectory ? L10n.T("文件夹") : Humanize.Size(source.Entry.Size),
             });
         }
     }
@@ -245,7 +246,7 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
     private bool _isRunning;
 
     [ObservableProperty]
-    private string _status = "准备计算…";
+    private string _status = L10n.T("准备计算…");
 
     [ObservableProperty]
     private string? _fatalError;
@@ -265,7 +266,7 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
                 _cts.Token.ThrowIfCancellationRequested();
                 var source = _sources[i];
                 var row = Rows[i];
-                Status = $"正在计算 SHA-256 · {i + 1} / {_sources.Count}";
+                Status = L10n.Format("正在计算 SHA-256 · {0} / {1}", i + 1, _sources.Count);
                 try
                 {
                     var progress = new Progress<double>(value => row.Progress = value);
@@ -284,12 +285,12 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
                 }
             }
 
-            Status = _cts.Token.IsCancellationRequested ? "已取消" : "计算完成";
+            Status = _cts.Token.IsCancellationRequested ? L10n.T("已取消") : L10n.T("计算完成");
             OnPropertyChanged(nameof(HasResults));
         }
         catch (OperationCanceledException)
         {
-            Status = "已取消";
+            Status = L10n.T("已取消");
         }
         finally
         {
@@ -301,7 +302,7 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
     private void Cancel()
     {
         try { _cts.Cancel(); } catch { /* ignore */ }
-        Status = "已取消";
+        Status = L10n.T("已取消");
     }
 
     [RelayCommand]
@@ -345,7 +346,7 @@ public sealed partial class ConflictDialogViewModel : ObservableObject
     private bool _applyAll;
 
     public bool BothDirectories => SourceIsDirectory && DestinationIsDirectory;
-    public string MergeHint => BothDirectories ? "两者都是文件夹。替换会先删除目标文件夹再复制，保留两者会使用新的名称。" : string.Empty;
+    public string MergeHint => BothDirectories ? L10n.T("两者都是文件夹。替换会先删除目标文件夹再复制，保留两者会使用新的名称。") : string.Empty;
 }
 
 public sealed class AboutDialogViewModel

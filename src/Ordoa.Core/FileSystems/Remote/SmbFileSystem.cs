@@ -4,6 +4,7 @@ using Ordoa.Core.Util;
 using SMBLibrary;
 using SMBLibrary.Client;
 using SmbFileAttributes = SMBLibrary.FileAttributes;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.FileSystems.Remote;
 
@@ -36,18 +37,18 @@ public sealed class SmbFileSystem : FileSystemBase
         return Task.Run(() =>
         {
             if (string.IsNullOrWhiteSpace(profile.Host))
-                throw new ArgumentException("SMB 服务器地址不能为空");
+                throw new ArgumentException(L10n.T("SMB 服务器地址不能为空"));
 
             var client = new SMB2Client(60000, true);
             try
             {
                 if (!client.Connect(profile.Host, SMBTransportType.DirectTCPTransport))
-                    throw new IOException($"无法连接 SMB 服务器 {profile.Host}:{profile.EffectivePort}");
+                    throw new IOException(L10n.Format("无法连接 SMB 服务器 {0}:{1}", profile.Host, profile.EffectivePort));
 
                 var domain = profile.Domain ?? string.Empty;
                 var status = client.Login(domain, profile.Username, password);
                 if (status != NTStatus.STATUS_SUCCESS)
-                    throw new UnauthorizedAccessException($"SMB 登录失败: {status}");
+                    throw new UnauthorizedAccessException(L10n.Format("SMB 登录失败: {0}", status));
 
                 return new SmbFileSystem(profile, client);
             }
@@ -80,7 +81,7 @@ public sealed class SmbFileSystem : FileSystemBase
                 var status = store.QueryDirectory(out var entries, handle, "*",
                     FileInformationClass.FileDirectoryInformation);
                 if (status is not (NTStatus.STATUS_SUCCESS or NTStatus.STATUS_NO_MORE_FILES))
-                    throw new IOException($"读取目录失败: {status}");
+                    throw new IOException(L10n.Format("读取目录失败: {0}", status));
 
                 var result = new List<FileEntry>();
                 foreach (var info in entries.OfType<FileDirectoryInformation>())
@@ -146,7 +147,7 @@ public sealed class SmbFileSystem : FileSystemBase
                 CreateOptions.FILE_NON_DIRECTORY_FILE | CreateOptions.FILE_SYNCHRONOUS_IO_NONALERT, null);
 
             if (status != NTStatus.STATUS_SUCCESS)
-                throw new IOException($"打开文件失败: {status} ({path})");
+                throw new IOException(L10n.Format("打开文件失败: {0} ({1})", status, path));
 
             return new SmbReadStream(store, handle, (int)Math.Min(_interfaces[share].MaxReadSize, 1024 * 1024));
         }
@@ -172,9 +173,9 @@ public sealed class SmbFileSystem : FileSystemBase
                 CreateOptions.FILE_NON_DIRECTORY_FILE | CreateOptions.FILE_SYNCHRONOUS_IO_NONALERT, null);
 
             if (status == NTStatus.STATUS_OBJECT_NAME_COLLISION)
-                throw new IOException("目标文件已存在");
+                throw new IOException(L10n.T("目标文件已存在"));
             if (status != NTStatus.STATUS_SUCCESS)
-                throw new IOException($"创建文件失败: {status} ({path})");
+                throw new IOException(L10n.Format("创建文件失败: {0} ({1})", status, path));
 
             return new SmbWriteStream(store, handle, (int)Math.Min(_interfaces[share].MaxWriteSize, 1024 * 1024));
         }
@@ -198,7 +199,7 @@ public sealed class SmbFileSystem : FileSystemBase
                 CreateOptions.FILE_DIRECTORY_FILE, null);
 
             if (status != NTStatus.STATUS_SUCCESS)
-                throw new IOException($"创建目录失败: {status} ({path})");
+                throw new IOException(L10n.Format("创建目录失败: {0} ({1})", status, path));
             store.CloseFile(handle);
         }
         finally
@@ -233,7 +234,7 @@ public sealed class SmbFileSystem : FileSystemBase
         if (!string.Equals(sourceShare, destinationShare, StringComparison.OrdinalIgnoreCase))
         {
             // Let the operation engine perform a recursive copy-and-delete across shares.
-            throw new IOException("跨共享移动需要复制后删除");
+            throw new IOException(L10n.T("跨共享移动需要复制后删除"));
         }
 
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -248,7 +249,7 @@ public sealed class SmbFileSystem : FileSystemBase
                 CreateOptions.FILE_SYNCHRONOUS_IO_NONALERT, null);
 
             if (status != NTStatus.STATUS_SUCCESS)
-                throw new IOException($"移动失败: {status}");
+                throw new IOException(L10n.Format("移动失败: {0}", status));
 
             try
             {
@@ -260,7 +261,7 @@ public sealed class SmbFileSystem : FileSystemBase
                 };
                 status = store.SetFileInformation(handle, info);
                 if (status != NTStatus.STATUS_SUCCESS)
-                    throw new IOException($"重命名失败: {status}");
+                    throw new IOException(L10n.Format("重命名失败: {0}", status));
             }
             finally
             {
@@ -357,7 +358,7 @@ public sealed class SmbFileSystem : FileSystemBase
     {
         var shares = _client.ListShares(out var status);
         if (status != NTStatus.STATUS_SUCCESS)
-            throw new IOException($"无法列出共享: {status}");
+            throw new IOException(L10n.Format("无法列出共享: {0}", status));
 
         var result = new List<FileEntry>();
         foreach (var share in shares)
@@ -392,7 +393,7 @@ public sealed class SmbFileSystem : FileSystemBase
                 {
                     var status = store.QueryDirectory(out entries, dirHandle, "*", FileInformationClass.FileDirectoryInformation);
                     if (status is not (NTStatus.STATUS_SUCCESS or NTStatus.STATUS_NO_MORE_FILES))
-                        throw new IOException($"读取目录失败: {status}");
+                        throw new IOException(L10n.Format("读取目录失败: {0}", status));
                 }
                 finally
                 {
@@ -416,13 +417,13 @@ public sealed class SmbFileSystem : FileSystemBase
             isDirectory ? CreateOptions.FILE_DIRECTORY_FILE : CreateOptions.FILE_NON_DIRECTORY_FILE, null);
 
         if (openStatus != NTStatus.STATUS_SUCCESS)
-            throw new IOException($"删除失败: {openStatus}");
+            throw new IOException(L10n.Format("删除失败: {0}", openStatus));
 
         try
         {
             var status = store.SetFileInformation(handle, new FileDispositionInformation { DeletePending = true });
             if (status != NTStatus.STATUS_SUCCESS)
-                throw new IOException($"删除失败: {status}");
+                throw new IOException(L10n.Format("删除失败: {0}", status));
         }
         finally
         {
@@ -456,7 +457,7 @@ public sealed class SmbFileSystem : FileSystemBase
             ShareAccess.Read | ShareAccess.Write | ShareAccess.Delete, CreateDisposition.FILE_OPEN,
             CreateOptions.FILE_DIRECTORY_FILE | CreateOptions.FILE_SYNCHRONOUS_IO_NONALERT, null);
         if (status != NTStatus.STATUS_SUCCESS)
-            throw new IOException($"打开目录失败: {status}");
+            throw new IOException(L10n.Format("打开目录失败: {0}", status));
         return handle;
     }
 
@@ -467,7 +468,7 @@ public sealed class SmbFileSystem : FileSystemBase
 
         var store = _client.TreeConnect(share, out var status);
         if (status != NTStatus.STATUS_SUCCESS)
-            throw new IOException($"无法访问共享 {share}: {status}");
+            throw new IOException(L10n.Format("无法访问共享 {0}: {1}", share, status));
 
         var typed = (INTFileStore)store;
         _stores[share] = typed;
@@ -505,7 +506,7 @@ public sealed class SmbFileSystem : FileSystemBase
     {
         var segments = PosixPath.Segments(path);
         if (segments.Count == 0)
-            throw new ArgumentException("SMB 路径必须包含共享名称", nameof(path));
+            throw new ArgumentException(L10n.T("SMB 路径必须包含共享名称"), nameof(path));
 
         var share = segments[0];
         var relative = string.Join('\\', segments.Skip(1));
@@ -552,7 +553,7 @@ public sealed class SmbFileSystem : FileSystemBase
             if (status == NTStatus.STATUS_END_OF_FILE)
                 return 0;
             if (status != NTStatus.STATUS_SUCCESS)
-                throw new IOException($"读取远程文件失败: {status}");
+                throw new IOException(L10n.Format("读取远程文件失败: {0}", status));
             if (data is null || data.Length == 0)
                 return 0;
 
@@ -627,9 +628,9 @@ public sealed class SmbFileSystem : FileSystemBase
                 Array.Copy(buffer, offset + written, data, 0, chunk);
                 var status = _store.WriteFile(out var bytesWritten, _handle, _position, data);
                 if (status != NTStatus.STATUS_SUCCESS)
-                    throw new IOException($"写入远程文件失败: {status}");
+                    throw new IOException(L10n.Format("写入远程文件失败: {0}", status));
                 if (bytesWritten <= 0)
-                    throw new IOException("远程写入未返回进度");
+                    throw new IOException(L10n.T("远程写入未返回进度"));
                 written += bytesWritten;
                 _position += bytesWritten;
             }

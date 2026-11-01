@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ordoa.App.Services;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.ViewModels;
 
@@ -70,9 +71,9 @@ public sealed class ToastViewModel
         Kind == ToastKind.Error ? "IconWarning" : Kind == ToastKind.Success ? "IconCheckCircle" : "IconInfo");
     public string KindLabel => Kind switch
     {
-        ToastKind.Error => "错误",
-        ToastKind.Success => "完成",
-        _ => "提示",
+        ToastKind.Error => L10n.T("错误"),
+        ToastKind.Success => L10n.T("完成"),
+        _ => L10n.T("提示"),
     };
 }
 

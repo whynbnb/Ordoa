@@ -1,4 +1,5 @@
 <Window xmlns="https://github.com/avaloniaui"
+             xmlns:loc="using:Ordoa.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="using:Ordoa.App.Views"
         x:Class="Ordoa.App.Views.MainWindow"
@@ -87,7 +88,7 @@
       <Border Grid.Row="0" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="0,0,0,1" Height="41">
         <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,0,8,0">
-          <Button Classes="tool" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="显示/隐藏侧栏 (F9)"
+          <Button Classes="tool" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="{loc:Tr 显示/隐藏侧栏 (F9)}"
                   VerticalAlignment="Center" Width="28" Height="28">
             <Path Data="{StaticResource IconPanel}" Width="15" Height="15" Stretch="Uniform"
                   Fill="{DynamicResource TextSecondaryBrush}" />
@@ -115,7 +116,7 @@
                             VerticalAlignment="Center" Margin="0,0,3,0"
                             IsVisible="{Binding IsSplit}" />
                       <Button Grid.Column="3" Classes="tabclose" Click="OnTabCloseClick"
-                              ToolTip.Tip="关闭标签页">
+                              ToolTip.Tip="{loc:Tr 关闭标签页}">
                         <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
                               Fill="{DynamicResource TextSecondaryBrush}" />
                       </Button>
@@ -127,13 +128,13 @@
           </ScrollViewer>
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="1">
-            <Button Classes="tabadd" Command="{Binding NewTabCommand}" ToolTip.Tip="新建标签页 (Ctrl+T)">
+            <Button Classes="tabadd" Command="{Binding NewTabCommand}" ToolTip.Tip="{loc:Tr 新建标签页 (Ctrl+T)}">
               <Path Data="{StaticResource IconPlus}" Width="14" Height="14" Stretch="Uniform"
                     Fill="{DynamicResource TextSecondaryBrush}" />
             </Button>
 
             <Panel Margin="3,0,0,0">
-              <Button Classes="tool" Command="{Binding ToggleTransferPanelCommand}" ToolTip.Tip="传输队列"
+              <Button Classes="tool" Command="{Binding ToggleTransferPanelCommand}" ToolTip.Tip="{loc:Tr 传输队列}"
                       Width="28" Height="28">
                 <Path Data="{StaticResource IconSync}" Width="15" Height="15" Stretch="Uniform"
                       Fill="{DynamicResource TextSecondaryBrush}" />
@@ -148,27 +149,27 @@
             </Panel>
 
             <Button Classes="tool" Command="{Binding ShowCommandPaletteCommand}"
-                    ToolTip.Tip="命令面板 (Ctrl+Shift+P)" Width="28" Height="28">
+                    ToolTip.Tip="{loc:Tr 命令面板 (Ctrl+Shift+P)}" Width="28" Height="28">
               <Path Data="{StaticResource IconCommand}" Width="15" Height="15" Stretch="Uniform"
                     Fill="{DynamicResource TextSecondaryBrush}" />
             </Button>
 
-            <Button Classes="tool" ToolTip.Tip="更多" Width="28" Height="28">
+            <Button Classes="tool" ToolTip.Tip="{loc:Tr 更多}" Width="28" Height="28">
               <Path Data="{StaticResource IconDots}" Width="15" Height="15" Stretch="Uniform"
                     Fill="{DynamicResource TextSecondaryBrush}" />
               <Button.Flyout>
                 <MenuFlyout Placement="BottomEdgeAlignedRight">
-                  <MenuItem Header="新建标签页" Command="{Binding NewTabCommand}" />
-                  <MenuItem Header="复制当前标签页" Command="{Binding DuplicateActiveTabCommand}" />
-                  <MenuItem Header="切换分屏" Command="{Binding ToggleSplitCommand}" />
+                  <MenuItem Header="{loc:Tr 新建标签页}" Command="{Binding NewTabCommand}" />
+                  <MenuItem Header="{loc:Tr 复制当前标签页}" Command="{Binding DuplicateActiveTabCommand}" />
+                  <MenuItem Header="{loc:Tr 切换分屏}" Command="{Binding ToggleSplitCommand}" />
                   <Separator />
-                  <MenuItem Header="显示/隐藏隐藏文件" Command="{Binding ToggleHiddenCommand}" />
-                  <MenuItem Header="刷新" Command="{Binding RefreshAllCommand}" />
+                  <MenuItem Header="{loc:Tr 显示/隐藏隐藏文件}" Command="{Binding ToggleHiddenCommand}" />
+                  <MenuItem Header="{loc:Tr 刷新}" Command="{Binding RefreshAllCommand}" />
                   <Separator />
-                  <MenuItem Header="设置…" Command="{Binding OpenSettingsCommand}" />
-                  <MenuItem Header="键盘快捷键与关于" Command="{Binding OpenAboutCommand}" />
+                  <MenuItem Header="{loc:Tr 设置…}" Command="{Binding OpenSettingsCommand}" />
+                  <MenuItem Header="{loc:Tr 键盘快捷键与关于}" Command="{Binding OpenAboutCommand}" />
                   <Separator />
-                  <MenuItem Header="退出 Ordoa" Click="OnExitClick" />
+                  <MenuItem Header="{loc:Tr 退出 Ordoa}" Click="OnExitClick" />
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
@@ -187,8 +188,8 @@
           IsVisible="{Binding IsInitialized, Converter={StaticResource InverseBoolConverter}}">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" Width="320">
         <Image Source="/Assets/ordoa.png" Width="96" Height="96" HorizontalAlignment="Center" />
-        <TextBlock Text="Ordoa 安序" Classes="h1" HorizontalAlignment="Center" />
-        <TextBlock Text="有秩序的文件管理" Classes="muted" HorizontalAlignment="Center" />
+        <TextBlock Text="{loc:Tr Ordoa 安序}" Classes="h1" HorizontalAlignment="Center" />
+        <TextBlock Text="{loc:Tr 有秩序的文件管理}" Classes="muted" HorizontalAlignment="Center" />
         <ProgressBar IsIndeterminate="True" Width="160" Height="3" Margin="0,8,0,0" />
         <TextBlock Text="{Binding StartupStatus}" Classes="caption" HorizontalAlignment="Center" />
       </StackPanel>
@@ -215,7 +216,7 @@
                            IsVisible="{Binding Message, Converter={StaticResource NotNullConverter}}" />
               </StackPanel>
               <Button Grid.Column="2" Classes="tool" Width="20" Height="20" VerticalAlignment="Top"
-                      Click="OnDismissToastClick" ToolTip.Tip="关闭">
+                      Click="OnDismissToastClick" ToolTip.Tip="{loc:Tr 关闭}">
                 <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
                       Fill="{DynamicResource TextTertiaryBrush}" />
               </Button>
@@ -236,7 +237,7 @@
             <Path Data="{StaticResource IconSearch}" Width="16" Height="16" Stretch="Uniform"
                   Fill="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="8,0,8,0" />
             <TextBox x:Name="PaletteSearch" Grid.Column="1" Text="{Binding PaletteQuery, Mode=TwoWay}"
-                     PlaceholderText="输入命令或搜索操作…" BorderThickness="0" Background="Transparent"
+                     PlaceholderText="{loc:Tr 输入命令或搜索操作…}" BorderThickness="0" Background="Transparent"
                      FontSize="14" MinHeight="38" />
           </Grid>
 
@@ -262,9 +263,9 @@
           </ListBox>
 
           <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="6,5,6,1">
-            <TextBlock Text="输入以筛选命令" Classes="tiny" />
+            <TextBlock Text="{loc:Tr 输入以筛选命令}" Classes="tiny" />
             <TextBlock Grid.Column="1" Classes="tiny">
-              <Run Text="↑↓ 选择" /> <Run Text="  ·  " /> <Run Text="Enter 执行" /> <Run Text="  ·  " /> <Run Text="Esc 关闭" />
+              <Run Text="{loc:Tr ↑↓ 选择}" /> <Run Text="  ·  " /> <Run Text="{loc:Tr Enter 执行}" /> <Run Text="  ·  " /> <Run Text="{loc:Tr Esc 关闭}" />
             </TextBlock>
           </Grid>
         </Grid>

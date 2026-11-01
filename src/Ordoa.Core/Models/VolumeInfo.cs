@@ -1,3 +1,4 @@
+using Ordoa.Core.Localization;
 using System.Runtime.InteropServices;
 using System.Text;
 using Ordoa.Core.Util;
@@ -19,7 +20,7 @@ public sealed record VolumeInfo(
         : null;
 
     public string SizeText => TotalBytes.HasValue
-        ? $"{Humanize.Size(FreeBytes ?? 0)} 可用 / {Humanize.Size(TotalBytes.Value)}"
+        ? L10n.Format("{0} 可用 / {1}", Humanize.Size(FreeBytes ?? 0), Humanize.Size(TotalBytes.Value))
         : FileSystemType;
 }
 
@@ -92,7 +93,7 @@ public static class VolumeService
 
             var label = GetVolumeLabel(mountPoint);
             var name = isRoot
-                ? "系统"
+                ? L10n.T("系统")
                 : !string.IsNullOrWhiteSpace(label) ? label : Path.GetFileName(mountPoint.TrimEnd('/'));
             if (string.IsNullOrWhiteSpace(name) || name == "/")
                 name = device;

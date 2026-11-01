@@ -9,6 +9,7 @@ using Avalonia.VisualTree;
 using Avalonia.Media;
 using Ordoa.App.ViewModels;
 using Ordoa.Core.Services;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.Views;
 
@@ -111,7 +112,7 @@ public partial class MainWindow : Window
         {
             Log.Error("初始化失败", ex);
             _viewModel.EnsureInitialized();
-            _viewModel.AddToast("启动时发生错误", ex.Message, ToastKind.Error);
+            _viewModel.AddToast(L10n.T("启动时发生错误"), ex.Message, ToastKind.Error);
         }
 
         _initialized = true;
@@ -206,15 +207,15 @@ public partial class MainWindow : Window
         if (point.Properties.IsRightButtonPressed)
         {
             var menu = new ContextMenu();
-            menu.Items.Add(CreateMenuItem("复制标签页", () =>
+            menu.Items.Add(CreateMenuItem(L10n.T("复制标签页"), () =>
             {
                 _viewModel.ActivateTab(tab);
                 _viewModel.DuplicateActiveTabCommand.Execute(null);
             }));
-            menu.Items.Add(CreateMenuItem("关闭标签页", () => _viewModel.CloseTab(tab)));
-            menu.Items.Add(CreateMenuItem("关闭其他标签页", () => _viewModel.CloseOtherTabs(tab)));
+            menu.Items.Add(CreateMenuItem(L10n.T("关闭标签页"), () => _viewModel.CloseTab(tab)));
+            menu.Items.Add(CreateMenuItem(L10n.T("关闭其他标签页"), () => _viewModel.CloseOtherTabs(tab)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(CreateMenuItem("新建标签页", () => _viewModel.NewTabCommand.Execute(null)));
+            menu.Items.Add(CreateMenuItem(L10n.T("新建标签页"), () => _viewModel.NewTabCommand.Execute(null)));
             border.ContextMenu = menu;
             menu.Open(border);
             e.Handled = true;
@@ -500,7 +501,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log.Error("快捷键操作失败", ex);
-            _viewModel?.AddToast("操作失败", ex.Message, ToastKind.Error);
+            _viewModel?.AddToast(L10n.T("操作失败"), ex.Message, ToastKind.Error);
         }
     }
 }

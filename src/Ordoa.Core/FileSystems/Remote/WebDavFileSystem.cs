@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using Ordoa.Core.Abstractions;
 using Ordoa.Core.Models;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.FileSystems.Remote;
 
@@ -163,7 +164,7 @@ public sealed class WebDavFileSystem : FileSystemBase
         if (response.StatusCode is HttpStatusCode.NotFound)
         {
             response.Dispose();
-            throw new FileNotFoundException("远程文件不存在", path);
+            throw new FileNotFoundException(L10n.T("远程文件不存在"), path);
         }
         EnsureSuccess(response);
         var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
@@ -175,7 +176,7 @@ public sealed class WebDavFileSystem : FileSystemBase
     {
         path = NormalizePath(path);
         if (!overwrite && await ExistsAsync(path, cancellationToken).ConfigureAwait(false))
-            throw new IOException("目标文件已存在");
+            throw new IOException(L10n.T("目标文件已存在"));
 
         Directory.CreateDirectory(AppPaths.CacheDirectory);
         return new WebDavUploadStream(_http, BuildUri(path), cancellationToken);
@@ -222,7 +223,7 @@ public sealed class WebDavFileSystem : FileSystemBase
         destinationPath = NormalizePath(destinationPath);
 
         if (!overwrite && await ExistsAsync(destinationPath, cancellationToken).ConfigureAwait(false))
-            throw new IOException("目标文件已存在");
+            throw new IOException(L10n.T("目标文件已存在"));
 
         var source = await GetEntryAsync(sourcePath, cancellationToken).ConfigureAwait(false);
         using var request = new HttpRequestMessage(new HttpMethod("COPY"), BuildUri(sourcePath));
@@ -279,9 +280,9 @@ public sealed class WebDavFileSystem : FileSystemBase
             .ConfigureAwait(false);
 
         if (response.StatusCode is HttpStatusCode.NotFound)
-            throw new FileNotFoundException("远程路径不存在", path);
+            throw new FileNotFoundException(L10n.T("远程路径不存在"), path);
         if (response.StatusCode is HttpStatusCode.Unauthorized)
-            throw new UnauthorizedAccessException("WebDAV 认证失败，请检查用户名和密码");
+            throw new UnauthorizedAccessException(L10n.T("WebDAV 认证失败，请检查用户名和密码"));
         EnsureSuccess(response);
 
         var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -344,8 +345,8 @@ public sealed class WebDavFileSystem : FileSystemBase
         if (response.IsSuccessStatusCode)
             return;
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
-            throw new UnauthorizedAccessException($"WebDAV 拒绝访问 ({(int)response.StatusCode} {response.ReasonPhrase})");
-        throw new HttpRequestException($"WebDAV 请求失败 ({(int)response.StatusCode} {response.ReasonPhrase})");
+            throw new UnauthorizedAccessException(L10n.Format("WebDAV 拒绝访问 ({0} {1})", (int)response.StatusCode, response.ReasonPhrase));
+        throw new HttpRequestException(L10n.Format("WebDAV 请求失败 ({0} {1})", (int)response.StatusCode, response.ReasonPhrase));
     }
 
     private sealed record DavResponse(string Path, XElement Prop)
@@ -516,7 +517,7 @@ internal sealed class WebDavUploadStream : Stream
             content.Headers.ContentLength = upload.Length;
             using var response = await _http.PutAsync(_url, content, _cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException($"WebDAV 上传失败 ({(int)response.StatusCode} {response.ReasonPhrase})");
+                throw new HttpRequestException(L10n.Format("WebDAV 上传失败 ({0} {1})", (int)response.StatusCode, response.ReasonPhrase));
         }
         finally
         {

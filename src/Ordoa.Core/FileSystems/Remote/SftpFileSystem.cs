@@ -5,6 +5,7 @@ using Ordoa.Core.Util;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 using Renci.SshNet.Sftp;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.FileSystems.Remote;
 
@@ -76,7 +77,7 @@ public sealed class SftpFileSystem : FileSystemBase
                 {
                     e.CanTrust = string.Equals(profile.HostKeyFingerprint, e.FingerPrintSHA256, StringComparison.Ordinal);
                     if (!e.CanTrust)
-                        hostKeyError = "服务器主机密钥与之前保存的指纹不一致，连接已中止。";
+                        hostKeyError = L10n.T("服务器主机密钥与之前保存的指纹不一致，连接已中止。");
                 }
             };
 
@@ -158,7 +159,7 @@ public sealed class SftpFileSystem : FileSystemBase
         {
             path = NormalizePath(path);
             if (!overwrite && _client.Exists(path))
-                throw new IOException("目标文件已存在");
+                throw new IOException(L10n.T("目标文件已存在"));
             var mode = overwrite ? FileMode.Create : FileMode.CreateNew;
             return (Stream)_client.Open(path, mode, FileAccess.Write);
         }, cancellationToken);
@@ -217,7 +218,7 @@ public sealed class SftpFileSystem : FileSystemBase
         if (file.IsDirectory && !file.IsSymbolicLink)
         {
             if (!recursive)
-                throw new IOException("目录不为空");
+                throw new IOException(L10n.T("目录不为空"));
             foreach (var child in _client.ListDirectory(path))
             {
                 cancellationToken.ThrowIfCancellationRequested();

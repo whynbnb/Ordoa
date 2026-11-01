@@ -67,6 +67,13 @@ UI 不直接调用 `System.IO` 或远程 SDK。所有文件访问都经过 `IFil
 - `FileSystemWatcher` 事件经过防抖后通过 Dispatcher 刷新。
 - 后台传输/搜索/压缩通过 `CancellationToken` 取消。
 
+## 本地化
+
+- 翻译采用「中文源串作为 key」的方式：`L10n.T("设置")` / XAML `{loc:Tr 设置}`。
+- 英文映射位于 `Ordoa.Core/Localization/en.json`，作为嵌入资源随程序发布；缺失的 key 自动回退中文。
+- `TrExtension` 通过绑定 `TrProxy.Values` 槽位，在语言切换时统一刷新所有 XAML 文案；C# 侧在生成菜单/提示时调用 `L10n.T`，主视图模型监听 `L10n.LanguageChanged` 重建侧栏、命令面板与状态栏。
+- 语言设置持久化在 `AppSettings.Language`（System / Chinese / English），启动时在创建窗口前应用；系统语言为中文时默认中文，其他系统默认英文。
+
 ## 扩展新协议
 
 1. 在 `Models/ConnectionProfile.cs` 增加枚举、默认端口和显示标签。

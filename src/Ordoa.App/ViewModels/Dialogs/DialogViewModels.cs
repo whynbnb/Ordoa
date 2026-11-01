@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.ViewModels.Dialogs;
 
@@ -9,8 +10,8 @@ public sealed class ConfirmDialogViewModel
 {
     public required string TitleText { get; init; }
     public required string Message { get; init; }
-    public string ConfirmText { get; init; } = "确定";
-    public string CancelText { get; init; } = "取消";
+    public string ConfirmText { get; init; } = L10n.T("确定");
+    public string CancelText { get; init; } = L10n.T("取消");
     public bool Destructive { get; init; }
     public bool ShowCancel { get; init; } = true;
 }
@@ -30,8 +31,8 @@ public sealed partial class PromptDialogViewModel : ObservableObject
 
     public string TitleText { get; }
     public string Label { get; }
-    public string ConfirmText { get; init; } = "确定";
-    public string CancelText { get; init; } = "取消";
+    public string ConfirmText { get; init; } = L10n.T("确定");
+    public string CancelText { get; init; } = L10n.T("取消");
 
     [ObservableProperty]
     private string _value;
@@ -83,14 +84,14 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     }
 
     public bool IsEditing { get; }
-    public string HeaderTitle => IsEditing ? "编辑远程连接" : "新建远程连接";
+    public string HeaderTitle => IsEditing ? L10n.T("编辑远程连接") : L10n.T("新建远程连接");
     public string HeaderSubtitle => Protocol switch
     {
-        RemoteProtocol.Ftp => "FTP · 文件传输协议",
-        RemoteProtocol.Ftps => "FTPS · 加密 FTP",
-        RemoteProtocol.Sftp => "SFTP · SSH 文件传输",
-        RemoteProtocol.Smb => "SMB · Windows 共享",
-        RemoteProtocol.WebDav => "WebDAV · 基于 HTTP 的文件访问",
+        RemoteProtocol.Ftp => L10n.T("FTP · 文件传输协议"),
+        RemoteProtocol.Ftps => L10n.T("FTPS · 加密 FTP"),
+        RemoteProtocol.Sftp => L10n.T("SFTP · SSH 文件传输"),
+        RemoteProtocol.Smb => L10n.T("SMB · Windows 共享"),
+        RemoteProtocol.WebDav => L10n.T("WebDAV · 基于 HTTP 的文件访问"),
         _ => string.Empty,
     };
 
@@ -190,17 +191,17 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         if (profile is null)
         {
             IsTestError = true;
-            TestStatus = ValidationMessage ?? "请检查填写内容";
+            TestStatus = ValidationMessage ?? L10n.T("请检查填写内容");
             return;
         }
 
         IsTesting = true;
         IsTestError = false;
-        TestStatus = "正在连接…";
+        TestStatus = L10n.T("正在连接…");
         try
         {
             await _fileSystems.TestAsync(profile, Password, cancellationToken).ConfigureAwait(true);
-            TestStatus = "连接成功";
+            TestStatus = L10n.T("连接成功");
             IsTestError = false;
         }
         catch (Exception ex)
@@ -219,7 +220,7 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         ValidationMessage = null;
         if (string.IsNullOrWhiteSpace(Host))
         {
-            ValidationMessage = "服务器地址不能为空";
+            ValidationMessage = L10n.T("服务器地址不能为空");
             return null;
         }
 
@@ -227,14 +228,14 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(PortText) &&
             (!int.TryParse(PortText, out port) || port is < 1 or > 65535))
         {
-            ValidationMessage = "端口必须是 1-65535 之间的数字";
+            ValidationMessage = L10n.T("端口必须是 1-65535 之间的数字");
             return null;
         }
 
         var username = Anonymous ? "anonymous" : Username.Trim();
         if (!Anonymous && string.IsNullOrWhiteSpace(username) && Protocol is RemoteProtocol.Sftp or RemoteProtocol.Smb)
         {
-            ValidationMessage = "请输入用户名";
+            ValidationMessage = L10n.T("请输入用户名");
             return null;
         }
 
@@ -275,6 +276,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public SettingsDialogViewModel(AppSettings settings)
     {
         _original = settings;
+        _language = settings.Language;
         _theme = settings.Theme;
         _accent = settings.Accent;
         _compactMode = settings.CompactMode;
@@ -289,6 +291,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _searchDepth = settings.SearchDepth;
         _maxSearchResults = settings.MaxSearchResults;
     }
+
+    [ObservableProperty]
+    private UiLanguage _language;
 
     [ObservableProperty]
     private AppTheme _theme;
@@ -334,6 +339,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public AppSettings ToSettings()
     {
         var settings = _original.Clone();
+        settings.Language = Language;
         settings.Theme = Theme;
         settings.Accent = Accent;
         settings.CompactMode = CompactMode;
@@ -353,6 +359,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public void Reset()
     {
         var defaults = new AppSettings();
+        Language = defaults.Language;
         Theme = defaults.Theme;
         Accent = defaults.Accent;
         CompactMode = defaults.CompactMode;
@@ -366,6 +373,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         ShowTransferPanel = defaults.ShowTransferPanel;
         SearchDepth = defaults.SearchDepth;
         MaxSearchResults = defaults.MaxSearchResults;
+    }
+
+    public void SetLanguage(string value)
+    {
+        if (Enum.TryParse<UiLanguage>(value, true, out var language))
+            Language = language;
     }
 
     public void SetTheme(string value)

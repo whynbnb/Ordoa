@@ -5,6 +5,7 @@ using Ordoa.Core.Abstractions;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.Services;
 
@@ -36,12 +37,13 @@ public sealed class DialogService : IDialogService
         return await window.ShowDialog<ConnectionDialogResult?>(owner);
     }
 
-    public async Task<bool> ConfirmAsync(string title, string message, string confirmText = "确定", bool destructive = false)
+    public async Task<bool> ConfirmAsync(string title, string message, string? confirmText = null, bool destructive = false)
     {
         var owner = _ownerProvider();
         if (owner is null)
             return false;
 
+        confirmText ??= L10n.T("确定");
         var window = new ConfirmWindow
         {
             DataContext = new ConfirmDialogViewModel
@@ -126,11 +128,11 @@ public sealed class DialogService : IDialogService
             DestinationPath = info.DestinationPath,
             SourceIsDirectory = info.SourceIsDirectory,
             DestinationIsDirectory = info.DestinationIsDirectory,
-            SourceSizeText = info.SourceIsDirectory ? "文件夹" : Humanize.Size(info.SourceSize),
-            DestinationSizeText = info.DestinationIsDirectory ? "文件夹"
-                : info.DestinationSize is { } size ? Humanize.Size(size) : "未知",
-            SourceKindText = info.SourceIsDirectory ? "文件夹" : "文件",
-            DestinationKindText = info.DestinationIsDirectory ? "文件夹" : "文件",
+            SourceSizeText = info.SourceIsDirectory ? L10n.T("文件夹") : Humanize.Size(info.SourceSize),
+            DestinationSizeText = info.DestinationIsDirectory ? L10n.T("文件夹")
+                : info.DestinationSize is { } size ? Humanize.Size(size) : L10n.T("未知"),
+            SourceKindText = info.SourceIsDirectory ? L10n.T("文件夹") : L10n.T("文件"),
+            DestinationKindText = info.DestinationIsDirectory ? L10n.T("文件夹") : L10n.T("文件"),
         };
 
         var window = new ConflictWindow { DataContext = viewModel };
@@ -150,8 +152,8 @@ public sealed class DialogService : IDialogService
             {
                 TitleText = title,
                 Message = message,
-                ConfirmText = "关闭",
-                CancelText = "关闭",
+                ConfirmText = L10n.T("关闭"),
+                CancelText = L10n.T("关闭"),
                 ShowCancel = false,
                 Destructive = true,
             },

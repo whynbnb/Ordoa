@@ -2,6 +2,7 @@ using System.Formats.Tar;
 using System.IO.Compression;
 using System.Text;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.Services;
 
@@ -48,11 +49,11 @@ public static class ArchiveService
         {
             var kind = GetArchiveKind(destinationArchive);
             if (kind == ArchiveKind.None)
-                throw new NotSupportedException("仅支持 zip、tar 和 tar.gz 格式");
+                throw new NotSupportedException(L10n.T("仅支持 zip、tar 和 tar.gz 格式"));
 
             var items = Scan(paths, destinationArchive, cancellationToken);
             if (items.Count == 0)
-                throw new InvalidOperationException("没有可压缩的文件");
+                throw new InvalidOperationException(L10n.T("没有可压缩的文件"));
 
             if (kind == ArchiveKind.Zip)
                 CreateZip(items, destinationArchive, progress, cancellationToken);
@@ -68,7 +69,7 @@ public static class ArchiveService
         {
             var kind = GetArchiveKind(archivePath);
             if (kind == ArchiveKind.None)
-                throw new NotSupportedException("仅支持 zip、tar 和 tar.gz 格式");
+                throw new NotSupportedException(L10n.T("仅支持 zip、tar 和 tar.gz 格式"));
 
             var stem = GetArchiveStem(Path.GetFileName(archivePath));
             var destination = createSubfolder

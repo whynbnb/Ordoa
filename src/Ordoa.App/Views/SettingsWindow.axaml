@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
+             xmlns:loc="using:Ordoa.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Ordoa.App.Views.SettingsWindow"
-        Title="设置"
+        Title="{loc:Tr 设置}"
         Width="660" Height="650" CanResize="False" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
   <Window.Styles>
@@ -46,64 +47,80 @@
     <Border Grid.Row="0" Padding="22,16,22,12" Background="{DynamicResource SidebarBrush}"
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <StackPanel Spacing="2">
-        <TextBlock Text="设置" Classes="h2" />
-        <TextBlock Text="外观、浏览行为与高级选项" Classes="caption" />
+        <TextBlock Text="{loc:Tr 设置}" Classes="h2" />
+        <TextBlock Text="{loc:Tr 外观、浏览行为与高级选项}" Classes="caption" />
       </StackPanel>
     </Border>
 
     <ScrollViewer Grid.Row="1" Padding="22,14,22,8" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="14">
         <!-- Appearance -->
-        <TextBlock Text="外观" Classes="section" />
-        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10">
-          <TextBlock Text="主题" Classes="fieldlabel" />
+        <TextBlock Text="{loc:Tr 外观}" Classes="section" />
+        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
+          <TextBlock Text="{loc:Tr 主题}" Classes="fieldlabel" />
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
             <Button Classes="chip" Tag="System" Click="OnThemeClick"
                     Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
-              <TextBlock Text="跟随系统" />
+              <TextBlock Text="{loc:Tr 跟随系统}" />
             </Button>
             <Button Classes="chip" Tag="Light" Click="OnThemeClick"
                     Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=Light}">
-              <TextBlock Text="浅色" />
+              <TextBlock Text="{loc:Tr 浅色}" />
             </Button>
             <Button Classes="chip" Tag="Dark" Click="OnThemeClick"
                     Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=Dark}">
-              <TextBlock Text="深色" />
+              <TextBlock Text="{loc:Tr 深色}" />
             </Button>
           </StackPanel>
 
-          <TextBlock Grid.Row="1" Text="强调色" Classes="fieldlabel" />
+          <TextBlock Grid.Row="1" Text="{loc:Tr 强调色}" Classes="fieldlabel" />
           <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="9">
-            <Border Background="#17937F" Tag="Jade" PointerPressed="OnAccentClick" ToolTip.Tip="翡翠"
+            <Border Background="#17937F" Tag="Jade" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 翡翠}"
                     Classes="accentdot"
                     Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Jade}" />
-            <Border Background="#3B7EDB" Tag="Blue" PointerPressed="OnAccentClick" ToolTip.Tip="靛蓝"
+            <Border Background="#3B7EDB" Tag="Blue" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 靛蓝}"
                     Classes="accentdot"
                     Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Blue}" />
-            <Border Background="#C9862B" Tag="Amber" PointerPressed="OnAccentClick" ToolTip.Tip="琥珀"
+            <Border Background="#C9862B" Tag="Amber" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 琥珀}"
                     Classes="accentdot"
                     Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Amber}" />
-            <Border Background="#C2688A" Tag="Rose" PointerPressed="OnAccentClick" ToolTip.Tip="玫瑰"
+            <Border Background="#C2688A" Tag="Rose" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 玫瑰}"
                     Classes="accentdot"
                     Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Rose}" />
-            <Border Background="#7C63D8" Tag="Violet" PointerPressed="OnAccentClick" ToolTip.Tip="紫罗兰"
+            <Border Background="#7C63D8" Tag="Violet" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 紫罗兰}"
                     Classes="accentdot"
                     Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Violet}" />
           </StackPanel>
 
-          <TextBlock Grid.Row="2" Text="密度" Classes="fieldlabel" />
-          <CheckBox Grid.Row="2" Grid.Column="1" Content="紧凑模式（更小的行高与间距）"
+          <TextBlock Grid.Row="2" Text="{loc:Tr 密度}" Classes="fieldlabel" />
+          <CheckBox Grid.Row="2" Grid.Column="1" Content="{loc:Tr 紧凑模式（更小的行高与间距）}"
                     IsChecked="{Binding CompactMode, Mode=TwoWay}" />
 
-          <TextBlock Grid.Row="3" Text="默认视图" Classes="fieldlabel" />
+          <TextBlock Grid.Row="3" Text="{loc:Tr 默认视图}" Classes="fieldlabel" />
           <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="6">
             <Button Classes="chip" Tag="List" Click="OnViewClick"
                     Classes.active="{Binding View, Converter={StaticResource EqualsConverter}, ConverterParameter=List}">
-              <TextBlock Text="列表" />
+              <TextBlock Text="{loc:Tr 列表}" />
             </Button>
             <Button Classes="chip" Tag="Grid" Click="OnViewClick"
                     Classes.active="{Binding View, Converter={StaticResource EqualsConverter}, ConverterParameter=Grid}">
-              <TextBlock Text="网格" />
+              <TextBlock Text="{loc:Tr 网格}" />
+            </Button>
+          </StackPanel>
+
+          <TextBlock Grid.Row="4" Text="{loc:Tr 语言}" Classes="fieldlabel" />
+          <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+            <Button Classes="chip" Tag="System" Click="OnLanguageClick"
+                    Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
+              <TextBlock Text="{loc:Tr 跟随系统}" />
+            </Button>
+            <Button Classes="chip" Tag="Chinese" Click="OnLanguageClick"
+                    Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=Chinese}">
+              <TextBlock Text="中文" />
+            </Button>
+            <Button Classes="chip" Tag="English" Click="OnLanguageClick"
+                    Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=English}">
+              <TextBlock Text="English" />
             </Button>
           </StackPanel>
         </Grid>
@@ -111,46 +128,46 @@
         <Border Classes="divider" />
 
         <!-- Browsing -->
-        <TextBlock Text="浏览" Classes="section" />
+        <TextBlock Text="{loc:Tr 浏览}" Classes="section" />
         <StackPanel Spacing="7">
-          <CheckBox Content="显示隐藏文件（点文件）" IsChecked="{Binding ShowHidden, Mode=TwoWay}" />
-          <CheckBox Content="文件夹排在文件之前" IsChecked="{Binding FoldersFirst, Mode=TwoWay}" />
-          <CheckBox Content="在网格视图中加载图片缩略图" IsChecked="{Binding ShowThumbnails, Mode=TwoWay}" />
-          <CheckBox Content="显示左侧栏" IsChecked="{Binding ShowSidebar, Mode=TwoWay}" />
-          <CheckBox Content="操作开始时自动展开传输队列" IsChecked="{Binding ShowTransferPanel, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 显示隐藏文件（点文件）}" IsChecked="{Binding ShowHidden, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 文件夹排在文件之前}" IsChecked="{Binding FoldersFirst, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 在网格视图中加载图片缩略图}" IsChecked="{Binding ShowThumbnails, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 显示左侧栏}" IsChecked="{Binding ShowSidebar, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 操作开始时自动展开传输队列}" IsChecked="{Binding ShowTransferPanel, Mode=TwoWay}" />
         </StackPanel>
 
         <Border Classes="divider" />
 
         <!-- Behaviour -->
-        <TextBlock Text="行为与安全" Classes="section" />
+        <TextBlock Text="{loc:Tr 行为与安全}" Classes="section" />
         <StackPanel Spacing="7">
-          <CheckBox Content="永久删除前请求确认" IsChecked="{Binding ConfirmPermanentDelete, Mode=TwoWay}" />
-          <CheckBox Content="启动时恢复上次的标签页与分屏" IsChecked="{Binding RestoreSession, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 永久删除前请求确认}" IsChecked="{Binding ConfirmPermanentDelete, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 启动时恢复上次的标签页与分屏}" IsChecked="{Binding RestoreSession, Mode=TwoWay}" />
         </StackPanel>
 
         <Border Classes="divider" />
 
         <!-- Search -->
-        <TextBlock Text="搜索" Classes="section" />
+        <TextBlock Text="{loc:Tr 搜索}" Classes="section" />
         <Grid ColumnDefinitions="120,140,*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
-          <TextBlock Text="最大深度" Classes="fieldlabel" />
+          <TextBlock Text="{loc:Tr 最大深度}" Classes="fieldlabel" />
           <NumericUpDown Grid.Column="1" Minimum="1" Maximum="64" Increment="1" FormatString="0"
                          Value="{Binding SearchDepth, Mode=TwoWay}" />
-          <TextBlock Grid.Column="2" Text="目录层级越深，搜索用时越长" Classes="fieldhint"
+          <TextBlock Grid.Column="2" Text="{loc:Tr 目录层级越深，搜索用时越长}" Classes="fieldhint"
                      VerticalAlignment="Center" Margin="10,0,0,0" />
 
-          <TextBlock Grid.Row="1" Text="最大结果" Classes="fieldlabel" />
+          <TextBlock Grid.Row="1" Text="{loc:Tr 最大结果}" Classes="fieldlabel" />
           <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="100" Maximum="20000" Increment="100"
                          FormatString="0" Value="{Binding MaxSearchResults, Mode=TwoWay}" />
-          <TextBlock Grid.Row="1" Grid.Column="2" Text="达到上限后停止继续扫描" Classes="fieldhint"
+          <TextBlock Grid.Row="1" Grid.Column="2" Text="{loc:Tr 达到上限后停止继续扫描}" Classes="fieldhint"
                      VerticalAlignment="Center" Margin="10,0,0,0" />
         </Grid>
 
         <Border Classes="divider" />
 
         <StackPanel Spacing="4">
-          <TextBlock Text="设置保存在" Classes="section" />
+          <TextBlock Text="{loc:Tr 设置保存在}" Classes="section" />
           <TextBlock Text="{Binding SettingsPath}" Classes="tiny" FontFamily="{DynamicResource MonoFontFamily}" />
         </StackPanel>
       </StackPanel>
@@ -159,10 +176,10 @@
     <Border Grid.Row="2" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,1,0,0">
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <Button Content="恢复默认值" Classes="ghost" Click="OnResetClick" />
+        <Button Content="{loc:Tr 恢复默认值}" Classes="ghost" Click="OnResetClick" />
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-          <Button Content="取消" Click="OnCancelClick" />
-          <Button Content="保存" Classes="accent" Click="OnSaveClick" IsDefault="True" />
+          <Button Content="{loc:Tr 取消}" Click="OnCancelClick" />
+          <Button Content="{loc:Tr 保存}" Classes="accent" Click="OnSaveClick" IsDefault="True" />
         </StackPanel>
       </Grid>
     </Border>

@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Localization\en.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="FluentFTP" Version="55.1.0" />
     <PackageReference Include="SSH.NET" Version="2026.0.0" />

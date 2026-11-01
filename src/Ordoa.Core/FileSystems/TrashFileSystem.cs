@@ -1,3 +1,4 @@
+using Ordoa.Core.Localization;
 using Ordoa.Core.Abstractions;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
@@ -9,7 +10,7 @@ public sealed class TrashFileSystem : FileSystemBase
 {
     private readonly TrashService _trash;
 
-    public TrashFileSystem(TrashService trash) : base("trash", "trash", "回收站")
+    public TrashFileSystem(TrashService trash) : base("trash", "trash", L10n.T(L10n.T("回收站")))
     {
         _trash = trash;
     }
@@ -21,7 +22,7 @@ public sealed class TrashFileSystem : FileSystemBase
 
     public override bool IsRoot(string path) => true;
 
-    public override string GetDisplayPath(string path) => "回收站";
+    public override string GetDisplayPath(string path) => L10n.T(L10n.T("回收站"));
 
     public override async Task<IReadOnlyList<FileEntry>> ListAsync(string path, CancellationToken cancellationToken = default)
     {
@@ -43,16 +44,16 @@ public sealed class TrashFileSystem : FileSystemBase
 
     public override Task<Stream> OpenWriteAsync(string path, bool overwrite, long? expectedLength = null,
         CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("回收站不支持写入");
+        => throw new NotSupportedException(L10n.T("回收站不支持写入"));
 
     public override Task CreateDirectoryAsync(string path, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("回收站不支持新建文件夹");
+        => throw new NotSupportedException(L10n.T("回收站不支持新建文件夹"));
 
     public override async Task DeleteAsync(string path, bool recursive, CancellationToken cancellationToken = default)
         => await _trash.DeletePermanentlyAsync(path, cancellationToken).ConfigureAwait(false);
 
     public override Task MoveAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("回收站不支持移动");
+        => throw new NotSupportedException(L10n.T("回收站不支持移动"));
 
     public override Task SetModifiedAsync(string path, DateTimeOffset modified, CancellationToken cancellationToken = default)
         => Task.CompletedTask;

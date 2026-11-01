@@ -1,3 +1,4 @@
+using Ordoa.Core.Localization;
 using System.Globalization;
 
 namespace Ordoa.Core.Models;
@@ -60,11 +61,11 @@ public sealed record FileEntry
 
     public string TypeDescription => Kind switch
     {
-        EntryKind.Directory => "文件夹",
-        EntryKind.Device => "设备",
-        EntryKind.Socket => "套接字",
-        EntryKind.Fifo => "管道",
-        EntryKind.Unknown => "未知",
+        EntryKind.Directory => L10n.T("文件夹"),
+        EntryKind.Device => L10n.T("设备"),
+        EntryKind.Socket => L10n.T("套接字"),
+        EntryKind.Fifo => L10n.T("管道"),
+        EntryKind.Unknown => L10n.T("未知"),
         _ => MimeTypes.Describe(Extension),
     };
 }

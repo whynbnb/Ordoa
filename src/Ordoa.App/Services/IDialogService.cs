@@ -9,7 +9,7 @@ public sealed record ConnectionDialogResult(ConnectionProfile Profile, string Pa
 public interface IDialogService
 {
     Task<ConnectionDialogResult?> ShowConnectionAsync(ConnectionProfile? preset = null);
-    Task<bool> ConfirmAsync(string title, string message, string confirmText = "确定", bool destructive = false);
+    Task<bool> ConfirmAsync(string title, string message, string? confirmText = null, bool destructive = false);
     Task<string?> PromptAsync(string title, string label, string initial = "", Func<string, string?>? validate = null);
     Task ShowPropertiesAsync(FileEntry entry, IFileSystem fileSystem);
     Task ShowChecksumAsync(IReadOnlyList<OperationSource> sources);

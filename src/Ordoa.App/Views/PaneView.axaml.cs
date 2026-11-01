@@ -10,6 +10,7 @@ using Ordoa.App.ViewModels;
 using Ordoa.Core.FileSystems;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.Views;
 
@@ -339,7 +340,7 @@ public partial class PaneView : UserControl
         catch (Exception ex)
         {
             Core.Services.Log.Warn("拖放失败", ex);
-            _pane.Notify("拖放失败", ex.Message, true);
+            _pane.Notify(L10n.T("拖放失败"), ex.Message, true);
         }
     }
 
@@ -469,47 +470,47 @@ public partial class PaneView : UserControl
         var pane = _pane;
         var menu = new ContextMenu();
 
-        menu.Items.Add(MenuItem("打开", () => pane.OpenAsync(), pane.HasSelection));
-        menu.Items.Add(MenuItem("在新标签页中打开", () => pane.OpenSelectionInNewTabAsync(), pane.HasSelection));
+        menu.Items.Add(MenuItem(L10n.T("打开"), () => pane.OpenAsync(), pane.HasSelection));
+        menu.Items.Add(MenuItem(L10n.T("在新标签页中打开"), () => pane.OpenSelectionInNewTabAsync(), pane.HasSelection));
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("剪切", () => pane.CopySelectionAsync(true), pane.CanCopy));
-        menu.Items.Add(MenuItem("复制", () => pane.CopySelectionAsync(false), pane.CanCopy));
-        menu.Items.Add(MenuItem("粘贴", pane.PasteAsync, pane.CanPaste));
+        menu.Items.Add(MenuItem(L10n.T("剪切"), () => pane.CopySelectionAsync(true), pane.CanCopy));
+        menu.Items.Add(MenuItem(L10n.T("复制"), () => pane.CopySelectionAsync(false), pane.CanCopy));
+        menu.Items.Add(MenuItem(L10n.T("粘贴"), pane.PasteAsync, pane.CanPaste));
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("重命名", pane.RenameAsync, pane.CanRename));
+        menu.Items.Add(MenuItem(L10n.T("重命名"), pane.RenameAsync, pane.CanRename));
 
         if (pane.IsTrash)
         {
-            menu.Items.Add(MenuItem("恢复", pane.RestoreSelectionAsync, pane.CanRestore));
-            menu.Items.Add(MenuItem("永久删除", () => pane.DeleteSelectionAsync(true), pane.CanDelete));
+            menu.Items.Add(MenuItem(L10n.T("恢复"), pane.RestoreSelectionAsync, pane.CanRestore));
+            menu.Items.Add(MenuItem(L10n.T("永久删除"), () => pane.DeleteSelectionAsync(true), pane.CanDelete));
             menu.Items.Add(new Separator());
-            menu.Items.Add(MenuItem("清空回收站", pane.EmptyTrashAsync, pane.CanEmptyTrash));
+            menu.Items.Add(MenuItem(L10n.T("清空回收站"), pane.EmptyTrashAsync, pane.CanEmptyTrash));
         }
         else
         {
-            var label = pane.FileSystem.IsLocal ? "移到回收站" : "永久删除";
+            var label = pane.FileSystem.IsLocal ? L10n.T("移到回收站") : L10n.T("永久删除");
             menu.Items.Add(MenuItem(label, () => pane.DeleteSelectionAsync(!pane.FileSystem.IsLocal), pane.CanDelete));
         }
 
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("压缩为 ZIP", () => pane.CompressAsync(false), pane.CanCompress));
-        menu.Items.Add(MenuItem("压缩为 tar.gz", () => pane.CompressAsync(true), pane.CanCompress));
-        menu.Items.Add(MenuItem("解压到此处", pane.ExtractAsync, pane.CanExtract));
-        menu.Items.Add(MenuItem("计算 SHA-256", pane.ChecksumAsync, pane.CanChecksum));
+        menu.Items.Add(MenuItem(L10n.T("压缩为 ZIP"), () => pane.CompressAsync(false), pane.CanCompress));
+        menu.Items.Add(MenuItem(L10n.T("压缩为 tar.gz"), () => pane.CompressAsync(true), pane.CanCompress));
+        menu.Items.Add(MenuItem(L10n.T("解压到此处"), pane.ExtractAsync, pane.CanExtract));
+        menu.Items.Add(MenuItem(L10n.T("计算 SHA-256"), pane.ChecksumAsync, pane.CanChecksum));
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("在终端中打开", pane.OpenTerminalAsync, pane.CanOpenTerminal));
-        menu.Items.Add(MenuItem("复制路径", pane.CopyPathAsync, true));
-        menu.Items.Add(MenuItem("复制名称", pane.CopyNameAsync, pane.HasSelection));
-        menu.Items.Add(MenuItem("属性", pane.PropertiesAsync, true));
+        menu.Items.Add(MenuItem(L10n.T("在终端中打开"), pane.OpenTerminalAsync, pane.CanOpenTerminal));
+        menu.Items.Add(MenuItem(L10n.T("复制路径"), pane.CopyPathAsync, true));
+        menu.Items.Add(MenuItem(L10n.T("复制名称"), pane.CopyNameAsync, pane.HasSelection));
+        menu.Items.Add(MenuItem(L10n.T("属性"), pane.PropertiesAsync, true));
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("新建文件夹", pane.NewFolderAsync, pane.CanCreateFolder));
-        menu.Items.Add(MenuItem("新建空文件", pane.NewFileAsync, pane.CanCreateFile));
-        menu.Items.Add(MenuItem("全选", () =>
+        menu.Items.Add(MenuItem(L10n.T("新建文件夹"), pane.NewFolderAsync, pane.CanCreateFolder));
+        menu.Items.Add(MenuItem(L10n.T("新建空文件"), pane.NewFileAsync, pane.CanCreateFile));
+        menu.Items.Add(MenuItem(L10n.T("全选"), () =>
         {
             pane.RequestSelectAll();
             return Task.CompletedTask;
         }, pane.CanSelectAll));
-        menu.Items.Add(MenuItem("刷新", pane.RefreshAsync, true));
+        menu.Items.Add(MenuItem(L10n.T("刷新"), pane.RefreshAsync, true));
 
         host.ContextMenu = menu;
         menu.Open(host);
@@ -534,7 +535,7 @@ public partial class PaneView : UserControl
         catch (Exception ex)
         {
             Core.Services.Log.Error("文件面板操作失败", ex);
-            _pane.Notify("操作失败", ex.Message, true);
+            _pane.Notify(L10n.T("操作失败"), ex.Message, true);
         }
     }
 }

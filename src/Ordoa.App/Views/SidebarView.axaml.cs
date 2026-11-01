@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Ordoa.App.ViewModels;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.Views;
 
@@ -27,26 +28,26 @@ public partial class SidebarView : UserControl
             return;
 
         var menu = new ContextMenu();
-        menu.Items.Add(CreateItem("在新标签页中打开", () => vm.OpenSidebarEntryInNewTabAsync(entry)));
-        menu.Items.Add(CreateItem("在分屏中打开", () => vm.OpenSidebarEntryInSplitAsync(entry)));
+        menu.Items.Add(CreateItem(L10n.T("在新标签页中打开"), () => vm.OpenSidebarEntryInNewTabAsync(entry)));
+        menu.Items.Add(CreateItem(L10n.T("在分屏中打开"), () => vm.OpenSidebarEntryInSplitAsync(entry)));
 
         if (entry.Kind is SidebarEntryKind.Volume or SidebarEntryKind.Place or SidebarEntryKind.Bookmark or SidebarEntryKind.Recent)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(CreateItem("在终端中打开", () => vm.OpenTerminalForSidebarEntryAsync(entry)));
+            menu.Items.Add(CreateItem(L10n.T("在终端中打开"), () => vm.OpenTerminalForSidebarEntryAsync(entry)));
         }
 
         if (entry.Kind == SidebarEntryKind.Bookmark)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(CreateItem("移除书签", () => vm.RemoveBookmarkAsync(entry)));
+            menu.Items.Add(CreateItem(L10n.T("移除书签"), () => vm.RemoveBookmarkAsync(entry)));
         }
 
         if (entry.Kind == SidebarEntryKind.Connection)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(CreateItem("编辑连接…", () => vm.EditConnectionAsync(entry)));
-            menu.Items.Add(CreateItem("移除连接", () => vm.RemoveConnectionAsync(entry)));
+            menu.Items.Add(CreateItem(L10n.T("编辑连接…"), () => vm.EditConnectionAsync(entry)));
+            menu.Items.Add(CreateItem(L10n.T("移除连接"), () => vm.RemoveConnectionAsync(entry)));
         }
 
         button.ContextMenu = menu;

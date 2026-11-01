@@ -12,6 +12,12 @@ public partial class SettingsWindow : Window
         InitializeComponent();
     }
 
+    private void OnLanguageClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string language })
+            vm.SetLanguage(language);
+    }
+
     private void OnThemeClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string theme })

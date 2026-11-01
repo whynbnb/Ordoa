@@ -1,3 +1,5 @@
+using Ordoa.Core.Localization;
+
 namespace Ordoa.Core.Models;
 
 /// <summary>
@@ -63,30 +65,30 @@ public static class MimeTypes
     public static string Describe(string extension)
     {
         if (string.IsNullOrEmpty(extension))
-            return "文件";
+            return L10n.T("文件");
 
         return extension.ToLowerInvariant() switch
         {
-            "txt" or "md" or "log" or "rtf" => "文本文档",
-            "pdf" => "PDF 文档",
-            "doc" or "docx" or "odt" => "文字文档",
-            "xls" or "xlsx" or "ods" or "csv" => "表格",
-            "ppt" or "pptx" or "odp" => "演示文稿",
-            "png" or "jpg" or "jpeg" or "gif" or "webp" or "avif" or "bmp" or "tif" or "tiff" or "svg" or "heic" or "ico" => "图片",
-            "mp3" or "flac" or "ogg" or "opus" or "wav" or "m4a" or "aac" or "wma" => "音频",
-            "mp4" or "mkv" or "webm" or "avi" or "mov" or "wmv" or "m4v" or "mpg" or "mpeg" => "视频",
-            "zip" or "tar" or "gz" or "tgz" or "bz2" or "xz" or "zst" or "7z" or "rar" => "压缩包",
-            "js" or "mjs" or "ts" or "py" or "rb" or "go" or "rs" or "java" or "kt" or "c" or "h" or "cc" or "cpp" or "hpp" or "cs" or "fs" or "php" or "sh" or "bash" or "zsh" or "fish" or "lua" or "swift" => "源代码",
-            "json" or "yaml" or "yml" or "toml" or "xml" or "ini" or "conf" or "cfg" => "配置文件",
-            "deb" or "rpm" or "apk" => "安装包",
-            "iso" or "img" => "磁盘映像",
-            "ttf" or "otf" or "woff" or "woff2" => "字体",
-            "desktop" => "启动器",
-            "html" or "htm" => "网页",
-            "css" => "样式表",
-            "sql" => "数据库脚本",
-            "torrent" => "种子文件",
-            _ => extension.ToUpperInvariant() + " 文件",
+            "txt" or "md" or "log" or "rtf" => L10n.T("文本文档"),
+            "pdf" => L10n.T("PDF 文档"),
+            "doc" or "docx" or "odt" => L10n.T("文字文档"),
+            "xls" or "xlsx" or "ods" or "csv" => L10n.T("表格"),
+            "ppt" or "pptx" or "odp" => L10n.T("演示文稿"),
+            "png" or "jpg" or "jpeg" or "gif" or "webp" or "avif" or "bmp" or "tif" or "tiff" or "svg" or "heic" or "ico" => L10n.T("图片"),
+            "mp3" or "flac" or "ogg" or "opus" or "wav" or "m4a" or "aac" or "wma" => L10n.T("音频"),
+            "mp4" or "mkv" or "webm" or "avi" or "mov" or "wmv" or "m4v" or "mpg" or "mpeg" => L10n.T("视频"),
+            "zip" or "tar" or "gz" or "tgz" or "bz2" or "xz" or "zst" or "7z" or "rar" => L10n.T("压缩包"),
+            "js" or "mjs" or "ts" or "py" or "rb" or "go" or "rs" or "java" or "kt" or "c" or "h" or "cc" or "cpp" or "hpp" or "cs" or "fs" or "php" or "sh" or "bash" or "zsh" or "fish" or "lua" or "swift" => L10n.T("源代码"),
+            "json" or "yaml" or "yml" or "toml" or "xml" or "ini" or "conf" or "cfg" => L10n.T("配置文件"),
+            "deb" or "rpm" or "apk" => L10n.T("安装包"),
+            "iso" or "img" => L10n.T("磁盘映像"),
+            "ttf" or "otf" or "woff" or "woff2" => L10n.T("字体"),
+            "desktop" => L10n.T("启动器"),
+            "html" or "htm" => L10n.T("网页"),
+            "css" => L10n.T("样式表"),
+            "sql" => L10n.T("数据库脚本"),
+            "torrent" => L10n.T("种子文件"),
+            _ => extension.ToUpperInvariant() + " " + L10n.T("文件"),
         };
     }
 

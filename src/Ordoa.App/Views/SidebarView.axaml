@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:loc="using:Ordoa.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Ordoa.App.ViewModels"
              x:Class="Ordoa.App.Views.SidebarView">
@@ -56,10 +57,10 @@
         <Image Source="/Assets/ordoa.png" Width="28" Height="28" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" Margin="9,0,0,0" VerticalAlignment="Center" Spacing="1">
           <TextBlock Text="Ordoa" FontSize="15" FontWeight="SemiBold" />
-          <TextBlock Text="安序 · 文件管理" Classes="tiny" />
+          <TextBlock Text="{loc:Tr 安序 · 文件管理}" Classes="tiny" />
         </StackPanel>
         <Button Grid.Column="2" Classes="tool" Command="{Binding ToggleSidebarCommand}"
-                ToolTip.Tip="收起侧栏 (F9)" VerticalAlignment="Center">
+                ToolTip.Tip="{loc:Tr 收起侧栏 (F9)}" VerticalAlignment="Center">
           <Path Data="{StaticResource IconPanel}" Width="16" Height="16" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />
         </Button>
@@ -114,14 +115,14 @@
           <Grid ColumnDefinitions="Auto,*">
             <Path Data="{StaticResource IconSettings}" Fill="{DynamicResource TextSecondaryBrush}"
                   Width="15" Height="15" Stretch="Uniform" Margin="0,0,9,0" />
-            <TextBlock Grid.Column="1" Text="设置" Classes="sidebarlabel" />
+            <TextBlock Grid.Column="1" Text="{loc:Tr 设置}" Classes="sidebarlabel" />
           </Grid>
         </Button>
         <Button Classes="sidebaritem" Click="OnAboutClick">
           <Grid ColumnDefinitions="Auto,*">
             <Path Data="{StaticResource IconKeyboard}" Fill="{DynamicResource TextSecondaryBrush}"
                   Width="15" Height="15" Stretch="Uniform" Margin="0,0,9,0" />
-            <TextBlock Grid.Column="1" Text="关于与快捷键" Classes="sidebarlabel" />
+            <TextBlock Grid.Column="1" Text="{loc:Tr 关于与快捷键}" Classes="sidebarlabel" />
           </Grid>
         </Button>
       </StackPanel>

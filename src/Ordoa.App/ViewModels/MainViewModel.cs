@@ -10,6 +10,7 @@ using Ordoa.Core.FileSystems;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.ViewModels;
 
@@ -30,6 +31,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _isTransferPanelOpen = false;
 
         services.Settings.Changed += OnSettingsChanged;
+        L10n.LanguageChanged += OnLanguageChanged;
         services.Operations.Finished += OnOperationFinished;
         services.Operations.Operations.CollectionChanged += OnOperationsChanged;
         services.FileSystems.Connections.Changed += OnConnectionsChanged;
@@ -115,7 +117,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _isInitialized, value);
     }
 
-    private string _startupStatus = "正在启动…";
+    private string _startupStatus = L10n.T("正在启动…");
     public string StartupStatus
     {
         get => _startupStatus;
@@ -178,8 +180,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     public string TransferSummary => ActiveTransferCount > 0
-        ? $"{ActiveTransferCount} 个进行中"
-        : HasTransfers ? "传输队列" : "没有传输任务";
+        ? L10n.Format("{0} 个进行中", ActiveTransferCount)
+        : HasTransfers ? L10n.T("传输队列") : L10n.T("没有传输任务");
 
     public event Action? CloseWindowRequested;
     public event Action? CommandPaletteOpened;
@@ -191,14 +193,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
 
         IsInitialized = false;
-        StartupStatus = "正在准备…";
+        StartupStatus = L10n.T("正在准备…");
 
         var startupLocation = GetStartupLocation();
         var restored = false;
 
         if (_services.Settings.Current.RestoreSession)
         {
-            StartupStatus = "正在恢复上次会话…";
+            StartupStatus = L10n.T("正在恢复上次会话…");
             restored = await RestoreSessionAsync().ConfigureAwait(true);
         }
 
@@ -430,7 +432,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
             catch (Exception ex)
             {
-                AddToast("操作失败", ex.Message, ToastKind.Error);
+                AddToast(L10n.T("操作失败"), ex.Message, ToastKind.Error);
             }
         }
     }
@@ -463,11 +465,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     deletePassword: !profile.SavePassword).ConfigureAwait(true);
             await CreateTabAsync(fs, profile.NormalizeInitialPath(profile.InitialPath), true).ConfigureAwait(true);
             await RefreshSidebarAsync().ConfigureAwait(true);
-            AddToast("已连接", $"{profile.ProtocolLabel} · {profile.DisplayTarget}", ToastKind.Success);
+            AddToast(L10n.T("已连接"), $"{profile.ProtocolLabel} · {profile.DisplayTarget}", ToastKind.Success);
         }
         catch (Exception ex)
         {
-            AddToast("连接失败", ex.Message, ToastKind.Error);
+            AddToast(L10n.T("连接失败"), ex.Message, ToastKind.Error);
         }
     }
 
@@ -476,19 +478,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var pane = ActivePane;
         if (pane is null || pane.IsTrash)
         {
-            AddToast("无法添加书签", "请先在文件夹中打开一个位置", ToastKind.Info);
+            AddToast(L10n.T("无法添加书签"), L10n.T("请先在文件夹中打开一个位置"), ToastKind.Info);
             return;
         }
 
         if (_services.Bookmarks.Contains(pane.FileSystem.Id, pane.CurrentPath))
         {
-            AddToast("书签已存在", pane.Title, ToastKind.Info);
+            AddToast(L10n.T("书签已存在"), pane.Title, ToastKind.Info);
             return;
         }
 
         _services.Bookmarks.Add(pane.FileSystem, pane.CurrentPath, pane.Title);
         RefreshSidebar();
-        AddToast("已添加书签", pane.Title, ToastKind.Success);
+        AddToast(L10n.T("已添加书签"), pane.Title, ToastKind.Success);
         await Task.CompletedTask;
     }
 
@@ -538,11 +540,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
 
             RefreshSidebar();
-            AddToast("连接已更新", result.Profile.Name, ToastKind.Success);
+            AddToast(L10n.T("连接已更新"), result.Profile.Name, ToastKind.Success);
         }
         catch (Exception ex)
         {
-            AddToast("更新连接失败", ex.Message, ToastKind.Error);
+            AddToast(L10n.T("更新连接失败"), ex.Message, ToastKind.Error);
         }
     }
 
@@ -550,8 +552,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         if (entry.ConnectionId is null)
             return;
-        var ok = await _services.Dialogs.ConfirmAsync("移除远程连接？",
-            "保存的连接和密码将被移除，当前打开的远程位置会返回主目录。", "移除", true).ConfigureAwait(true);
+        var ok = await _services.Dialogs.ConfirmAsync(L10n.T("移除远程连接？"),
+            L10n.T("保存的连接和密码将被移除，当前打开的远程位置会返回主目录。"), L10n.T("移除"), true).ConfigureAwait(true);
         if (!ok)
             return;
 
@@ -570,7 +572,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         RefreshSidebar();
-        AddToast("已移除连接", entry.Label, ToastKind.Success);
+        AddToast(L10n.T("已移除连接"), entry.Label, ToastKind.Success);
     }
 
     public async Task ActivateSidebarEntryAsync(SidebarEntryViewModel entry)
@@ -614,7 +616,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            AddToast("无法打开位置", ex.Message, ToastKind.Error);
+            AddToast(L10n.T("无法打开位置"), ex.Message, ToastKind.Error);
         }
     }
 
@@ -640,7 +642,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            AddToast("无法打开位置", ex.Message, ToastKind.Error);
+            AddToast(L10n.T("无法打开位置"), ex.Message, ToastKind.Error);
         }
     }
 
@@ -675,7 +677,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            AddToast("无法打开分屏", ex.Message, ToastKind.Error);
+            AddToast(L10n.T("无法打开分屏"), ex.Message, ToastKind.Error);
         }
     }
 
@@ -686,7 +688,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
         var ok = await _services.Shell.OpenTerminalAsync(path).ConfigureAwait(true);
         if (!ok)
-            AddToast("无法打开终端", "未找到可用的终端程序", ToastKind.Error);
+            AddToast(L10n.T("无法打开终端"), L10n.T("未找到可用的终端程序"), ToastKind.Error);
     }
 
     private async Task<IFileSystem?> ResolveSidebarFileSystemAsync(SidebarEntryViewModel entry)
@@ -731,6 +733,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
 
         _services.Settings.Replace(result);
+        L10n.SetLanguage(result.Language);
         ThemeService.Apply(_services.Settings.Current);
         if (_services.MainWindow is { } window)
             ThemeService.ApplyDensity(window, _services.Settings.Current.CompactMode);
@@ -890,13 +893,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         try
         {
-            StartupStatus = "正在重新连接远程位置…";
+            StartupStatus = L10n.T("正在重新连接远程位置…");
             return await _services.FileSystems.ConnectByIdAsync(pane.FileSystemId).ConfigureAwait(true);
         }
         catch (Exception ex)
         {
             Log.Warn($"恢复远程连接失败: {pane.FileSystemId}", ex);
-            AddToast("无法恢复远程连接", "已跳过该标签页，远程会话可能已失效。", ToastKind.Error);
+            AddToast(L10n.T("无法恢复远程连接"), L10n.T("已跳过该标签页，远程会话可能已失效。"), ToastKind.Error);
             return null;
         }
     }
@@ -959,7 +962,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         SidebarSections.Clear();
 
-        var places = new SidebarSectionViewModel { Title = "位置" };
+        var places = new SidebarSectionViewModel { Title = L10n.T("位置") };
         foreach (var place in KnownFolders.GetPlaces())
         {
             places.Items.Add(new SidebarEntryViewModel
@@ -976,7 +979,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (places.Items.Count > 0)
             SidebarSections.Add(places);
 
-        var bookmarks = new SidebarSectionViewModel { Title = "书签" };
+        var bookmarks = new SidebarSectionViewModel { Title = L10n.T("书签") };
         foreach (var bookmark in _services.Bookmarks.GetAll())
         {
             bookmarks.Items.Add(new SidebarEntryViewModel
@@ -994,7 +997,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         bookmarks.Items.Add(new SidebarEntryViewModel
         {
-            Label = "添加当前文件夹",
+            Label = L10n.T("添加当前文件夹"),
             Kind = SidebarEntryKind.AddBookmark,
             Icon = FileIconCatalog.Resource("IconPlusCircle"),
             IconBrush = SidebarEntryViewModel.Brush("#17937F"),
@@ -1004,13 +1007,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         if (_volumes.Count > 0)
         {
-            var volumes = new SidebarSectionViewModel { Title = "磁盘" };
+            var volumes = new SidebarSectionViewModel { Title = L10n.T("磁盘") };
             foreach (var volume in _volumes)
             {
                 volumes.Items.Add(new SidebarEntryViewModel
                 {
-                    Label = volume.Name,
+                    Label = volume.IsSystem ? L10n.T("系统") : volume.Name,
                     Detail = volume.SizeText,
+
                     Kind = SidebarEntryKind.Volume,
                     Icon = FileIconCatalog.Resource(volume.IsNetwork ? "IconServer" : "IconDrive"),
                     IconBrush = SidebarEntryViewModel.Brush(volume.IsNetwork ? "#5A9BD5" : "#7C8A99"),
@@ -1025,7 +1029,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             SidebarSections.Add(volumes);
         }
 
-        var network = new SidebarSectionViewModel { Title = "网络" };
+        var network = new SidebarSectionViewModel { Title = L10n.T("网络") };
         foreach (var connection in _services.FileSystems.Connections.GetAll())
         {
             network.Items.Add(new SidebarEntryViewModel
@@ -1043,7 +1047,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         network.Items.Add(new SidebarEntryViewModel
         {
-            Label = "添加远程连接",
+            Label = L10n.T("添加远程连接"),
             Detail = "FTP · SFTP · SMB · WebDAV",
             Kind = SidebarEntryKind.AddConnection,
             Icon = FileIconCatalog.Resource("IconCloudAdd"),
@@ -1055,12 +1059,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var recent = _services.Recent.GetAll().Take(5).ToList();
         if (recent.Count > 0)
         {
-            var recents = new SidebarSectionViewModel { Title = "最近" };
+            var recents = new SidebarSectionViewModel { Title = L10n.T("最近") };
             foreach (var item in recent)
             {
                 recents.Items.Add(new SidebarEntryViewModel
                 {
-                    Label = item.Name,
+                    Label = KnownFolders.GetDisplayName(item.Path) ?? item.Name,
                     Detail = KnownFolders.ShortenForDisplay(item.Path),
                     Kind = SidebarEntryKind.Recent,
                     Icon = FileIconCatalog.Resource("IconClock"),
@@ -1073,11 +1077,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             SidebarSections.Add(recents);
         }
 
-        var system = new SidebarSectionViewModel { Title = "系统" };
+        var system = new SidebarSectionViewModel { Title = L10n.T("系统") };
         system.Items.Add(new SidebarEntryViewModel
         {
-            Label = "回收站",
-            Detail = "已删除的项目",
+            Label = L10n.T("回收站"),
+            Detail = L10n.T("已删除的项目"),
             Kind = SidebarEntryKind.Trash,
             Icon = FileIconCatalog.Resource("IconTrash"),
             IconBrush = SidebarEntryViewModel.Brush("#C26A6A"),
@@ -1188,7 +1192,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            AddToast("无法打开标签页", ex.Message, ToastKind.Error);
+            AddToast(L10n.T("无法打开标签页"), ex.Message, ToastKind.Error);
         }
     }
 
@@ -1211,7 +1215,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void RefreshRecentSection()
     {
         var recent = _services.Recent.GetAll().Take(5).ToList();
-        var section = SidebarSections.FirstOrDefault(s => s.Title == "最近");
+        var section = SidebarSections.FirstOrDefault(s => s.Title == L10n.T("最近"));
         if (section is null)
         {
             if (recent.Count > 0)
@@ -1297,7 +1301,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         RefreshTransferState();
         if (item.State == OperationState.Completed)
         {
-            AddToast("操作完成", item.Title, ToastKind.Success);
+            AddToast(L10n.T("操作完成"), item.Title, ToastKind.Success);
             if (item.Kind is OperationKind.Copy or OperationKind.Move or OperationKind.Delete or OperationKind.Trash or
                 OperationKind.Restore or OperationKind.EmptyTrash)
             {
@@ -1306,12 +1310,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         else if (item.State == OperationState.Failed)
         {
-            AddToast("操作失败", string.IsNullOrWhiteSpace(item.Error) ? item.Title : item.Error, ToastKind.Error);
+            AddToast(L10n.T("操作失败"), string.IsNullOrWhiteSpace(item.Error) ? item.Title : item.Error, ToastKind.Error);
             _ = RefreshAfterOperationAsync();
         }
         else if (item.State == OperationState.Cancelled)
         {
-            AddToast("操作已取消", item.Title, ToastKind.Info);
+            AddToast(L10n.T("操作已取消"), item.Title, ToastKind.Info);
         }
     }
 
@@ -1347,8 +1351,25 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SelectedPaletteCommand = FilteredCommands.FirstOrDefault();
     }
 
+    private void OnLanguageChanged()
+        => Avalonia.Threading.Dispatcher.UIThread.Post(RefreshLocalization);
+
+    private void RefreshLocalization()
+    {
+        UpdateWindowTitle();
+        OnPropertyChanged(nameof(TransferSummary));
+        BuildPaletteCommands();
+        FilterPalette();
+        BuildSidebar();
+        UpdateSidebarActive();
+        foreach (var pane in Tabs.SelectMany(t => t.Panes))
+            pane.RefreshLocalization();
+    }
+
     private void BuildPaletteCommands()
     {
+        PaletteCommands.Clear();
+
         void Add(string title, string? subtitle, string? shortcut, string icon, Func<Task>? action)
         {
             PaletteCommands.Add(new PaletteCommand
@@ -1361,62 +1382,62 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             });
         }
 
-        Add("新建标签页", "打开一个新的文件浏览标签", "Ctrl+T", "IconPlus", NewTabAsync);
-        Add("复制标签页", "克隆当前标签页", null, "IconCopy", DuplicateTabAsync);
-        Add("关闭标签页", "关闭当前标签页", "Ctrl+W", "IconClose", () =>
+        Add(L10n.T("新建标签页"), L10n.T("打开一个新的文件浏览标签"), "Ctrl+T", "IconPlus", NewTabAsync);
+        Add(L10n.T("复制标签页"), L10n.T("克隆当前标签页"), null, "IconCopy", DuplicateTabAsync);
+        Add(L10n.T("关闭标签页"), L10n.T("关闭当前标签页"), "Ctrl+W", "IconClose", () =>
         {
             CloseTab(ActiveTab);
             return Task.CompletedTask;
         });
-        Add("切换分屏", "在当前标签页中显示两个面板", "Ctrl+\\", "IconSplit", ToggleSplitAsync);
-        Add("显示/隐藏侧栏", "切换左侧导航栏", "F9", "IconPanel", () =>
+        Add(L10n.T("切换分屏"), L10n.T("在当前标签页中显示两个面板"), "Ctrl+\\", "IconSplit", ToggleSplitAsync);
+        Add(L10n.T("显示/隐藏侧栏"), L10n.T("切换左侧导航栏"), "F9", "IconPanel", () =>
         {
             ToggleSidebar();
             return Task.CompletedTask;
         });
-        Add("刷新", "重新读取当前文件夹", "F5", "IconRefresh", RefreshAllAsync);
-        Add("主目录", "打开主目录", "Alt+Home", "IconHome", OpenHomeAsync);
-        Add("回收站", "查看已删除的项目", null, "IconTrash", OpenTrashAsync);
-        Add("新建文件夹", "在当前位置创建文件夹", "Ctrl+Shift+N", "IconPlusCircle", () => PaneAction(p => p.NewFolderAsync()));
-        Add("新建空文件", "在当前位置创建空文件", null, "IconFile", () => PaneAction(p => p.NewFileAsync()));
-        Add("重命名", "重命名选中的项目", "F2", "IconRename", () => PaneAction(p => p.RenameAsync()));
-        Add("移到回收站", "删除选中的项目到回收站", "Delete", "IconTrash", () => PaneAction(p => p.DeleteSelectionAsync(false)));
-        Add("永久删除", "永久删除选中的项目", "Shift+Delete", "IconDelete", () => PaneAction(p => p.DeleteSelectionAsync(true)));
-        Add("复制", "复制选中的项目", "Ctrl+C", "IconCopy", () => PaneAction(p => p.CopySelectionAsync(false)));
-        Add("剪切", "剪切选中的项目", "Ctrl+X", "IconCut", () => PaneAction(p => p.CopySelectionAsync(true)));
-        Add("粘贴", "将剪贴板中的项目粘贴到此处", "Ctrl+V", "IconPaste", () => PaneAction(p => p.PasteAsync()));
-        Add("全选", "选择当前视图中的所有项目", "Ctrl+A", "IconSelectAll", () =>
+        Add(L10n.T("刷新"), L10n.T("重新读取当前文件夹"), "F5", "IconRefresh", RefreshAllAsync);
+        Add(L10n.T("主目录"), L10n.T("打开主目录"), "Alt+Home", "IconHome", OpenHomeAsync);
+        Add(L10n.T("回收站"), L10n.T("查看已删除的项目"), null, "IconTrash", OpenTrashAsync);
+        Add(L10n.T("新建文件夹"), L10n.T("在当前位置创建文件夹"), "Ctrl+Shift+N", "IconPlusCircle", () => PaneAction(p => p.NewFolderAsync()));
+        Add(L10n.T("新建空文件"), L10n.T("在当前位置创建空文件"), null, "IconFile", () => PaneAction(p => p.NewFileAsync()));
+        Add(L10n.T("重命名"), L10n.T("重命名选中的项目"), "F2", "IconRename", () => PaneAction(p => p.RenameAsync()));
+        Add(L10n.T("移到回收站"), L10n.T("删除选中的项目到回收站"), "Delete", "IconTrash", () => PaneAction(p => p.DeleteSelectionAsync(false)));
+        Add(L10n.T("永久删除"), L10n.T("永久删除选中的项目"), "Shift+Delete", "IconDelete", () => PaneAction(p => p.DeleteSelectionAsync(true)));
+        Add(L10n.T("复制"), L10n.T("复制选中的项目"), "Ctrl+C", "IconCopy", () => PaneAction(p => p.CopySelectionAsync(false)));
+        Add(L10n.T("剪切"), L10n.T("剪切选中的项目"), "Ctrl+X", "IconCut", () => PaneAction(p => p.CopySelectionAsync(true)));
+        Add(L10n.T("粘贴"), L10n.T("将剪贴板中的项目粘贴到此处"), "Ctrl+V", "IconPaste", () => PaneAction(p => p.PasteAsync()));
+        Add(L10n.T("全选"), L10n.T("选择当前视图中的所有项目"), "Ctrl+A", "IconSelectAll", () =>
         {
             ActivePane?.RequestSelectAll();
             return Task.CompletedTask;
         });
-        Add("列表视图", "以详细列表显示文件", "Ctrl+1", "IconList", () =>
+        Add(L10n.T("列表视图"), L10n.T("以详细列表显示文件"), "Ctrl+1", "IconList", () =>
         {
             SetView(ViewKind.List);
             return Task.CompletedTask;
         });
-        Add("网格视图", "以图标网格显示文件", "Ctrl+2", "IconGrid", () =>
+        Add(L10n.T("网格视图"), L10n.T("以图标网格显示文件"), "Ctrl+2", "IconGrid", () =>
         {
             SetView(ViewKind.Grid);
             return Task.CompletedTask;
         });
-        Add("显示/隐藏隐藏文件", "切换点文件与隐藏属性", "Ctrl+H", "IconEye", () =>
+        Add(L10n.T("显示/隐藏隐藏文件"), L10n.T("切换点文件与隐藏属性"), "Ctrl+H", "IconEye", () =>
         {
             ToggleHidden();
             return Task.CompletedTask;
         });
-        Add("属性", "查看选中项目的详细信息", "Alt+Enter", "IconInfo", () => PaneAction(p => p.PropertiesAsync()));
-        Add("计算 SHA-256", "计算选中文件的校验和", null, "IconCheckCircle", () => PaneAction(p => p.ChecksumAsync()));
-        Add("压缩为 ZIP", "将选中的项目压缩为 zip", null, "IconArchive", () => PaneAction(p => p.CompressAsync(false)));
-        Add("压缩为 tar.gz", "将选中的项目压缩为 tar.gz", null, "IconArchive", () => PaneAction(p => p.CompressAsync(true)));
-        Add("解压到此处", "解压选中的压缩包", null, "IconDownload", () => PaneAction(p => p.ExtractAsync()));
-        Add("在终端中打开", "在当前位置启动终端", null, "IconTerminal", () => PaneAction(p => p.OpenTerminalAsync()));
-        Add("复制路径", "复制选中项目的完整路径", null, "IconLink", () => PaneAction(p => p.CopyPathAsync()));
-        Add("添加书签", "将当前文件夹加入侧栏", "Ctrl+D", "IconBookmark", AddBookmarkAsync);
-        Add("新建远程连接", "连接到 FTP、SFTP、SMB 或 WebDAV", null, "IconCloudAdd", () => ShowConnectionDialogAsync(null));
-        Add("设置", "打开应用设置", "Ctrl+,", "IconSettings", OpenSettingsAsync);
-        Add("键盘快捷键", "查看所有快捷键", "F1", "IconKeyboard", () => _services.Dialogs.ShowAboutAsync());
-        Add("关闭分屏", "隐藏当前标签页的第二个面板", null, "IconSplit", () =>
+        Add(L10n.T("属性"), L10n.T("查看选中项目的详细信息"), "Alt+Enter", "IconInfo", () => PaneAction(p => p.PropertiesAsync()));
+        Add(L10n.T("计算 SHA-256"), L10n.T("计算选中文件的校验和"), null, "IconCheckCircle", () => PaneAction(p => p.ChecksumAsync()));
+        Add(L10n.T("压缩为 ZIP"), L10n.T("将选中的项目压缩为 zip"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(false)));
+        Add(L10n.T("压缩为 tar.gz"), L10n.T("将选中的项目压缩为 tar.gz"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(true)));
+        Add(L10n.T("解压到此处"), L10n.T("解压选中的压缩包"), null, "IconDownload", () => PaneAction(p => p.ExtractAsync()));
+        Add(L10n.T("在终端中打开"), L10n.T("在当前位置启动终端"), null, "IconTerminal", () => PaneAction(p => p.OpenTerminalAsync()));
+        Add(L10n.T("复制路径"), L10n.T("复制选中项目的完整路径"), null, "IconLink", () => PaneAction(p => p.CopyPathAsync()));
+        Add(L10n.T("添加书签"), L10n.T("将当前文件夹加入侧栏"), "Ctrl+D", "IconBookmark", AddBookmarkAsync);
+        Add(L10n.T("新建远程连接"), L10n.T("连接到 FTP、SFTP、SMB 或 WebDAV"), null, "IconCloudAdd", () => ShowConnectionDialogAsync(null));
+        Add(L10n.T("设置"), L10n.T("打开应用设置"), "Ctrl+,", "IconSettings", OpenSettingsAsync);
+        Add(L10n.T("键盘快捷键"), L10n.T("查看所有快捷键"), "F1", "IconKeyboard", () => _services.Dialogs.ShowAboutAsync());
+        Add(L10n.T("关闭分屏"), L10n.T("隐藏当前标签页的第二个面板"), null, "IconSplit", () =>
         {
             if (ActiveTab is { IsSplit: true })
             {
@@ -1452,6 +1473,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
         _disposed = true;
         _services.Settings.Changed -= OnSettingsChanged;
+        L10n.LanguageChanged -= OnLanguageChanged;
         _services.Operations.Finished -= OnOperationFinished;
         _services.Operations.Operations.CollectionChanged -= OnOperationsChanged;
         _services.FileSystems.Connections.Changed -= OnConnectionsChanged;

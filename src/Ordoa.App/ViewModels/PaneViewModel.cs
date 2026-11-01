@@ -9,6 +9,7 @@ using Ordoa.Core.FileSystems;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.ViewModels;
 
@@ -77,7 +78,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool IsTrash => FileSystem is TrashFileSystem;
     public bool IsLocal => FileSystem.IsLocal;
 
-    private string _title = "主目录";
+    private string _title = L10n.T("主目录");
 
     public string Title
     {
@@ -132,7 +133,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     public bool IsGrid => ViewMode == ViewKind.Grid;
     public Geometry? ViewIcon => FileIconCatalog.Resource(IsGrid ? "IconList" : "IconGrid");
-    public string ViewTooltip => IsGrid ? "切换为列表视图" : "切换为网格视图";
+    public string ViewTooltip => IsGrid ? L10n.T("切换为列表视图") : L10n.T("切换为网格视图");
 
     private SortColumn _sortColumn;
     public SortColumn SortColumn
@@ -168,10 +169,10 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     public string SortColumnLabel => SortColumn switch
     {
-        SortColumn.Size => "大小",
-        SortColumn.Modified => "修改时间",
-        SortColumn.Type => "类型",
-        _ => "名称",
+        SortColumn.Size => L10n.T("大小"),
+        SortColumn.Modified => L10n.T("修改时间"),
+        SortColumn.Type => L10n.T("类型"),
+        _ => L10n.T("名称"),
     };
 
     private bool _showHidden;
@@ -216,7 +217,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private bool _isEmpty;
 
     [ObservableProperty]
-    private string _emptyHint = "此文件夹为空";
+    private string _emptyHint = L10n.T("此文件夹为空");
 
     [ObservableProperty]
     private bool _isEditingLocation;
@@ -258,28 +259,43 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool HasSelection => _selected.Count > 0;
     public int SelectedCount => _selected.Count;
 
+    public void RefreshLocalization()
+    {
+        if (KnownFolders.GetDisplayName(CurrentPath) is { } label)
+            Title = label;
+        OnPropertyChanged(nameof(ItemCountText));
+        OnPropertyChanged(nameof(SortColumnLabel));
+        OnPropertyChanged(nameof(FsBadgeText));
+        OnPropertyChanged(nameof(ViewTooltip));
+        UpdateBreadcrumbs();
+        UpdateEmptyState();
+        UpdateSelectionText();
+        foreach (var item in _entries)
+            item.RefreshLocalization();
+    }
+
     public string ItemCountText
     {
         get
         {
             if (IsSearchActive)
-                return $"{VisibleItems.Count} 个结果";
+                return L10n.Format("{0} 个结果", VisibleItems.Count);
             if (HasFilter)
-                return $"{VisibleItems.Count} / {_entries.Count} 项";
-            return $"{_entries.Count} 项";
+                return L10n.Format("{0} / {1} 项", VisibleItems.Count, _entries.Count);
+            return L10n.Format("{0} 项", _entries.Count);
         }
     }
 
     public string FsBadgeText => FileSystem switch
     {
-        TrashFileSystem => "回收站",
-        { IsLocal: true } => "本机",
+        TrashFileSystem => L10n.T("回收站"),
+        { IsLocal: true } => L10n.T("本机"),
         { Scheme: "sftp" } => "SFTP",
         { Scheme: "ftp" } => "FTP",
         { Scheme: "ftps" } => "FTPS",
         { Scheme: "smb" } => "SMB",
         { Scheme: "webdav" } => "WebDAV",
-        _ => "远程",
+        _ => L10n.T("远程"),
     };
 
     public bool CanGoBack => _back.Count > 0;
@@ -384,7 +400,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             VisibleItems = [];
             HasError = true;
             ErrorMessage = FriendlyError(ex);
-            Title = IsTrash ? "回收站" : FileSystem.GetName(CurrentPath);
+            Title = IsTrash ? L10n.T("回收站") : FileSystem.GetName(CurrentPath);
         }
         finally
         {
@@ -557,7 +573,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             }
             catch (Exception ex)
             {
-                Toast("无法打开文件", ex.Message, true);
+                Toast(L10n.T("无法打开文件"), ex.Message, true);
             }
             return;
         }
@@ -616,7 +632,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            Toast("无法打开位置", ex.Message, true);
+            Toast(L10n.T("无法打开位置"), ex.Message, true);
             UpdateLocationText();
         }
     }
@@ -648,7 +664,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
             var entry = await _services.FileSystems.Local.GetEntryAsync(localPath).ConfigureAwait(true);
             if (entry is null)
-                throw new DirectoryNotFoundException($"路径不存在: {localPath}");
+                throw new DirectoryNotFoundException(L10n.Format("路径不存在: {0}", localPath));
             if (!entry.IsDirectory)
             {
                 await NavigateAsync(_services.FileSystems.Local, _services.FileSystems.Local.GetParent(localPath)).ConfigureAwait(true);
@@ -672,7 +688,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             "sftp" => RemoteProtocol.Sftp,
             "smb" => RemoteProtocol.Smb,
             "webdav" or "dav" or "http" or "https" => RemoteProtocol.WebDav,
-            _ => throw new NotSupportedException($"不支持的位置类型: {scheme}"),
+            _ => throw new NotSupportedException(L10n.Format("不支持的位置类型: {0}", scheme)),
         };
 
         var userInfo = uri.UserInfo.Split(':', 2);
@@ -761,7 +777,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         }
 
         var bytes = _selected.Where(i => !i.IsDirectory).Sum(i => i.Entry.Size);
-        SelectionText = $"{_selected.Count} 项 · {Humanize.Size(bytes)}";
+        SelectionText = L10n.Format("{0} 项 · {1}", _selected.Count, Humanize.Size(bytes));
     }
 
     public async Task CopySelectionAsync(bool cut)
@@ -770,7 +786,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return;
         var sources = _selected.Select(i => new OperationSource(FileSystem, i.Entry)).ToList();
         await _services.Clipboard.SetInternalAsync(sources, cut).ConfigureAwait(true);
-        Toast(cut ? "已剪切" : "已复制", $"{sources.Count} 个项目", false);
+        Toast(cut ? L10n.T("已剪切") : L10n.T("已复制"), L10n.Format("{0} 个项目", sources.Count), false);
     }
 
     public async Task PasteAsync()
@@ -791,7 +807,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             if (payload.IsCut)
                 await _services.Clipboard.ConsumeCutAsync().ConfigureAwait(true);
             OperationStarted?.Invoke(this);
-            Toast(payload.IsCut ? "正在移动" : "正在复制", $"{payload.Sources.Count} 个项目", false);
+            Toast(payload.IsCut ? L10n.T("正在移动") : L10n.T("正在复制"), L10n.Format("{0} 个项目", payload.Sources.Count), false);
             return;
         }
 
@@ -800,11 +816,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             _services.Operations.Copy(external, FileSystem, CurrentPath, false);
             OperationStarted?.Invoke(this);
-            Toast("正在复制", $"{external.Count} 个项目", false);
+            Toast(L10n.T("正在复制"), L10n.Format("{0} 个项目", external.Count), false);
             return;
         }
 
-        Toast("没有可粘贴的项目", "剪贴板为空或内容不是文件", false);
+        Toast(L10n.T("没有可粘贴的项目"), L10n.T("剪贴板为空或内容不是文件"), false);
     }
 
     public async Task DeleteSelectionAsync(bool permanent)
@@ -818,9 +834,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (forcePermanent && _services.Settings.Current.ConfirmPermanentDelete)
         {
             var ok = await _services.Dialogs.ConfirmAsync(
-                IsTrash ? "从回收站永久删除？" : "永久删除这些项目？",
+                IsTrash ? L10n.T("从回收站永久删除？") : L10n.T("永久删除这些项目？"),
                 BuildDeleteMessage(sources),
-                permanent ? "永久删除" : "删除",
+                permanent ? L10n.T("永久删除") : L10n.T("删除"),
                 true).ConfigureAwait(true);
             if (!ok)
                 return;
@@ -828,7 +844,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
         _services.Operations.Delete(sources, forcePermanent);
         OperationStarted?.Invoke(this);
-        Toast(forcePermanent ? "正在删除" : "正在移到回收站", $"{sources.Count} 个项目", false);
+        Toast(forcePermanent ? L10n.T("正在删除") : L10n.T("正在移到回收站"), L10n.Format("{0} 个项目", sources.Count), false);
     }
 
     public async Task RestoreSelectionAsync()
@@ -846,7 +862,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
         _services.Operations.Restore(entries);
         OperationStarted?.Invoke(this);
-        Toast("正在恢复", $"{entries.Count} 个项目", false);
+        Toast(L10n.T("正在恢复"), L10n.Format("{0} 个项目", entries.Count), false);
     }
 
     public async Task EmptyTrashAsync()
@@ -854,14 +870,14 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (!IsTrash)
             return;
 
-        var ok = await _services.Dialogs.ConfirmAsync("清空回收站？", "回收站中的所有项目将被永久删除，此操作无法撤销。",
-            "清空", true).ConfigureAwait(true);
+        var ok = await _services.Dialogs.ConfirmAsync(L10n.T("清空回收站？"), L10n.T("回收站中的所有项目将被永久删除，此操作无法撤销。"),
+            L10n.T("清空"), true).ConfigureAwait(true);
         if (!ok)
             return;
 
         _services.Operations.EmptyTrash();
         OperationStarted?.Invoke(this);
-        Toast("正在清空回收站", string.Empty, false);
+        Toast(L10n.T("正在清空回收站"), string.Empty, false);
     }
 
     public async Task RenameAsync()
@@ -870,7 +886,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return;
 
         var item = PrimarySelection;
-        var name = await _services.Dialogs.PromptAsync("重命名", "新名称", item.Name,
+        var name = await _services.Dialogs.PromptAsync(L10n.T("重命名"), L10n.T("新名称"), item.Name,
             value => ValidateName(value, item.Name)).ConfigureAwait(true);
         if (string.IsNullOrWhiteSpace(name) || string.Equals(name, item.Name, StringComparison.Ordinal))
             return;
@@ -881,7 +897,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (!string.Equals(FileSystem.NormalizePath(target), FileSystem.NormalizePath(item.Path), StringComparison.Ordinal) &&
             await FileSystem.ExistsAsync(target).ConfigureAwait(true))
         {
-            Toast("无法重命名", "同名项目已存在", true);
+            Toast(L10n.T("无法重命名"), L10n.T("同名项目已存在"), true);
             return;
         }
 
@@ -889,11 +905,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             await FileSystem.MoveAsync(item.Path, target).ConfigureAwait(true);
             await RefreshAsync().ConfigureAwait(true);
-            Toast("已重命名", $"{item.Name} → {name}", false);
+            Toast(L10n.T("已重命名"), $"{item.Name} → {name}", false);
         }
         catch (Exception ex)
         {
-            Toast("重命名失败", ex.Message, true);
+            Toast(L10n.T("重命名失败"), ex.Message, true);
         }
     }
 
@@ -902,7 +918,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (!CanCreateFolder)
             return;
 
-        var name = await _services.Dialogs.PromptAsync("新建文件夹", "文件夹名称", "新建文件夹",
+        var name = await _services.Dialogs.PromptAsync(L10n.T("新建文件夹"), L10n.T("文件夹名称"), L10n.T("新建文件夹"),
             value => ValidateNewName(value)).ConfigureAwait(true);
         if (string.IsNullOrWhiteSpace(name))
             return;
@@ -912,16 +928,16 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             if (await FileSystem.ExistsAsync(target).ConfigureAwait(true))
             {
-                Toast("无法创建", "同名项目已存在", true);
+                Toast(L10n.T("无法创建"), L10n.T("同名项目已存在"), true);
                 return;
             }
             await FileSystem.CreateDirectoryAsync(target).ConfigureAwait(true);
             await RefreshAsync().ConfigureAwait(true);
-            Toast("已创建文件夹", name.Trim(), false);
+            Toast(L10n.T("已创建文件夹"), name.Trim(), false);
         }
         catch (Exception ex)
         {
-            Toast("创建文件夹失败", ex.Message, true);
+            Toast(L10n.T("创建文件夹失败"), ex.Message, true);
         }
     }
 
@@ -930,7 +946,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (!CanCreateFile)
             return;
 
-        var name = await _services.Dialogs.PromptAsync("新建空文件", "文件名称", "未命名.txt",
+        var name = await _services.Dialogs.PromptAsync(L10n.T("新建空文件"), L10n.T("文件名称"), L10n.T("未命名.txt"),
             value => ValidateNewName(value)).ConfigureAwait(true);
         if (string.IsNullOrWhiteSpace(name))
             return;
@@ -940,16 +956,16 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             if (await FileSystem.ExistsAsync(target).ConfigureAwait(true))
             {
-                Toast("无法创建", "同名项目已存在", true);
+                Toast(L10n.T("无法创建"), L10n.T("同名项目已存在"), true);
                 return;
             }
             await using (await FileSystem.OpenWriteAsync(target, false).ConfigureAwait(true)) { }
             await RefreshAsync().ConfigureAwait(true);
-            Toast("已创建文件", name.Trim(), false);
+            Toast(L10n.T("已创建文件"), name.Trim(), false);
         }
         catch (Exception ex)
         {
-            Toast("创建文件失败", ex.Message, true);
+            Toast(L10n.T("创建文件失败"), ex.Message, true);
         }
     }
 
@@ -970,7 +986,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             sources.Add(new OperationSource(FileSystem, primary.Entry));
         if (sources.Count == 0)
         {
-            Toast("无法计算校验和", "请选择文件", false);
+            Toast(L10n.T("无法计算校验和"), L10n.T("请选择文件"), false);
             return;
         }
 
@@ -987,22 +1003,22 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return;
 
         var extension = tarGz ? ".tar.gz" : ".zip";
-        var baseName = paths.Count == 1 ? Path.GetFileName(paths[0].TrimEnd(Path.DirectorySeparatorChar)) : "压缩包";
+        var baseName = paths.Count == 1 ? Path.GetFileName(paths[0].TrimEnd(Path.DirectorySeparatorChar)) : L10n.T("压缩包");
         var candidateName = baseName + extension;
         if (!IsNameFree(candidateName))
             candidateName = GlobMatcher.SuggestFileName(candidateName, IsNameTaken);
         var destination = Path.Combine(CurrentPath, candidateName);
 
-        Toast("正在压缩", candidateName, false);
+        Toast(L10n.T("正在压缩"), candidateName, false);
         try
         {
             await ArchiveService.CreateAsync(paths, destination).ConfigureAwait(true);
             await RefreshAsync().ConfigureAwait(true);
-            Toast("压缩完成", candidateName, false);
+            Toast(L10n.T("压缩完成"), candidateName, false);
         }
         catch (Exception ex)
         {
-            Toast("压缩失败", ex.Message, true);
+            Toast(L10n.T("压缩失败"), ex.Message, true);
         }
     }
 
@@ -1012,16 +1028,16 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return;
 
         var archive = PrimarySelection;
-        Toast("正在解压", archive.Name, false);
+        Toast(L10n.T("正在解压"), archive.Name, false);
         try
         {
             var destination = await ArchiveService.ExtractAsync(archive.Path, CurrentPath).ConfigureAwait(true);
             await RefreshAsync().ConfigureAwait(true);
-            Toast("解压完成", Path.GetFileName(destination), false);
+            Toast(L10n.T("解压完成"), Path.GetFileName(destination), false);
         }
         catch (Exception ex)
         {
-            Toast("解压失败", ex.Message, true);
+            Toast(L10n.T("解压失败"), ex.Message, true);
         }
     }
 
@@ -1029,7 +1045,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     {
         var text = PrimarySelection is { } item ? FileSystem.GetDisplayPath(item.Path) : DisplayPath;
         await _services.Clipboard.SetTextAsync(text).ConfigureAwait(true);
-        Toast("已复制路径", text, false);
+        Toast(L10n.T("已复制路径"), text, false);
     }
 
     public async Task CopyNameAsync()
@@ -1038,7 +1054,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (string.IsNullOrEmpty(text))
             return;
         await _services.Clipboard.SetTextAsync(text).ConfigureAwait(true);
-        Toast("已复制名称", text, false);
+        Toast(L10n.T("已复制名称"), text, false);
     }
 
     public async Task OpenTerminalAsync()
@@ -1047,7 +1063,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return;
         var success = await _services.Shell.OpenTerminalAsync(CurrentPath).ConfigureAwait(true);
         if (!success)
-            Toast("无法打开终端", "未找到可用的终端程序", true);
+            Toast(L10n.T("无法打开终端"), L10n.T("未找到可用的终端程序"), true);
     }
 
     public void ToggleSelection(FileItemViewModel item, bool selected)
@@ -1108,10 +1124,10 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         IsSearchActive = true;
         IsSearching = true;
         HasError = false;
-        Title = "搜索结果";
+        Title = L10n.T("搜索结果");
         _searchResults.Clear();
         VisibleItems = _searchResults;
-        SearchStatus = "正在搜索…";
+        SearchStatus = L10n.T("正在搜索…");
         OnPropertyChanged(nameof(ItemCountText));
 
         var options = new SearchOptions(query.Trim(), ShowHidden, _services.Settings.Current.MaxSearchResults,
@@ -1130,29 +1146,29 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 _searchResults.Add(new FileItemViewModel(entry, FileSystem.GetDisplayPath(parent)));
                 count++;
                 if (count % 20 == 0)
-                    SearchStatus = $"正在搜索… 已找到 {count} 个";
+                    SearchStatus = L10n.Format("正在搜索… 已找到 {0} 个", count);
             }
 
             if (!cancellationToken.IsCancellationRequested)
             {
                 SortSearchResults();
-                SearchStatus = $"找到 {count} 个结果";
+                SearchStatus = L10n.Format("找到 {0} 个结果", count);
             }
         }
         catch (OperationCanceledException)
         {
-            SearchStatus = $"已停止 · {count} 个结果";
+            SearchStatus = L10n.Format("已停止 · {0} 个结果", count);
         }
         catch (Exception ex)
         {
-            SearchStatus = "搜索失败";
-            Toast("搜索失败", ex.Message, true);
+            SearchStatus = L10n.T("搜索失败");
+            Toast(L10n.T("搜索失败"), ex.Message, true);
         }
         finally
         {
             IsSearching = false;
             IsEmpty = !HasError && _searchResults.Count == 0;
-            EmptyHint = "没有搜索结果";
+            EmptyHint = L10n.T("没有搜索结果");
             OnPropertyChanged(nameof(ItemCountText));
         }
     }
@@ -1194,15 +1210,15 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     {
         IsEmpty = !IsLoading && !HasError && VisibleItems.Count == 0;
         EmptyHint = IsSearchActive
-            ? "没有搜索结果"
-            : HasFilter ? "没有匹配的项目" : "此文件夹为空";
+            ? L10n.T("没有搜索结果")
+            : HasFilter ? L10n.T("没有匹配的项目") : L10n.T("此文件夹为空");
     }
 
     private void UpdateBreadcrumbs()
     {
         if (IsTrash)
         {
-            Breadcrumbs = [new BreadcrumbItem("回收站", "/", true)];
+            Breadcrumbs = [new BreadcrumbItem(L10n.T("回收站"), "/", true)];
             return;
         }
 
@@ -1213,7 +1229,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (FileSystem.IsLocal)
         {
             var pathRoot = Path.GetPathRoot(normalized) ?? "/";
-            items.Add(new BreadcrumbItem(string.IsNullOrEmpty(pathRoot) || pathRoot == "/" ? "根目录" : pathRoot, pathRoot, false));
+            items.Add(new BreadcrumbItem(string.IsNullOrEmpty(pathRoot) || pathRoot == "/" ? L10n.T("根目录") : pathRoot, pathRoot, false));
             var relative = normalized[pathRoot.Length..].Trim('/', '\\');
             var accumulated = pathRoot;
             foreach (var segment in relative.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries))
@@ -1243,20 +1259,20 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     {
         if (IsTrash)
         {
-            Title = "回收站";
+            Title = L10n.T("回收站");
             return;
         }
 
         if (IsSearchActive)
         {
-            Title = "搜索结果";
+            Title = L10n.T("搜索结果");
             return;
         }
 
         if (FileSystem.IsRoot(CurrentPath))
         {
             Title = FileSystem.IsLocal
-                ? (CurrentPath == "/" ? "根目录" : KnownFolders.DisplayNameForPath(CurrentPath))
+                ? (CurrentPath == "/" ? L10n.T("根目录") : KnownFolders.DisplayNameForPath(CurrentPath))
                 : FileSystem.DisplayName;
             return;
         }
@@ -1276,7 +1292,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private string BuildEditablePath()
     {
         if (IsTrash)
-            return "回收站";
+            return L10n.T("回收站");
         if (FileSystem.IsLocal)
             return CurrentPath;
         var display = FileSystem.GetDisplayPath(CurrentPath);
@@ -1292,7 +1308,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 return;
             if (space.IsKnown)
             {
-                FreeSpaceText = $"{Humanize.Size(space.Free!.Value)} 可用";
+                FreeSpaceText = L10n.Format("{0} 可用", Humanize.Size(space.Free!.Value));
                 FreeSpaceFraction = space.UsedFraction ?? 0;
             }
             else
@@ -1347,12 +1363,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         try
         {
             var destination = await _services.Trash.RestoreAsync(item.Path).ConfigureAwait(true);
-            Toast("已恢复", destination, false);
+            Toast(L10n.T("已恢复"), destination, false);
             await RefreshAsync().ConfigureAwait(true);
         }
         catch (Exception ex)
         {
-            Toast("恢复失败", ex.Message, true);
+            Toast(L10n.T("恢复失败"), ex.Message, true);
         }
     }
 
@@ -1369,7 +1385,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             Directory.CreateDirectory(directory);
             var localPath = Path.Combine(directory, safeName);
 
-            Toast("正在下载", item.Name, false);
+            Toast(L10n.T("正在下载"), item.Name, false);
             await using (var input = await FileSystem.OpenReadAsync(item.Path).ConfigureAwait(true))
             await using (var output = new FileStream(localPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
@@ -1383,11 +1399,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             }
 
             await _services.Shell.OpenAsync(localPath).ConfigureAwait(true);
-            Toast("已下载并打开", localPath, false);
+            Toast(L10n.T("已下载并打开"), localPath, false);
         }
         catch (Exception ex)
         {
-            Toast("无法打开远程文件", ex.Message, true);
+            Toast(L10n.T("无法打开远程文件"), ex.Message, true);
         }
         finally
         {
@@ -1517,13 +1533,13 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     {
         value = value.Trim();
         if (value.Length == 0)
-            return "名称不能为空";
+            return L10n.T("名称不能为空");
         if (value is "." or "..")
-            return "名称无效";
+            return L10n.T("名称无效");
         if (value.IndexOfAny(['/', '\\', '\0']) >= 0)
-            return "名称中不能包含路径分隔符";
+            return L10n.T("名称中不能包含路径分隔符");
         if (value.Length > 255)
-            return "名称过长";
+            return L10n.T("名称过长");
         return null;
     }
 
@@ -1544,17 +1560,17 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     private string BuildDeleteMessage(IReadOnlyList<OperationSource> sources)
     {
-        var names = string.Join("、", sources.Take(3).Select(s => s.Name));
+        var names = string.Join(L10n.T("、"), sources.Take(3).Select(s => s.Name));
         if (sources.Count > 3)
-            names += $" 等 {sources.Count} 个项目";
-        return $"“{names}”将被永久删除，此操作无法撤销。";
+            names += L10n.Format(" 等 {0} 个项目", sources.Count);
+        return L10n.Format("“{0}”将被永久删除，此操作无法撤销。", names);
     }
 
     private static string FriendlyError(Exception ex) => ex switch
     {
-        UnauthorizedAccessException => "没有权限访问此位置",
-        DirectoryNotFoundException => "文件夹不存在或已被移动",
-        FileNotFoundException => "文件不存在",
+        UnauthorizedAccessException => L10n.T("没有权限访问此位置"),
+        DirectoryNotFoundException => L10n.T("文件夹不存在或已被移动"),
+        FileNotFoundException => L10n.T("文件不存在"),
         _ => ex.Message,
     };
 
@@ -1569,7 +1585,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return;
         _services.Operations.Copy(sources, FileSystem, destinationPath, move);
         OperationStarted?.Invoke(this);
-        Toast(move ? "正在移动" : "正在复制", $"{sources.Count} 个项目", false);
+        Toast(move ? L10n.T("正在移动") : L10n.T("正在复制"), L10n.Format("{0} 个项目", sources.Count), false);
     }
 
     public void Activate()

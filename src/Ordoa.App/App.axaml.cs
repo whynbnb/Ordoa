@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using Ordoa.App.Services;
 using Ordoa.App.ViewModels;
 using Ordoa.App.Views;
+using Ordoa.Core.Localization;
 using Ordoa.Core.Services;
 
 namespace Ordoa.App;
@@ -33,6 +34,7 @@ public partial class App : Application
         {
             var services = new AppServices();
             Services = services;
+            L10n.SetLanguage(services.Settings.Current.Language);
 
             var viewModel = new MainViewModel(services);
             var window = new MainWindow

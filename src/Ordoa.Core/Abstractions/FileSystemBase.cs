@@ -1,3 +1,4 @@
+using Ordoa.Core.Localization;
 using Ordoa.Core.Models;
 using Ordoa.Core.Util;
 
@@ -101,6 +102,6 @@ public abstract class FileSystemBase : IFileSystem
     protected void RequireCapability(FileSystemCapabilities capability, string operation)
     {
         if (!Capabilities.Has(capability))
-            throw new NotSupportedException($"{DisplayName} 不支持{operation}");
+            throw new NotSupportedException(L10n.Format("{0} 不支持{1}", DisplayName, operation));
     }
 }

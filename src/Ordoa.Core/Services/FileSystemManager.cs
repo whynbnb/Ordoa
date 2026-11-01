@@ -3,6 +3,7 @@ using Ordoa.Core.Abstractions;
 using Ordoa.Core.FileSystems;
 using Ordoa.Core.FileSystems.Remote;
 using Ordoa.Core.Models;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.Services;
 
@@ -63,7 +64,7 @@ public sealed class FileSystemManager : IAsyncDisposable
     public async Task<IFileSystem> ConnectByIdAsync(string connectionId, CancellationToken cancellationToken = default)
     {
         var profile = Connections.Get(connectionId)
-            ?? throw new InvalidOperationException("找不到保存的远程连接");
+            ?? throw new InvalidOperationException(L10n.T("找不到保存的远程连接"));
 
         if (_sessions.TryGetValue(connectionId, out var existing))
         {
@@ -225,7 +226,7 @@ public sealed class FileSystemManager : IAsyncDisposable
     {
         var safeProfile = profile.Clone();
         if (string.IsNullOrWhiteSpace(safeProfile.Host))
-            throw new ArgumentException("服务器地址不能为空");
+            throw new ArgumentException(L10n.T("服务器地址不能为空"));
 
         IFileSystem fs = safeProfile.Protocol switch
         {

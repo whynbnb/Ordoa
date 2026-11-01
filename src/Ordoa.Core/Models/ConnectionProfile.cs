@@ -1,3 +1,4 @@
+using Ordoa.Core.Localization;
 namespace Ordoa.Core.Models;
 
 public enum RemoteProtocol
@@ -82,6 +83,6 @@ public sealed class ConnectionProfile
         RemoteProtocol.Sftp => "SFTP",
         RemoteProtocol.Smb => "SMB",
         RemoteProtocol.WebDav => Secure ? "WebDAV (HTTPS)" : "WebDAV",
-        _ => "远程",
+        _ => L10n.T("远程"),
     };
 }

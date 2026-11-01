@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:loc="using:Ordoa.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Ordoa.App.Views.PaneView"
              x:Name="Root"
@@ -71,22 +72,22 @@
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="7,5">
       <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="2">
         <Button Classes="tool" Command="{Binding GoBackCommand}" IsEnabled="{Binding CanGoBack}"
-                ToolTip.Tip="后退 (Alt+←)">
+                ToolTip.Tip="{loc:Tr 后退 (Alt+←)}">
           <Path Data="{StaticResource IconBack}" Width="15" Height="15" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />
         </Button>
         <Button Grid.Column="1" Classes="tool" Command="{Binding GoForwardCommand}"
-                IsEnabled="{Binding CanGoForward}" ToolTip.Tip="前进 (Alt+→)">
+                IsEnabled="{Binding CanGoForward}" ToolTip.Tip="{loc:Tr 前进 (Alt+→)}">
           <Path Data="{StaticResource IconForward}" Width="15" Height="15" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />
         </Button>
         <Button Grid.Column="2" Classes="tool" Command="{Binding GoUpCommand}" IsEnabled="{Binding CanGoUp}"
-                ToolTip.Tip="上一级 (Alt+↑)">
+                ToolTip.Tip="{loc:Tr 上一级 (Alt+↑)}">
           <Path Data="{StaticResource IconUp}" Width="15" Height="15" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />
         </Button>
         <Button Grid.Column="3" Classes="tool" Command="{Binding RefreshCommand}"
-                ToolTip.Tip="刷新 (F5)">
+                ToolTip.Tip="{loc:Tr 刷新 (F5)}">
           <Path Data="{StaticResource IconRefresh}" Width="14" Height="14" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />
         </Button>
@@ -127,13 +128,13 @@
             <TextBox x:Name="LocationBox" Classes="path" Text="{Binding LocationText, Mode=TwoWay}"
                      IsVisible="{Binding IsEditingLocation}" KeyDown="OnLocationKeyDown"
                      LostFocus="OnLocationLostFocus" FontSize="12.5" MinHeight="26" Padding="5,3"
-                     PlaceholderText="输入路径或远程地址" />
+                     PlaceholderText="{loc:Tr 输入路径或远程地址}" />
           </Grid>
         </Border>
 
         <Button Grid.Column="4" Classes="tool" Width="24" Height="24" Margin="0,0,2,0"
                 IsVisible="{Binding !IsNarrow}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                Click="OnEditPathClick" ToolTip.Tip="编辑路径 (Ctrl+L)">
+                Click="OnEditPathClick" ToolTip.Tip="{loc:Tr 编辑路径 (Ctrl+L)}">
           <Path Data="{StaticResource IconRename}" Width="11" Height="11" Stretch="Uniform"
                 Fill="{DynamicResource TextTertiaryBrush}" />
         </Button>
@@ -141,7 +142,7 @@
         <Grid Grid.Column="5" Width="140" VerticalAlignment="Center">
           <TextBox x:Name="SearchBox" Classes="search" Text="{Binding FilterText, Mode=TwoWay}"
                    Padding="26,4,8,4" MinHeight="28" KeyDown="OnSearchKeyDown"
-                   PlaceholderText="搜索" ToolTip.Tip="输入以过滤；按 Enter 进行深度搜索" />
+                   PlaceholderText="{loc:Tr 搜索}" ToolTip.Tip="{loc:Tr 输入以过滤；按 Enter 进行深度搜索}" />
           <Path Data="{StaticResource IconSearch}" Width="13" Height="13" Stretch="Uniform"
                 Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Left"
                 VerticalAlignment="Center" Margin="9,0,0,0" IsHitTestVisible="False" />
@@ -155,40 +156,40 @@
 
         <Button Grid.Column="7" Classes="tool" IsVisible="{Binding !IsNarrow}"
                 Command="{Binding $parent[Window].DataContext.ToggleSplitCommand}"
-                ToolTip.Tip="分屏 (Ctrl+\)">
+                ToolTip.Tip="{loc:Tr 分屏 (Ctrl+\)}">
           <Path Data="{StaticResource IconSplit}" Width="14" Height="14" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />
         </Button>
 
-        <Button Grid.Column="8" Classes="tool" ToolTip.Tip="更多操作">
+        <Button Grid.Column="8" Classes="tool" ToolTip.Tip="{loc:Tr 更多操作}">
           <Path Data="{StaticResource IconDots}" Width="15" Height="15" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />
           <Button.Flyout>
             <MenuFlyout Placement="BottomEdgeAlignedRight">
-              <MenuItem Header="排序">
-                <MenuItem Header="名称" Click="OnSortNameClick" />
-                <MenuItem Header="大小" Click="OnSortSizeClick" />
-                <MenuItem Header="修改时间" Click="OnSortModifiedClick" />
-                <MenuItem Header="类型" Click="OnSortTypeClick" />
+              <MenuItem Header="{loc:Tr 排序}">
+                <MenuItem Header="{loc:Tr 名称}" Click="OnSortNameClick" />
+                <MenuItem Header="{loc:Tr 大小}" Click="OnSortSizeClick" />
+                <MenuItem Header="{loc:Tr 修改时间}" Click="OnSortModifiedClick" />
+                <MenuItem Header="{loc:Tr 类型}" Click="OnSortTypeClick" />
                 <Separator />
-                <MenuItem Header="文件夹优先" Click="OnToggleFoldersFirstClick" />
+                <MenuItem Header="{loc:Tr 文件夹优先}" Click="OnToggleFoldersFirstClick" />
               </MenuItem>
-              <MenuItem Header="新建文件夹" Click="OnNewFolderClick" />
-              <MenuItem Header="新建空文件" Click="OnNewFileClick" />
-              <MenuItem Header="粘贴" Click="OnPasteClick" />
-              <MenuItem Header="全选" Click="OnSelectAllClick" />
+              <MenuItem Header="{loc:Tr 新建文件夹}" Click="OnNewFolderClick" />
+              <MenuItem Header="{loc:Tr 新建空文件}" Click="OnNewFileClick" />
+              <MenuItem Header="{loc:Tr 粘贴}" Click="OnPasteClick" />
+              <MenuItem Header="{loc:Tr 全选}" Click="OnSelectAllClick" />
               <Separator />
-              <MenuItem Header="压缩为 ZIP" Click="OnCompressZipClick" />
-              <MenuItem Header="压缩为 tar.gz" Click="OnCompressTarClick" />
-              <MenuItem Header="解压到此处" Click="OnExtractClick" />
-              <MenuItem Header="计算 SHA-256" Click="OnChecksumClick" />
+              <MenuItem Header="{loc:Tr 压缩为 ZIP}" Click="OnCompressZipClick" />
+              <MenuItem Header="{loc:Tr 压缩为 tar.gz}" Click="OnCompressTarClick" />
+              <MenuItem Header="{loc:Tr 解压到此处}" Click="OnExtractClick" />
+              <MenuItem Header="{loc:Tr 计算 SHA-256}" Click="OnChecksumClick" />
               <Separator />
-              <MenuItem Header="切换列表 / 网格" Click="OnToggleViewClick" />
-              <MenuItem Header="切换分屏" Click="OnToggleSplitClick" />
-              <MenuItem Header="刷新" Click="OnRefreshClick" />
-              <MenuItem Header="在终端中打开" Click="OnOpenTerminalClick" />
-              <MenuItem Header="复制路径" Click="OnCopyPathClick" />
-              <MenuItem Header="属性" Click="OnPropertiesClick" />
+              <MenuItem Header="{loc:Tr 切换列表 / 网格}" Click="OnToggleViewClick" />
+              <MenuItem Header="{loc:Tr 切换分屏}" Click="OnToggleSplitClick" />
+              <MenuItem Header="{loc:Tr 刷新}" Click="OnRefreshClick" />
+              <MenuItem Header="{loc:Tr 在终端中打开}" Click="OnOpenTerminalClick" />
+              <MenuItem Header="{loc:Tr 复制路径}" Click="OnCopyPathClick" />
+              <MenuItem Header="{loc:Tr 属性}" Click="OnPropertiesClick" />
             </MenuFlyout>
           </Button.Flyout>
         </Button>
@@ -201,11 +202,11 @@
       <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
         <Path Data="{StaticResource IconTrash}" Width="13" Height="13" Stretch="Uniform"
               Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
-        <TextBlock Grid.Column="1" Text="回收站中的项目可以恢复；清空后无法撤销。"
+        <TextBlock Grid.Column="1" Text="{loc:Tr 回收站中的项目可以恢复；清空后无法撤销。}"
                    Classes="caption" VerticalAlignment="Center" />
-        <Button Grid.Column="2" Content="恢复选中" Classes="subtle" FontSize="11.5"
+        <Button Grid.Column="2" Content="{loc:Tr 恢复选中}" Classes="subtle" FontSize="11.5"
                 Padding="10,3" Click="OnRestoreClick" IsEnabled="{Binding CanRestore}" />
-        <Button Grid.Column="3" Content="清空回收站" Classes="subtle" FontSize="11.5"
+        <Button Grid.Column="3" Content="{loc:Tr 清空回收站}" Classes="subtle" FontSize="11.5"
                 Padding="10,3" Click="OnEmptyTrashClick" IsEnabled="{Binding CanEmptyTrash}" />
       </Grid>
     </Border>
@@ -223,7 +224,7 @@
         <TextBlock Grid.Column="2" Text="{Binding DisplayPath}" Classes="tiny" VerticalAlignment="Center"
                    MaxWidth="300" TextTrimming="CharacterEllipsis" />
         <Button Grid.Column="3" Classes="tool" Width="22" Height="22" Click="OnExitSearchClick"
-                ToolTip.Tip="退出搜索">
+                ToolTip.Tip="{loc:Tr 退出搜索}">
           <Path Data="{StaticResource IconClose}" Width="10" Height="10" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />
         </Button>
@@ -239,7 +240,7 @@
           <Grid Classes="headerwide" IsVisible="{Binding !IsNarrow}" ColumnDefinitions="*,74,116,88" ColumnSpacing="0">
             <Button Classes="header" Tag="Name" Click="OnSortHeaderClick">
               <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="名称" Classes="columnvalue" />
+                <TextBlock Text="{loc:Tr 名称}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
                       Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
                       RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
@@ -249,7 +250,7 @@
             <Button Grid.Column="1" Classes="header" Tag="Size" Click="OnSortHeaderClick"
                     HorizontalContentAlignment="Right">
               <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="大小" Classes="columnvalue" />
+                <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
                       Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
                       RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
@@ -258,7 +259,7 @@
             </Button>
             <Button Grid.Column="2" Classes="header" Tag="Modified" Click="OnSortHeaderClick">
               <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="修改时间" Classes="columnvalue" />
+                <TextBlock Text="{loc:Tr 修改时间}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
                       Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
                       RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
@@ -267,7 +268,7 @@
             </Button>
             <Button Grid.Column="3" Classes="header" Tag="Type" Click="OnSortHeaderClick">
               <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="类型" Classes="columnvalue" />
+                <TextBlock Text="{loc:Tr 类型}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
                       Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
                       RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
@@ -278,7 +279,7 @@
           <Grid Classes="headernarrow" IsVisible="{Binding IsNarrow}" ColumnDefinitions="*,74" ColumnSpacing="0">
             <Button Classes="header" Tag="Name" Click="OnSortHeaderClick">
               <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="名称" Classes="columnvalue" />
+                <TextBlock Text="{loc:Tr 名称}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
                       Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
                       RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
@@ -288,7 +289,7 @@
             <Button Grid.Column="1" Classes="header" Tag="Size" Click="OnSortHeaderClick"
                     HorizontalContentAlignment="Right">
               <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="大小" Classes="columnvalue" />
+                <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
                       Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
                       RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
@@ -392,7 +393,7 @@
       <Border Background="{DynamicResource SurfaceBrush}" Opacity="0.88" IsVisible="{Binding IsLoading}">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="9">
           <ProgressBar IsIndeterminate="True" Width="120" Height="3" />
-          <TextBlock Text="正在读取…" Classes="caption" HorizontalAlignment="Center" />
+          <TextBlock Text="{loc:Tr 正在读取…}" Classes="caption" HorizontalAlignment="Center" />
         </StackPanel>
       </Border>
 
@@ -402,7 +403,7 @@
           <Path Data="{StaticResource IconWarning}" Width="30" Height="30" Stretch="Uniform"
                 Fill="{DynamicResource WarningBrush}" HorizontalAlignment="Center" />
           <TextBlock Text="{Binding ErrorMessage}" TextAlignment="Center" TextWrapping="Wrap" />
-          <Button Classes="subtle" Content="重试" HorizontalAlignment="Center"
+          <Button Classes="subtle" Content="{loc:Tr 重试}" HorizontalAlignment="Center"
                   Command="{Binding RefreshCommand}" />
         </StackPanel>
       </Border>
@@ -413,7 +414,7 @@
           <Path Data="{StaticResource IconFolderOpen}" Width="42" Height="42" Stretch="Uniform"
                 Fill="{DynamicResource BorderStrongBrush}" HorizontalAlignment="Center" />
           <TextBlock Text="{Binding EmptyHint}" Classes="muted" HorizontalAlignment="Center" />
-          <TextBlock Text="将文件拖到这里即可复制" Classes="tiny" HorizontalAlignment="Center" />
+          <TextBlock Text="{loc:Tr 将文件拖到这里即可复制}" Classes="tiny" HorizontalAlignment="Center" />
         </StackPanel>
       </Border>
 
@@ -425,7 +426,7 @@
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
           <Path Data="{StaticResource IconDownload}" Width="28" Height="28" Stretch="Uniform"
                 Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
-          <TextBlock Text="松开以复制到" HorizontalAlignment="Center" FontWeight="SemiBold" />
+          <TextBlock Text="{loc:Tr 松开以复制到}" HorizontalAlignment="Center" FontWeight="SemiBold" />
           <TextBlock Text="{Binding DisplayPath}" HorizontalAlignment="Center" Classes="caption" />
         </StackPanel>
       </Border>

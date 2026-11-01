@@ -1,4 +1,5 @@
 <Window xmlns="https://github.com/avaloniaui"
+             xmlns:loc="using:Ordoa.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Ordoa.App.Views.ConnectionWindow"
         Title="{Binding HeaderTitle}"
@@ -50,7 +51,7 @@
     <ScrollViewer Grid.Row="1" Padding="22,14,22,8" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="12">
         <StackPanel Spacing="6">
-          <TextBlock Text="协议" Classes="section" />
+          <TextBlock Text="{loc:Tr 协议}" Classes="section" />
           <WrapPanel ItemWidth="104" ItemHeight="34">
             <Button Classes="chip" Tag="Ftp" Click="OnProtocolClick"
                     Classes.active="{Binding Protocol, Converter={StaticResource EqualsConverter}, ConverterParameter=Ftp}">
@@ -78,29 +79,29 @@
         <Separator />
 
         <Grid ColumnDefinitions="100,*" RowDefinitions="Auto">
-          <TextBlock Text="名称" Classes="fieldlabel" />
-          <TextBox x:Name="NameBox" Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" PlaceholderText="可选，例如：我的服务器" />
+          <TextBlock Text="{loc:Tr 名称}" Classes="fieldlabel" />
+          <TextBox x:Name="NameBox" Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" PlaceholderText="{loc:Tr 可选，例如：我的服务器}" />
         </Grid>
 
         <Grid ColumnDefinitions="100,*,86,*">
-          <TextBlock Text="服务器" Classes="fieldlabel" />
-          <TextBox x:Name="HostBox" Grid.Column="1" Text="{Binding Host, Mode=TwoWay}" PlaceholderText="主机名或 IP 地址" />
-          <TextBlock Grid.Column="2" Text="端口" Classes="fieldlabel" Margin="14,0,10,0" />
+          <TextBlock Text="{loc:Tr 服务器}" Classes="fieldlabel" />
+          <TextBox x:Name="HostBox" Grid.Column="1" Text="{Binding Host, Mode=TwoWay}" PlaceholderText="{loc:Tr 主机名或 IP 地址}" />
+          <TextBlock Grid.Column="2" Text="{loc:Tr 端口}" Classes="fieldlabel" Margin="14,0,10,0" />
           <TextBox Grid.Column="3" Text="{Binding PortText, Mode=TwoWay}" PlaceholderText="{Binding DefaultPortText}" />
         </Grid>
 
         <Grid ColumnDefinitions="100,*" IsVisible="{Binding ShowAuthFields}">
-          <TextBlock Text="用户名" Classes="fieldlabel" />
-          <TextBox Grid.Column="1" Text="{Binding Username, Mode=TwoWay}" PlaceholderText="登录用户名" />
+          <TextBlock Text="{loc:Tr 用户名}" Classes="fieldlabel" />
+          <TextBox Grid.Column="1" Text="{Binding Username, Mode=TwoWay}" PlaceholderText="{loc:Tr 登录用户名}" />
         </Grid>
 
         <Grid ColumnDefinitions="100,*" IsVisible="{Binding ShowAuthFields}">
-          <TextBlock Text="密码" Classes="fieldlabel" />
+          <TextBlock Text="{loc:Tr 密码}" Classes="fieldlabel" />
           <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
             <TextBox x:Name="PasswordBox" Text="{Binding Password, Mode=TwoWay}" PasswordChar="●"
-                     PlaceholderText="登录密码" />
+                     PlaceholderText="{loc:Tr 登录密码}" />
             <Button Grid.Column="1" Classes="tool" Width="30" Height="30" Click="OnTogglePasswordClick"
-                    ToolTip.Tip="显示/隐藏密码">
+                    ToolTip.Tip="{loc:Tr 显示/隐藏密码}">
               <Path Data="{StaticResource IconEye}" Width="15" Height="15" Stretch="Uniform"
                     Fill="{DynamicResource TextSecondaryBrush}" />
             </Button>
@@ -108,27 +109,27 @@
         </Grid>
 
         <Grid ColumnDefinitions="100,*" IsVisible="{Binding IsSmb}">
-          <TextBlock Text="域" Classes="fieldlabel" />
-          <TextBox Grid.Column="1" Text="{Binding Domain, Mode=TwoWay}" PlaceholderText="可选，例如 WORKGROUP" />
+          <TextBlock Text="{loc:Tr 域}" Classes="fieldlabel" />
+          <TextBox Grid.Column="1" Text="{Binding Domain, Mode=TwoWay}" PlaceholderText="{loc:Tr 可选，例如 WORKGROUP}" />
         </Grid>
 
         <Grid ColumnDefinitions="100,*">
-          <TextBlock Text="初始路径" Classes="fieldlabel" />
+          <TextBlock Text="{loc:Tr 初始路径}" Classes="fieldlabel" />
           <TextBox Grid.Column="1" Text="{Binding InitialPath, Mode=TwoWay}"
-                   PlaceholderText="/ 或 share/folder（SMB）" />
+                   PlaceholderText="{loc:Tr / 或 share/folder（SMB）}" />
         </Grid>
 
-        <TextBlock Text="SMB 使用 TCP 445 端口；端口设置不会改变实际连接端口。" Classes="tiny"
+        <TextBlock Text="{loc:Tr SMB 使用 TCP 445 端口；端口设置不会改变实际连接端口。}" Classes="tiny"
                    IsVisible="{Binding IsSmb}" TextWrapping="Wrap" />
-        <CheckBox Content="匿名登录（仅 FTP）" IsChecked="{Binding Anonymous, Mode=TwoWay}"
+        <CheckBox Content="{loc:Tr 匿名登录（仅 FTP）}" IsChecked="{Binding Anonymous, Mode=TwoWay}"
                   IsVisible="{Binding ShowAnonymous}" />
-        <CheckBox Content="使用 HTTPS（WebDAV）" IsChecked="{Binding Secure, Mode=TwoWay}"
+        <CheckBox Content="{loc:Tr 使用 HTTPS（WebDAV）}" IsChecked="{Binding Secure, Mode=TwoWay}"
                   IsVisible="{Binding IsWebDav}" />
-        <CheckBox Content="允许无效或自签名证书（不安全）" IsChecked="{Binding AllowInvalidCertificate, Mode=TwoWay}"
+        <CheckBox Content="{loc:Tr 允许无效或自签名证书（不安全）}" IsChecked="{Binding AllowInvalidCertificate, Mode=TwoWay}"
                   IsVisible="{Binding ShowTlsOptions}" />
-        <CheckBox Content="保存密码到系统密钥环" IsChecked="{Binding SavePassword, Mode=TwoWay}"
+        <CheckBox Content="{loc:Tr 保存密码到系统密钥环}" IsChecked="{Binding SavePassword, Mode=TwoWay}"
                   IsVisible="{Binding ShowAuthFields}" />
-        <CheckBox Content="在侧栏中保存此连接" IsChecked="{Binding SaveProfile, Mode=TwoWay}" />
+        <CheckBox Content="{loc:Tr 在侧栏中保存此连接}" IsChecked="{Binding SaveProfile, Mode=TwoWay}" />
 
         <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="8" Padding="10,8"
                 IsVisible="{Binding ValidationMessage, Converter={StaticResource NotNullConverter}}">
@@ -148,9 +149,9 @@
                      MaxWidth="260" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding TestStatus}" />
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-          <Button Content="取消" Click="OnCancelClick" />
-          <Button Content="测试连接" Classes="subtle" Click="OnTestClick" IsEnabled="{Binding CanTest}" />
-          <Button Content="连接" Classes="accent" Click="OnSaveClick" />
+          <Button Content="{loc:Tr 取消}" Click="OnCancelClick" />
+          <Button Content="{loc:Tr 测试连接}" Classes="subtle" Click="OnTestClick" IsEnabled="{Binding CanTest}" />
+          <Button Content="{loc:Tr 连接}" Classes="accent" Click="OnSaveClick" />
         </StackPanel>
       </Grid>
     </Border>

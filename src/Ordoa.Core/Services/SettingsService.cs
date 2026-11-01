@@ -1,3 +1,4 @@
+using Ordoa.Core.Localization;
 using Ordoa.Core.Models;
 using Ordoa.Core.Util;
 
@@ -21,6 +22,7 @@ public enum AccentKind
 
 public sealed class AppSettings
 {
+    public UiLanguage Language { get; set; } = UiLanguage.System;
     public AppTheme Theme { get; set; } = AppTheme.System;
     public AccentKind Accent { get; set; } = AccentKind.Jade;
     public bool CompactMode { get; set; }
@@ -91,6 +93,8 @@ public sealed class SettingsService
     {
         if (Current.SidebarWidth is < 200 or > 480)
             Current.SidebarWidth = 232;
+        if (!Enum.IsDefined(Current.Language))
+            Current.Language = UiLanguage.System;
         if (Current.WindowWidth < 720)
             Current.WindowWidth = 1200;
         if (Current.WindowHeight < 480)

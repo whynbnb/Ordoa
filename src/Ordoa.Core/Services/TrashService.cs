@@ -4,6 +4,7 @@ using System.Text;
 
 using Ordoa.Core.Models;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.Services;
 
@@ -77,13 +78,13 @@ public sealed partial class TrashService
     public Task<TrashEntry> MoveToTrashAsync(string path, CancellationToken cancellationToken = default)
     {
         if (!IsSupported)
-            throw new NotSupportedException("当前平台不支持回收站");
+            throw new NotSupportedException(L10n.T("当前平台不支持回收站"));
 
         return Task.Run(() =>
         {
             path = Path.GetFullPath(path);
             if (!File.Exists(path) && !Directory.Exists(path))
-                throw new FileNotFoundException("要删除的项目不存在", path);
+                throw new FileNotFoundException(L10n.T("要删除的项目不存在"), path);
 
             var location = ResolveTrashLocation(path);
             Directory.CreateDirectory(location.FilesDirectory);
@@ -132,12 +133,12 @@ public sealed partial class TrashService
     public Task<string> RestoreAsync(string trashPath, CancellationToken cancellationToken = default)
     {
         if (!IsSupported)
-            throw new NotSupportedException("当前平台不支持回收站");
+            throw new NotSupportedException(L10n.T("当前平台不支持回收站"));
 
         return Task.Run(() =>
         {
             var infoPath = GetInfoPathForTrashFile(trashPath);
-            var info = ParseInfo(infoPath) ?? throw new InvalidDataException("无法读取回收站信息文件");
+            var info = ParseInfo(infoPath) ?? throw new InvalidDataException(L10n.T("无法读取回收站信息文件"));
             var destination = info.OriginalPath;
 
             var parent = Path.GetDirectoryName(destination);
@@ -221,7 +222,7 @@ public sealed partial class TrashService
     {
         var locations = new List<TrashLocation>
         {
-            new("主目录", AppPaths.Home, Path.Combine(HomeTrashDirectory, "files"), Path.Combine(HomeTrashDirectory, "info")),
+            new(L10n.T("主目录"), AppPaths.Home, Path.Combine(HomeTrashDirectory, "files"), Path.Combine(HomeTrashDirectory, "info")),
         };
 
         if (!IsSupported)
@@ -260,7 +261,7 @@ public sealed partial class TrashService
         var homeMount = LongestPrefix(mounts, AppPaths.Home);
 
         if (string.Equals(targetMount, homeMount, StringComparison.Ordinal))
-            return new TrashLocation("主目录", AppPaths.Home,
+            return new TrashLocation(L10n.T("主目录"), AppPaths.Home,
                 Path.Combine(HomeTrashDirectory, "files"), Path.Combine(HomeTrashDirectory, "info"));
 
         if (!string.IsNullOrEmpty(targetMount) && targetMount != "/")
@@ -286,7 +287,7 @@ public sealed partial class TrashService
                     Path.Combine(privateDir, "files"), Path.Combine(privateDir, "info"));
         }
 
-        return new TrashLocation("主目录", AppPaths.Home,
+        return new TrashLocation(L10n.T("主目录"), AppPaths.Home,
             Path.Combine(HomeTrashDirectory, "files"), Path.Combine(HomeTrashDirectory, "info"));
     }
 

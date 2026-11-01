@@ -1,3 +1,4 @@
+using Ordoa.Core.Localization;
 using System.Globalization;
 
 namespace Ordoa.Core.Util;
@@ -39,16 +40,17 @@ public static class Humanize
 
         var local = value.Value.ToLocalTime();
         var now = DateTimeOffset.Now;
+        var culture = L10n.IsEnglish ? CultureInfo.GetCultureInfo("en-US") : CultureInfo.CurrentCulture;
 
         if (withTime)
         {
             if (local.Date == now.Date)
-                return "今天 " + local.ToString("HH:mm", CultureInfo.CurrentCulture);
+                return L10n.T("今天") + " " + local.ToString("HH:mm", culture);
             if (local.Date == now.Date.AddDays(-1))
-                return "昨天 " + local.ToString("HH:mm", CultureInfo.CurrentCulture);
+                return L10n.T("昨天") + " " + local.ToString("HH:mm", culture);
             if (local.Year == now.Year)
-                return local.ToString("M月d日 HH:mm", CultureInfo.CurrentCulture);
-            return local.ToString("yyyy年M月d日", CultureInfo.CurrentCulture);
+                return local.ToString(L10n.IsEnglish ? "MMM d HH:mm" : "M月d日 HH:mm", culture);
+            return local.ToString(L10n.IsEnglish ? "MMM d, yyyy" : "yyyy年M月d日", culture);
         }
 
         return local.ToString("yyyy-MM-dd", CultureInfo.CurrentCulture);
@@ -62,10 +64,10 @@ public static class Humanize
         if (value == TimeSpan.MaxValue || value.TotalHours > 99)
             return "—";
         if (value.TotalHours >= 1)
-            return $"{(int)value.TotalHours} 小时 {value.Minutes} 分";
+            return L10n.Format("{0} 小时 {1} 分", (int)value.TotalHours, value.Minutes);
         if (value.TotalMinutes >= 1)
-            return $"{(int)value.TotalMinutes} 分 {value.Seconds} 秒";
-        return $"{Math.Max(1, (int)value.TotalSeconds)} 秒";
+            return L10n.Format("{0} 分 {1} 秒", (int)value.TotalMinutes, value.Seconds);
+        return L10n.Format("{0} 秒", Math.Max(1, (int)value.TotalSeconds));
     }
 
     public static string Speed(double bytesPerSecond)
@@ -98,13 +100,13 @@ public static class Humanize
             return "—";
         var delta = DateTimeOffset.Now - value.Value;
         if (delta.TotalSeconds < 60)
-            return "刚刚";
+            return L10n.T("刚刚");
         if (delta.TotalMinutes < 60)
-            return $"{(int)delta.TotalMinutes} 分钟前";
+            return L10n.Format("{0} 分钟前", (int)delta.TotalMinutes);
         if (delta.TotalHours < 24)
-            return $"{(int)delta.TotalHours} 小时前";
+            return L10n.Format("{0} 小时前", (int)delta.TotalHours);
         if (delta.TotalDays < 30)
-            return $"{(int)delta.TotalDays} 天前";
+            return L10n.Format("{0} 天前", (int)delta.TotalDays);
         return value.Value.ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.CurrentCulture);
     }
 }

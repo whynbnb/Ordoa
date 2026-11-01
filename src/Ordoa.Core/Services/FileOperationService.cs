@@ -3,6 +3,7 @@ using Ordoa.Core.Abstractions;
 using Ordoa.Core.FileSystems;
 using Ordoa.Core.Models;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.Services;
 
@@ -122,12 +123,12 @@ public sealed partial class FileOperationItem : ObservableObject
 
     public string StateText => State switch
     {
-        OperationState.Queued => "等待中",
-        OperationState.Scanning => "正在分析",
-        OperationState.Running => "进行中",
-        OperationState.Completed => "已完成",
-        OperationState.Failed => "失败",
-        OperationState.Cancelled => "已取消",
+        OperationState.Queued => L10n.T("等待中"),
+        OperationState.Scanning => L10n.T("正在分析"),
+        OperationState.Running => L10n.T("进行中"),
+        OperationState.Completed => L10n.T("已完成"),
+        OperationState.Failed => L10n.T("失败"),
+        OperationState.Cancelled => L10n.T("已取消"),
         _ => string.Empty,
     };
 
@@ -177,7 +178,7 @@ public sealed class FileOperationService : IDisposable
     {
         ValidateSources(sources);
         var destination = destinationFileSystem.GetDisplayPath(destinationDirectory);
-        var title = $"{(move ? "移动" : "复制")} {sources.Count} 个项目";
+        var title = L10n.Format("{0} {1} 个项目", L10n.T(move ? "移动" : "复制"), sources.Count);
         var item = new FileOperationItem(title, destination, move ? OperationKind.Move : OperationKind.Copy)
         {
             Destination = destination,
@@ -189,7 +190,7 @@ public sealed class FileOperationService : IDisposable
     public FileOperationItem Delete(IReadOnlyList<OperationSource> sources, bool permanent)
     {
         ValidateSources(sources);
-        var title = permanent ? $"永久删除 {sources.Count} 个项目" : $"移到回收站 {sources.Count} 个项目";
+        var title = permanent ? L10n.Format("永久删除 {0} 个项目", sources.Count) : L10n.Format("移到回收站 {0} 个项目", sources.Count);
         var item = new FileOperationItem(title, string.Empty, permanent ? OperationKind.Delete : OperationKind.Trash);
         Enqueue(item, token => RunDeleteAsync(item, sources, permanent, token));
         return item;
@@ -198,16 +199,16 @@ public sealed class FileOperationService : IDisposable
     public FileOperationItem Restore(IReadOnlyList<TrashEntry> entries)
     {
         if (entries.Count == 0)
-            throw new ArgumentException("没有要恢复的项目");
+            throw new ArgumentException(L10n.T("没有要恢复的项目"));
 
-        var item = new FileOperationItem($"恢复 {entries.Count} 个项目", "回收站", OperationKind.Restore);
+        var item = new FileOperationItem(L10n.Format("恢复 {0} 个项目", entries.Count), L10n.T("回收站"), OperationKind.Restore);
         Enqueue(item, token => RunRestoreAsync(item, entries, token));
         return item;
     }
 
     public FileOperationItem EmptyTrash()
     {
-        var item = new FileOperationItem("清空回收站", "回收站", OperationKind.EmptyTrash)
+        var item = new FileOperationItem(L10n.T("清空回收站"), L10n.T("回收站"), OperationKind.EmptyTrash)
         {
             IsIndeterminate = true,
         };
@@ -215,7 +216,7 @@ public sealed class FileOperationService : IDisposable
         {
             SetState(item, OperationState.Running);
             await _trash.EmptyAsync(token).ConfigureAwait(false);
-            SetProgress(item, 1, true, "已清空", string.Empty, string.Empty, string.Empty);
+            SetProgress(item, 1, true, L10n.T("已清空"), string.Empty, string.Empty, string.Empty);
             SetState(item, OperationState.Completed);
         });
         return item;
@@ -289,7 +290,7 @@ public sealed class FileOperationService : IDisposable
                 catch (OperationCanceledException)
                 {
                     SetState(item, OperationState.Cancelled);
-                    SetProgress(item, item.Progress, item.IsIndeterminate, "已取消", string.Empty, string.Empty, string.Empty);
+                    SetProgress(item, item.Progress, item.IsIndeterminate, L10n.T("已取消"), string.Empty, string.Empty, string.Empty);
                 }
                 catch (Exception ex)
                 {
@@ -323,7 +324,7 @@ public sealed class FileOperationService : IDisposable
         IFileSystem destinationFileSystem, string destinationDirectory, bool move, CancellationToken cancellationToken)
     {
         SetState(item, OperationState.Scanning);
-        SetProgress(item, 0, true, "正在分析…", string.Empty, string.Empty, string.Empty);
+        SetProgress(item, 0, true, L10n.T("正在分析…"), string.Empty, string.Empty, string.Empty);
 
         var scan = await ScanSourcesAsync(sources, cancellationToken).ConfigureAwait(false);
         var tracker = new JobTracker(item, this, scan.TotalBytes, scan.TotalItems, scan.Indeterminate);
@@ -349,7 +350,7 @@ public sealed class FileOperationService : IDisposable
                 if (source.IsDirectory && source.FileSystem.Id == destinationFileSystem.Id &&
                     IsInside(plan.Destination, source.Path, destinationFileSystem))
                 {
-                    errors.Add($"{source.Name}: 不能将文件夹复制到自身或其子目录");
+                    errors.Add(L10n.Format("{0}: 不能将文件夹复制到自身或其子目录", source.Name));
                     continue;
                 }
 
@@ -380,7 +381,7 @@ public sealed class FileOperationService : IDisposable
                 else if (source.IsDirectory && source.Entry.IsSymlink && (!source.FileSystem.IsLocal || !destinationFileSystem.IsLocal))
                 {
                     sourceHadError = true;
-                    errors.Add($"{source.Name}: 无法复制远程符号链接目录");
+                    errors.Add(L10n.Format("{0}: 无法复制远程符号链接目录", source.Name));
                 }
                 else
                 {
@@ -393,7 +394,7 @@ public sealed class FileOperationService : IDisposable
                 }
 
                 if (sourceHadError)
-                    errors.Add($"{source.Name}: 部分项目未能复制");
+                    errors.Add(L10n.Format("{0}: 部分项目未能复制", source.Name));
                 else
                     succeeded++;
             }
@@ -590,7 +591,7 @@ public sealed class FileOperationService : IDisposable
                 return new DestinationPlan(renamed, false, false);
             }
             if (choice is ConflictChoice.Cancel)
-                throw new OperationCanceledException("用户取消了操作");
+                throw new OperationCanceledException(L10n.T("用户取消了操作"));
             return new DestinationPlan(destination, choice is ConflictChoice.Replace or ConflictChoice.ReplaceAll, true);
         }
 
@@ -609,7 +610,7 @@ public sealed class FileOperationService : IDisposable
                 return new DestinationPlan(await FindUniqueDestinationAsync(destinationFileSystem, destinationDirectory, name,
                     cancellationToken).ConfigureAwait(false), false, false);
             case ConflictChoice.Cancel:
-                throw new OperationCanceledException("用户取消了操作");
+                throw new OperationCanceledException(L10n.T("用户取消了操作"));
             default:
                 return new DestinationPlan(destination, false, false);
         }
@@ -718,7 +719,7 @@ public sealed class FileOperationService : IDisposable
 
         tracker.Report(true);
         SetSummary(item, succeeded, errors.Count, errors);
-        SetProgress(item, 1, false, permanent ? "已删除" : "已移到回收站", string.Empty, string.Empty, string.Empty);
+        SetProgress(item, 1, false, permanent ? L10n.T("已删除") : L10n.T("已移到回收站"), string.Empty, string.Empty, string.Empty);
         SetState(item, errors.Count > 0 && succeeded == 0 ? OperationState.Failed : OperationState.Completed);
     }
 
@@ -733,7 +734,7 @@ public sealed class FileOperationService : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             var entry = entries[i];
-            SetProgress(item, (double)i / entries.Count, false, $"正在恢复 {i + 1} / {entries.Count}", entry.Entry.Name,
+            SetProgress(item, (double)i / entries.Count, false, L10n.Format("正在恢复 {0} / {1}", i + 1, entries.Count), entry.Entry.Name,
                 string.Empty, string.Empty);
             try
             {
@@ -749,7 +750,7 @@ public sealed class FileOperationService : IDisposable
         }
 
         SetSummary(item, succeeded, errors.Count, errors);
-        SetProgress(item, 1, false, "已恢复", string.Empty, string.Empty, string.Empty);
+        SetProgress(item, 1, false, L10n.T("已恢复"), string.Empty, string.Empty, string.Empty);
         SetState(item, succeeded > 0 || errors.Count == 0 ? OperationState.Completed : OperationState.Failed);
     }
 
@@ -878,9 +879,9 @@ public sealed class FileOperationService : IDisposable
     private void ValidateSources(IReadOnlyList<OperationSource> sources)
     {
         if (sources.Count == 0)
-            throw new ArgumentException("没有要操作的项目", nameof(sources));
+            throw new ArgumentException(L10n.T("没有要操作的项目"), nameof(sources));
         if (sources.Count > 100_000)
-            throw new ArgumentException("一次操作的项目过多", nameof(sources));
+            throw new ArgumentException(L10n.T("一次操作的项目过多"), nameof(sources));
     }
 
     internal void SetState(FileOperationItem item, OperationState state)
@@ -1015,7 +1016,7 @@ public sealed class FileOperationService : IDisposable
             _doneBytes = Math.Max(_doneBytes, _totalBytes);
             if (_totalItems > 0)
                 _doneItems = Math.Max(_doneItems, _totalItems);
-            _service.SetProgress(_item, 1, false, _item.Kind == OperationKind.Move ? "已移动" : "已完成",
+            _service.SetProgress(_item, 1, false, _item.Kind == OperationKind.Move ? L10n.T("已移动") : L10n.T("已完成"),
                 string.Empty, string.Empty, string.Empty);
             _service.SetSummary(_item, successes, errors.Count, errors);
         }

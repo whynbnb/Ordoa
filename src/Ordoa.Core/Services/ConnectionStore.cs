@@ -1,5 +1,6 @@
 using Ordoa.Core.Models;
 using Ordoa.Core.Util;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.Services;
 
@@ -67,7 +68,7 @@ public sealed class ConnectionStore
     {
         if (!string.IsNullOrWhiteSpace(profile.Name))
             return profile.Name;
-        var host = string.IsNullOrWhiteSpace(profile.Host) ? "远程" : profile.Host;
+        var host = string.IsNullOrWhiteSpace(profile.Host) ? L10n.T("远程") : profile.Host;
         return $"{profile.ProtocolLabel} · {host}";
     }
 
