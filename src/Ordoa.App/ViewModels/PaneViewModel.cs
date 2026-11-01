@@ -1,0 +1,1603 @@
+using System.Collections.ObjectModel;
+using Avalonia.Media;
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Ordoa.App.Services;
+using Ordoa.Core.Abstractions;
+using Ordoa.Core.FileSystems;
+using Ordoa.Core.Models;
+using Ordoa.Core.Services;
+using Ordoa.Core.Util;
+
+namespace Ordoa.App.ViewModels;
+
+public sealed record BreadcrumbItem(string Label, string Path, bool IsLast);
+
+public sealed partial class PaneViewModel : ObservableObject, IDisposable
+{
+    private readonly AppServices _services;
+    private readonly List<FileItemViewModel> _entries = [];
+    private readonly List<FileItemViewModel> _selected = [];
+    private readonly ObservableCollection<FileItemViewModel> _searchResults = [];
+    private readonly List<HistoryEntry> _back = [];
+    private readonly List<HistoryEntry> _forward = [];
+    private IReadOnlyList<TrashEntry> _trashEntries = [];
+    private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _searchCts;
+    private CancellationTokenSource? _thumbCts;
+    private FileSystemWatcher? _watcher;
+    private CancellationTokenSource? _watchDebounce;
+    private int _loadVersion;
+    private string _lastTitle = string.Empty;
+    private bool _lastShowHidden;
+    private bool _disposed;
+
+    public PaneViewModel(AppServices services, IFileSystem fileSystem, string path)
+    {
+        _services = services;
+        FileSystem = fileSystem;
+        _currentPath = fileSystem.NormalizePath(path);
+        var settings = services.Settings.Current;
+        _sortColumn = settings.SortColumn;
+        _sortDescending = settings.SortDescending;
+        _foldersFirst = settings.FoldersFirst;
+        _viewMode = settings.View;
+        _showHidden = settings.ShowHidden;
+        _lastShowHidden = settings.ShowHidden;
+        _locationText = BuildEditablePath();
+        _services.Settings.Changed += OnSettingsChanged;
+        _services.Clipboard.Changed += OnClipboardChanged;
+    }
+
+    public AppServices Services => _services;
+    public IFileSystem FileSystem { get; private set; }
+    public string Id { get; } = Guid.NewGuid().ToString("N");
+
+    private string _currentPath = "/";
+
+    public string CurrentPath
+    {
+        get => _currentPath;
+        private set
+        {
+            if (!SetProperty(ref _currentPath, value))
+                return;
+            OnPropertyChanged(nameof(DisplayPath));
+            OnPropertyChanged(nameof(CanGoUp));
+            OnPropertyChanged(nameof(LocationText));
+            OnPropertyChanged(nameof(IsTrash));
+            OnPropertyChanged(nameof(IsRemote));
+            OnPropertyChanged(nameof(FsBadgeText));
+        }
+    }
+
+    public string DisplayPath => FileSystem.GetDisplayPath(CurrentPath);
+    public bool IsRemote => !FileSystem.IsLocal;
+    public bool IsTrash => FileSystem is TrashFileSystem;
+    public bool IsLocal => FileSystem.IsLocal;
+
+    private string _title = "主目录";
+
+    public string Title
+    {
+        get => _title;
+        private set
+        {
+            if (SetProperty(ref _title, value))
+                TitleChanged?.Invoke(this);
+        }
+    }
+
+    private string _locationText = string.Empty;
+    public string LocationText
+    {
+        get => _locationText;
+        set => SetProperty(ref _locationText, value);
+    }
+
+    private string _filterText = string.Empty;
+    public string FilterText
+    {
+        get => _filterText;
+        set
+        {
+            if (!SetProperty(ref _filterText, value))
+                return;
+            OnPropertyChanged(nameof(HasFilter));
+            if (!IsSearchActive)
+                ApplySortAndFilter();
+        }
+    }
+
+    public bool HasFilter => !string.IsNullOrWhiteSpace(FilterText);
+
+    private ViewKind _viewMode;
+    public ViewKind ViewMode
+    {
+        get => _viewMode;
+        set
+        {
+            if (!SetProperty(ref _viewMode, value))
+                return;
+            OnPropertyChanged(nameof(IsGrid));
+            OnPropertyChanged(nameof(ViewIcon));
+            OnPropertyChanged(nameof(ViewTooltip));
+            _services.Settings.Current.View = value;
+            _services.Settings.Save();
+            if (IsGrid)
+                StartThumbnailLoading();
+        }
+    }
+
+    public bool IsGrid => ViewMode == ViewKind.Grid;
+    public Geometry? ViewIcon => FileIconCatalog.Resource(IsGrid ? "IconList" : "IconGrid");
+    public string ViewTooltip => IsGrid ? "切换为列表视图" : "切换为网格视图";
+
+    private SortColumn _sortColumn;
+    public SortColumn SortColumn
+    {
+        get => _sortColumn;
+        set
+        {
+            if (SetProperty(ref _sortColumn, value))
+                OnPropertyChanged(nameof(SortColumnLabel));
+        }
+    }
+
+    private bool _sortDescending;
+    public bool SortDescending
+    {
+        get => _sortDescending;
+        set => SetProperty(ref _sortDescending, value);
+    }
+
+    private bool _foldersFirst;
+    public bool FoldersFirst
+    {
+        get => _foldersFirst;
+        set
+        {
+            if (!SetProperty(ref _foldersFirst, value))
+                return;
+            _services.Settings.Current.FoldersFirst = value;
+            _services.Settings.Save();
+            ApplySortAndFilter();
+        }
+    }
+
+    public string SortColumnLabel => SortColumn switch
+    {
+        SortColumn.Size => "大小",
+        SortColumn.Modified => "修改时间",
+        SortColumn.Type => "类型",
+        _ => "名称",
+    };
+
+    private bool _showHidden;
+    public bool ShowHidden
+    {
+        get => _showHidden;
+        set => SetProperty(ref _showHidden, value);
+    }
+
+    private IReadOnlyList<FileItemViewModel> _visibleItems = [];
+    public IReadOnlyList<FileItemViewModel> VisibleItems
+    {
+        get => _visibleItems;
+        private set
+        {
+            if (SetProperty(ref _visibleItems, value))
+            {
+                OnPropertyChanged(nameof(VisibleCount));
+                UpdateEmptyState();
+                OnPropertyChanged(nameof(CanSelectAll));
+            }
+        }
+    }
+
+    private IReadOnlyList<BreadcrumbItem> _breadcrumbs = [];
+    public IReadOnlyList<BreadcrumbItem> Breadcrumbs
+    {
+        get => _breadcrumbs;
+        private set => SetProperty(ref _breadcrumbs, value);
+    }
+
+    [ObservableProperty]
+    private bool _isLoading;
+
+    [ObservableProperty]
+    private bool _hasError;
+
+    [ObservableProperty]
+    private string? _errorMessage;
+
+    [ObservableProperty]
+    private bool _isEmpty;
+
+    [ObservableProperty]
+    private string _emptyHint = "此文件夹为空";
+
+    [ObservableProperty]
+    private bool _isEditingLocation;
+
+    [ObservableProperty]
+    private bool _isSearchActive;
+
+    [ObservableProperty]
+    private bool _isSearching;
+
+    [ObservableProperty]
+    private string _searchStatus = string.Empty;
+
+    [ObservableProperty]
+    private bool _isDropTarget;
+
+    [ObservableProperty]
+    private bool _isActive;
+
+    [ObservableProperty]
+    private string _selectionText = string.Empty;
+
+    [ObservableProperty]
+    private string _freeSpaceText = string.Empty;
+
+    [ObservableProperty]
+    private double _freeSpaceFraction;
+
+    [ObservableProperty]
+    private FileItemViewModel? _primarySelection;
+
+    [ObservableProperty]
+    private bool _isOpeningRemote;
+
+    [ObservableProperty]
+    private bool _isNarrow;
+
+    public int VisibleCount => VisibleItems.Count;
+    public bool HasSelection => _selected.Count > 0;
+    public int SelectedCount => _selected.Count;
+
+    public string ItemCountText
+    {
+        get
+        {
+            if (IsSearchActive)
+                return $"{VisibleItems.Count} 个结果";
+            if (HasFilter)
+                return $"{VisibleItems.Count} / {_entries.Count} 项";
+            return $"{_entries.Count} 项";
+        }
+    }
+
+    public string FsBadgeText => FileSystem switch
+    {
+        TrashFileSystem => "回收站",
+        { IsLocal: true } => "本机",
+        { Scheme: "sftp" } => "SFTP",
+        { Scheme: "ftp" } => "FTP",
+        { Scheme: "ftps" } => "FTPS",
+        { Scheme: "smb" } => "SMB",
+        { Scheme: "webdav" } => "WebDAV",
+        _ => "远程",
+    };
+
+    public bool CanGoBack => _back.Count > 0;
+    public bool CanGoForward => _forward.Count > 0;
+    public bool CanGoUp => !FileSystem.IsRoot(CurrentPath) && !IsTrash;
+
+    public bool CanCreateFolder => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.CreateDirectory);
+    public bool CanCreateFile => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Write);
+    public bool CanPaste => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Write);
+    public bool CanDelete => HasSelection && FileSystem.Capabilities.Has(FileSystemCapabilities.Delete);
+    public bool CanRename => HasSelection && SelectedCount == 1 && !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Rename);
+    public bool CanCopy => HasSelection;
+    public bool CanCompress => HasSelection && FileSystem.IsLocal && !IsTrash;
+    public bool CanExtract => HasSelection && SelectedCount == 1 && FileSystem.IsLocal && !IsTrash &&
+                              PrimarySelection is { IsDirectory: false } p && ArchiveService.IsSupportedArchive(p.Name);
+    public bool CanChecksum => HasSelection && _selected.Any(i => !i.IsDirectory);
+    public bool CanOpenTerminal => FileSystem.IsLocal && !IsTrash;
+    public bool CanRestore => IsTrash && HasSelection;
+    public bool CanEmptyTrash => IsTrash;
+    public bool CanSelectAll => VisibleItems.Count > 0;
+    public bool CanGoHome => true;
+
+    public event Action<PaneViewModel>? TitleChanged;
+    public event Action<PaneViewModel>? Navigated;
+    public event Action<PaneViewModel, IFileSystem, string>? OpenInNewTabRequested;
+    public event Action<PaneViewModel>? FocusSearchRequested;
+    public event Action<PaneViewModel>? FocusLocationRequested;
+    public event Action<PaneViewModel>? SelectAllRequested;
+    public event Action<PaneViewModel>? OperationStarted;
+    public event Action<string, string, bool>? NotificationRequested;
+
+    public async Task InitializeAsync()
+    {
+        await LoadAsync().ConfigureAwait(true);
+    }
+
+    public async Task LoadAsync(bool resetFilter = false)
+    {
+        if (_disposed)
+            return;
+
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => LoadAsync(resetFilter)).ConfigureAwait(true);
+            return;
+        }
+
+        StopWatcher();
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+        var cancellationToken = _loadCts.Token;
+        var version = ++_loadVersion;
+
+        IsLoading = true;
+        HasError = false;
+        ErrorMessage = null;
+        IsEmpty = false;
+
+        try
+        {
+            if (resetFilter)
+                FilterText = string.Empty;
+
+            var entries = await FileSystem.ListAsync(CurrentPath, cancellationToken).ConfigureAwait(true);
+            if (version != _loadVersion || cancellationToken.IsCancellationRequested)
+                return;
+
+            _trashEntries = IsTrash
+                ? await _services.Trash.GetEntriesAsync(cancellationToken).ConfigureAwait(true)
+                : [];
+
+            _entries.Clear();
+            foreach (var entry in entries)
+            {
+                if (!ShowHidden && entry.IsHidden)
+                    continue;
+                _entries.Add(new FileItemViewModel(entry));
+            }
+
+            ApplySortAndFilter();
+            UpdateBreadcrumbs();
+            UpdateTitle();
+            UpdateLocationText();
+            NotifyNavigationState();
+            BumpRecent();
+            _ = UpdateFreeSpaceAsync(cancellationToken);
+
+            if (IsGrid)
+                StartThumbnailLoading();
+            StartWatcher();
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            if (version != _loadVersion)
+                return;
+            _entries.Clear();
+            VisibleItems = [];
+            HasError = true;
+            ErrorMessage = FriendlyError(ex);
+            Title = IsTrash ? "回收站" : FileSystem.GetName(CurrentPath);
+        }
+        finally
+        {
+            if (version == _loadVersion)
+            {
+                IsLoading = false;
+                UpdateEmptyState();
+                OnPropertyChanged(nameof(ItemCountText));
+                Navigated?.Invoke(this);
+            }
+        }
+    }
+
+    public async Task RefreshAsync()
+    {
+        if (IsSearchActive)
+        {
+            await StartSearchAsync(FilterText).ConfigureAwait(true);
+            return;
+        }
+        await LoadAsync().ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private async Task GoBackAsync()
+    {
+        if (_back.Count == 0)
+            return;
+        var target = _back[^1];
+        _back.RemoveAt(_back.Count - 1);
+        _forward.Add(new HistoryEntry(FileSystem, CurrentPath));
+        await NavigateCoreAsync(target.FileSystem, target.Path).ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private async Task GoForwardAsync()
+    {
+        if (_forward.Count == 0)
+            return;
+        var target = _forward[^1];
+        _forward.RemoveAt(_forward.Count - 1);
+        _back.Add(new HistoryEntry(FileSystem, CurrentPath));
+        await NavigateCoreAsync(target.FileSystem, target.Path).ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private async Task GoUpAsync()
+    {
+        if (!CanGoUp)
+            return;
+        var parent = FileSystem.GetParent(CurrentPath);
+        await NavigateAsync(FileSystem, parent).ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private Task RefreshCommandAsync() => RefreshAsync();
+
+    [RelayCommand]
+    private void ToggleView() => ViewMode = ViewMode == ViewKind.List ? ViewKind.Grid : ViewKind.List;
+
+    [RelayCommand]
+    private async Task SortByAsync(string? columnName)
+    {
+        if (!Enum.TryParse<SortColumn>(columnName, true, out var column))
+            return;
+
+        if (SortColumn == column)
+            SortDescending = !SortDescending;
+        else
+        {
+            SortColumn = column;
+            SortDescending = false;
+        }
+
+        _services.Settings.Current.SortColumn = SortColumn;
+        _services.Settings.Current.SortDescending = SortDescending;
+        _services.Settings.Save();
+        ApplySortAndFilter();
+        if (IsSearchActive && _searchResults.Count > 0)
+            SortSearchResults();
+        await Task.CompletedTask;
+    }
+
+    public async Task NavigateAsync(IFileSystem fileSystem, string path, bool addHistory = true)
+    {
+        path = fileSystem.NormalizePath(path);
+        if (fileSystem.Id == FileSystem.Id && string.Equals(path, CurrentPath, StringComparison.Ordinal))
+        {
+            await RefreshAsync().ConfigureAwait(true);
+            return;
+        }
+
+        if (addHistory)
+        {
+            _back.Add(new HistoryEntry(FileSystem, CurrentPath));
+            _forward.Clear();
+            OnPropertyChanged(nameof(CanGoBack));
+            OnPropertyChanged(nameof(CanGoForward));
+        }
+
+        await NavigateCoreAsync(fileSystem, path).ConfigureAwait(true);
+    }
+
+    private async Task NavigateCoreAsync(IFileSystem fileSystem, string path)
+    {
+        CancelSearch();
+        StopWatcher();
+        FileSystem = fileSystem;
+        CurrentPath = fileSystem.NormalizePath(path);
+        FilterText = string.Empty;
+        IsSearchActive = false;
+        _searchResults.Clear();
+        IsEditingLocation = false;
+        IsDropTarget = false;
+        PrimarySelection = null;
+        _selected.Clear();
+        UpdateSelectionDependentProperties();
+        OnPropertyChanged(nameof(IsTrash));
+        OnPropertyChanged(nameof(IsRemote));
+        OnPropertyChanged(nameof(FsBadgeText));
+        OnPropertyChanged(nameof(CanCreateFolder));
+        OnPropertyChanged(nameof(CanCreateFile));
+        OnPropertyChanged(nameof(CanPaste));
+        OnPropertyChanged(nameof(CanDelete));
+        OnPropertyChanged(nameof(CanRename));
+        OnPropertyChanged(nameof(CanCompress));
+        OnPropertyChanged(nameof(CanExtract));
+        OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanOpenTerminal));
+        OnPropertyChanged(nameof(CanRestore));
+        OnPropertyChanged(nameof(CanEmptyTrash));
+        OnPropertyChanged(nameof(CanGoUp));
+        UpdateBreadcrumbs();
+        UpdateLocationText();
+        await LoadAsync(true).ConfigureAwait(true);
+        NotifyNavigationState();
+    }
+
+    public async Task NavigateToBreadcrumbAsync(BreadcrumbItem item)
+        => await NavigateAsync(FileSystem, item.Path).ConfigureAwait(true);
+
+    public async Task OpenPathAsync(string path)
+        => await NavigateAsync(FileSystem, path).ConfigureAwait(true);
+
+    public Task OpenEntryAsync(FileItemViewModel item) => OpenAsync(item);
+
+    public async Task OpenAsync(FileItemViewModel? item = null)
+    {
+        item ??= PrimarySelection;
+        if (item is null)
+            return;
+
+        if (IsTrash)
+        {
+            await RestoreAndOpenAsync(item).ConfigureAwait(true);
+            return;
+        }
+
+        if (item.IsDirectory)
+        {
+            await NavigateAsync(FileSystem, item.Path).ConfigureAwait(true);
+            return;
+        }
+
+        if (FileSystem.IsLocal)
+        {
+            try
+            {
+                await _services.Shell.OpenAsync(item.Path).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                Toast("无法打开文件", ex.Message, true);
+            }
+            return;
+        }
+
+        await OpenRemoteFileAsync(item).ConfigureAwait(true);
+    }
+
+    public async Task OpenSelectionInNewTabAsync(FileItemViewModel? item = null)
+    {
+        item ??= PrimarySelection;
+        if (item is null)
+            return;
+
+        if (IsTrash)
+        {
+            await RestoreAndOpenAsync(item).ConfigureAwait(true);
+            return;
+        }
+
+        if (item.IsDirectory)
+            OpenInNewTabRequested?.Invoke(this, FileSystem, item.Path);
+        else
+            OpenInNewTabRequested?.Invoke(this, FileSystem, FileSystem.GetParent(item.Path));
+    }
+
+    public void RequestSearchFocus() => FocusSearchRequested?.Invoke(this);
+    public void RequestLocationFocus() => FocusLocationRequested?.Invoke(this);
+    public void RequestSelectAll() => SelectAllRequested?.Invoke(this);
+
+    public void BeginEditLocation()
+    {
+        IsEditingLocation = true;
+        LocationText = BuildEditablePath();
+        FocusLocationRequested?.Invoke(this);
+    }
+
+    public void CancelEditLocation()
+    {
+        IsEditingLocation = false;
+        UpdateLocationText();
+    }
+
+    public async Task CommitLocationAsync()
+    {
+        var text = LocationText.Trim();
+        IsEditingLocation = false;
+        if (string.IsNullOrEmpty(text))
+        {
+            UpdateLocationText();
+            return;
+        }
+
+        try
+        {
+            await ResolveLocationAsync(text).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Toast("无法打开位置", ex.Message, true);
+            UpdateLocationText();
+        }
+    }
+
+    public async Task ResolveLocationAsync(string text)
+    {
+        text = text.Trim();
+
+        if (text.StartsWith("file://", StringComparison.OrdinalIgnoreCase) &&
+            Uri.TryCreate(text, UriKind.Absolute, out var fileUri))
+        {
+            await NavigateAsync(_services.FileSystems.Local, fileUri.LocalPath).ConfigureAwait(true);
+            return;
+        }
+
+        if (Uri.TryCreate(text, UriKind.Absolute, out var uri) && uri.Scheme.Length > 1 &&
+            uri.Scheme is not "file")
+        {
+            await OpenRemoteUriAsync(uri).ConfigureAwait(true);
+            return;
+        }
+
+        if (FileSystem.IsLocal)
+        {
+            var localPath = LocalFileSystem.ExpandUser(text);
+            if (!Path.IsPathRooted(localPath))
+                localPath = Path.Combine(CurrentPath, localPath);
+            localPath = _services.FileSystems.Local.NormalizePath(localPath);
+
+            var entry = await _services.FileSystems.Local.GetEntryAsync(localPath).ConfigureAwait(true);
+            if (entry is null)
+                throw new DirectoryNotFoundException($"路径不存在: {localPath}");
+            if (!entry.IsDirectory)
+            {
+                await NavigateAsync(_services.FileSystems.Local, _services.FileSystems.Local.GetParent(localPath)).ConfigureAwait(true);
+                return;
+            }
+            await NavigateAsync(_services.FileSystems.Local, localPath).ConfigureAwait(true);
+            return;
+        }
+
+        var remotePath = text.StartsWith('/') ? FileSystem.NormalizePath(text) : FileSystem.Combine(CurrentPath, text);
+        await NavigateAsync(FileSystem, remotePath).ConfigureAwait(true);
+    }
+
+    private async Task OpenRemoteUriAsync(Uri uri)
+    {
+        var scheme = uri.Scheme.ToLowerInvariant();
+        var protocol = scheme switch
+        {
+            "ftp" => RemoteProtocol.Ftp,
+            "ftps" => RemoteProtocol.Ftps,
+            "sftp" => RemoteProtocol.Sftp,
+            "smb" => RemoteProtocol.Smb,
+            "webdav" or "dav" or "http" or "https" => RemoteProtocol.WebDav,
+            _ => throw new NotSupportedException($"不支持的位置类型: {scheme}"),
+        };
+
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var user = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : string.Empty;
+        string? uriPassword = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null;
+        var host = uri.Host;
+        var port = uri.IsDefaultPort ? 0 : uri.Port;
+        var saved = _services.FileSystems.Connections.GetAll().FirstOrDefault(p =>
+            p.Protocol == protocol &&
+            string.Equals(p.Host, host, StringComparison.OrdinalIgnoreCase) &&
+            (port == 0 || p.EffectivePort == port) &&
+            (string.IsNullOrEmpty(user) || string.Equals(p.Username, user, StringComparison.Ordinal)));
+        if (saved is null)
+            saved = _services.FileSystems.Connections.GetAll().FirstOrDefault(p =>
+                p.Protocol == protocol && string.Equals(p.Host, host, StringComparison.OrdinalIgnoreCase));
+
+        ConnectionProfile? profile = saved;
+        string? password = null;
+        if (profile is null)
+        {
+            profile = new ConnectionProfile
+            {
+                Protocol = protocol,
+                Host = host,
+                Port = port,
+                Username = user,
+                InitialPath = "/",
+                Secure = scheme is "https" or "webdav" or "dav" || protocol != RemoteProtocol.WebDav,
+            };
+            var result = await _services.Dialogs.ShowConnectionAsync(profile).ConfigureAwait(true);
+            if (result is null)
+                return;
+            profile = result.Profile;
+            password = result.Password;
+            if (result.SaveProfile)
+                await _services.FileSystems.SaveProfileAsync(profile, password).ConfigureAwait(true);
+        }
+
+        var fs = await _services.FileSystems.ConnectAsync(profile, password ?? uriPassword).ConfigureAwait(true);
+        var path = string.IsNullOrEmpty(uri.AbsolutePath) ? fs.RootPath : Uri.UnescapeDataString(uri.AbsolutePath);
+        await NavigateAsync(fs, path).ConfigureAwait(true);
+    }
+
+    public void UpdateSelection(IEnumerable<FileItemViewModel> items)
+    {
+        _selected.Clear();
+        _selected.AddRange(items);
+        PrimarySelection = _selected.FirstOrDefault();
+        UpdateSelectionDependentProperties();
+    }
+
+    public void ClearSelection()
+    {
+        _selected.Clear();
+        PrimarySelection = null;
+        UpdateSelectionDependentProperties();
+    }
+
+    private void UpdateSelectionDependentProperties()
+    {
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(CanDelete));
+        OnPropertyChanged(nameof(CanRename));
+        OnPropertyChanged(nameof(CanCopy));
+        OnPropertyChanged(nameof(CanCompress));
+        OnPropertyChanged(nameof(CanExtract));
+        OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanRestore));
+        UpdateSelectionText();
+    }
+
+    private void UpdateSelectionText()
+    {
+        if (_selected.Count == 0)
+        {
+            SelectionText = string.Empty;
+            return;
+        }
+
+        if (_selected.Count == 1)
+        {
+            var item = _selected[0];
+            SelectionText = item.IsDirectory ? item.Name : $"{item.Name} · {Humanize.Size(item.Entry.Size)}";
+            return;
+        }
+
+        var bytes = _selected.Where(i => !i.IsDirectory).Sum(i => i.Entry.Size);
+        SelectionText = $"{_selected.Count} 项 · {Humanize.Size(bytes)}";
+    }
+
+    public async Task CopySelectionAsync(bool cut)
+    {
+        if (!HasSelection)
+            return;
+        var sources = _selected.Select(i => new OperationSource(FileSystem, i.Entry)).ToList();
+        await _services.Clipboard.SetInternalAsync(sources, cut).ConfigureAwait(true);
+        Toast(cut ? "已剪切" : "已复制", $"{sources.Count} 个项目", false);
+    }
+
+    public async Task PasteAsync()
+    {
+        if (!CanPaste)
+            return;
+
+        ClipboardPayload? payload = null;
+        try
+        {
+            payload = await _services.Clipboard.TryReadInternalAsync().ConfigureAwait(true);
+        }
+        catch { /* ignore */ }
+
+        if (payload is { Sources.Count: > 0 })
+        {
+            _services.Operations.Copy(payload.Sources, FileSystem, CurrentPath, payload.IsCut);
+            if (payload.IsCut)
+                await _services.Clipboard.ConsumeCutAsync().ConfigureAwait(true);
+            OperationStarted?.Invoke(this);
+            Toast(payload.IsCut ? "正在移动" : "正在复制", $"{payload.Sources.Count} 个项目", false);
+            return;
+        }
+
+        var external = await _services.Clipboard.TryReadExternalAsync().ConfigureAwait(true);
+        if (external.Count > 0)
+        {
+            _services.Operations.Copy(external, FileSystem, CurrentPath, false);
+            OperationStarted?.Invoke(this);
+            Toast("正在复制", $"{external.Count} 个项目", false);
+            return;
+        }
+
+        Toast("没有可粘贴的项目", "剪贴板为空或内容不是文件", false);
+    }
+
+    public async Task DeleteSelectionAsync(bool permanent)
+    {
+        if (!HasSelection)
+            return;
+
+        var sources = _selected.Select(i => new OperationSource(FileSystem, i.Entry)).ToList();
+        var forcePermanent = permanent || IsTrash || !FileSystem.IsLocal || !_services.Trash.IsSupported;
+
+        if (forcePermanent && _services.Settings.Current.ConfirmPermanentDelete)
+        {
+            var ok = await _services.Dialogs.ConfirmAsync(
+                IsTrash ? "从回收站永久删除？" : "永久删除这些项目？",
+                BuildDeleteMessage(sources),
+                permanent ? "永久删除" : "删除",
+                true).ConfigureAwait(true);
+            if (!ok)
+                return;
+        }
+
+        _services.Operations.Delete(sources, forcePermanent);
+        OperationStarted?.Invoke(this);
+        Toast(forcePermanent ? "正在删除" : "正在移到回收站", $"{sources.Count} 个项目", false);
+    }
+
+    public async Task RestoreSelectionAsync()
+    {
+        if (!IsTrash || !HasSelection)
+            return;
+
+        var entries = _selected
+            .Select(item => _trashEntries.FirstOrDefault(e => string.Equals(e.TrashPath, item.Path, StringComparison.Ordinal)))
+            .Where(e => e is not null)
+            .Cast<TrashEntry>()
+            .ToList();
+        if (entries.Count == 0)
+            return;
+
+        _services.Operations.Restore(entries);
+        OperationStarted?.Invoke(this);
+        Toast("正在恢复", $"{entries.Count} 个项目", false);
+    }
+
+    public async Task EmptyTrashAsync()
+    {
+        if (!IsTrash)
+            return;
+
+        var ok = await _services.Dialogs.ConfirmAsync("清空回收站？", "回收站中的所有项目将被永久删除，此操作无法撤销。",
+            "清空", true).ConfigureAwait(true);
+        if (!ok)
+            return;
+
+        _services.Operations.EmptyTrash();
+        OperationStarted?.Invoke(this);
+        Toast("正在清空回收站", string.Empty, false);
+    }
+
+    public async Task RenameAsync()
+    {
+        if (!CanRename || PrimarySelection is null)
+            return;
+
+        var item = PrimarySelection;
+        var name = await _services.Dialogs.PromptAsync("重命名", "新名称", item.Name,
+            value => ValidateName(value, item.Name)).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(name) || string.Equals(name, item.Name, StringComparison.Ordinal))
+            return;
+
+        name = name.Trim();
+        var parent = FileSystem.GetParent(item.Path);
+        var target = FileSystem.Combine(parent, name);
+        if (!string.Equals(FileSystem.NormalizePath(target), FileSystem.NormalizePath(item.Path), StringComparison.Ordinal) &&
+            await FileSystem.ExistsAsync(target).ConfigureAwait(true))
+        {
+            Toast("无法重命名", "同名项目已存在", true);
+            return;
+        }
+
+        try
+        {
+            await FileSystem.MoveAsync(item.Path, target).ConfigureAwait(true);
+            await RefreshAsync().ConfigureAwait(true);
+            Toast("已重命名", $"{item.Name} → {name}", false);
+        }
+        catch (Exception ex)
+        {
+            Toast("重命名失败", ex.Message, true);
+        }
+    }
+
+    public async Task NewFolderAsync()
+    {
+        if (!CanCreateFolder)
+            return;
+
+        var name = await _services.Dialogs.PromptAsync("新建文件夹", "文件夹名称", "新建文件夹",
+            value => ValidateNewName(value)).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        var target = FileSystem.Combine(CurrentPath, name.Trim());
+        try
+        {
+            if (await FileSystem.ExistsAsync(target).ConfigureAwait(true))
+            {
+                Toast("无法创建", "同名项目已存在", true);
+                return;
+            }
+            await FileSystem.CreateDirectoryAsync(target).ConfigureAwait(true);
+            await RefreshAsync().ConfigureAwait(true);
+            Toast("已创建文件夹", name.Trim(), false);
+        }
+        catch (Exception ex)
+        {
+            Toast("创建文件夹失败", ex.Message, true);
+        }
+    }
+
+    public async Task NewFileAsync()
+    {
+        if (!CanCreateFile)
+            return;
+
+        var name = await _services.Dialogs.PromptAsync("新建空文件", "文件名称", "未命名.txt",
+            value => ValidateNewName(value)).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        var target = FileSystem.Combine(CurrentPath, name.Trim());
+        try
+        {
+            if (await FileSystem.ExistsAsync(target).ConfigureAwait(true))
+            {
+                Toast("无法创建", "同名项目已存在", true);
+                return;
+            }
+            await using (await FileSystem.OpenWriteAsync(target, false).ConfigureAwait(true)) { }
+            await RefreshAsync().ConfigureAwait(true);
+            Toast("已创建文件", name.Trim(), false);
+        }
+        catch (Exception ex)
+        {
+            Toast("创建文件失败", ex.Message, true);
+        }
+    }
+
+    public async Task PropertiesAsync()
+    {
+        var entry = PrimarySelection?.Entry ?? await FileSystem.GetEntryAsync(CurrentPath).ConfigureAwait(true);
+        if (entry is null)
+            return;
+        await _services.Dialogs.ShowPropertiesAsync(entry, FileSystem).ConfigureAwait(true);
+    }
+
+    public async Task ChecksumAsync()
+    {
+        var sources = _selected.Where(i => !i.IsDirectory)
+            .Select(i => new OperationSource(FileSystem, i.Entry))
+            .ToList();
+        if (sources.Count == 0 && PrimarySelection is { IsDirectory: false } primary)
+            sources.Add(new OperationSource(FileSystem, primary.Entry));
+        if (sources.Count == 0)
+        {
+            Toast("无法计算校验和", "请选择文件", false);
+            return;
+        }
+
+        await _services.Dialogs.ShowChecksumAsync(sources).ConfigureAwait(true);
+    }
+
+    public async Task CompressAsync(bool tarGz)
+    {
+        if (!CanCompress)
+            return;
+
+        var paths = _selected.Where(i => i.Entry.Path.Length > 0).Select(i => i.Entry.Path).ToList();
+        if (paths.Count == 0)
+            return;
+
+        var extension = tarGz ? ".tar.gz" : ".zip";
+        var baseName = paths.Count == 1 ? Path.GetFileName(paths[0].TrimEnd(Path.DirectorySeparatorChar)) : "压缩包";
+        var candidateName = baseName + extension;
+        if (!IsNameFree(candidateName))
+            candidateName = GlobMatcher.SuggestFileName(candidateName, IsNameTaken);
+        var destination = Path.Combine(CurrentPath, candidateName);
+
+        Toast("正在压缩", candidateName, false);
+        try
+        {
+            await ArchiveService.CreateAsync(paths, destination).ConfigureAwait(true);
+            await RefreshAsync().ConfigureAwait(true);
+            Toast("压缩完成", candidateName, false);
+        }
+        catch (Exception ex)
+        {
+            Toast("压缩失败", ex.Message, true);
+        }
+    }
+
+    public async Task ExtractAsync()
+    {
+        if (!CanExtract || PrimarySelection is null)
+            return;
+
+        var archive = PrimarySelection;
+        Toast("正在解压", archive.Name, false);
+        try
+        {
+            var destination = await ArchiveService.ExtractAsync(archive.Path, CurrentPath).ConfigureAwait(true);
+            await RefreshAsync().ConfigureAwait(true);
+            Toast("解压完成", Path.GetFileName(destination), false);
+        }
+        catch (Exception ex)
+        {
+            Toast("解压失败", ex.Message, true);
+        }
+    }
+
+    public async Task CopyPathAsync()
+    {
+        var text = PrimarySelection is { } item ? FileSystem.GetDisplayPath(item.Path) : DisplayPath;
+        await _services.Clipboard.SetTextAsync(text).ConfigureAwait(true);
+        Toast("已复制路径", text, false);
+    }
+
+    public async Task CopyNameAsync()
+    {
+        var text = PrimarySelection?.Name;
+        if (string.IsNullOrEmpty(text))
+            return;
+        await _services.Clipboard.SetTextAsync(text).ConfigureAwait(true);
+        Toast("已复制名称", text, false);
+    }
+
+    public async Task OpenTerminalAsync()
+    {
+        if (!CanOpenTerminal)
+            return;
+        var success = await _services.Shell.OpenTerminalAsync(CurrentPath).ConfigureAwait(true);
+        if (!success)
+            Toast("无法打开终端", "未找到可用的终端程序", true);
+    }
+
+    public void ToggleSelection(FileItemViewModel item, bool selected)
+    {
+        if (selected)
+        {
+            if (!_selected.Contains(item))
+                _selected.Add(item);
+        }
+        else
+        {
+            _selected.Remove(item);
+        }
+
+        PrimarySelection = _selected.FirstOrDefault();
+        UpdateSelectionDependentProperties();
+    }
+
+    public void ExitSearch()
+    {
+        CancelSearch();
+        IsSearchActive = false;
+        IsSearching = false;
+        SearchStatus = string.Empty;
+        FilterText = string.Empty;
+        UpdateTitle();
+        _searchResults.Clear();
+        VisibleItems = [];
+        ApplySortAndFilter();
+        OnPropertyChanged(nameof(ItemCountText));
+    }
+
+    public async Task StartSearchAsync(string? query = null)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => StartSearchAsync(query)).ConfigureAwait(true);
+            return;
+        }
+
+        query ??= FilterText;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            ExitSearch();
+            return;
+        }
+
+        if (IsTrash)
+        {
+            FilterText = query.Trim();
+            return;
+        }
+
+        CancelSearch();
+        _searchCts = new CancellationTokenSource();
+        var cancellationToken = _searchCts.Token;
+
+        IsSearchActive = true;
+        IsSearching = true;
+        HasError = false;
+        Title = "搜索结果";
+        _searchResults.Clear();
+        VisibleItems = _searchResults;
+        SearchStatus = "正在搜索…";
+        OnPropertyChanged(nameof(ItemCountText));
+
+        var options = new SearchOptions(query.Trim(), ShowHidden, _services.Settings.Current.MaxSearchResults,
+            _services.Settings.Current.SearchDepth);
+        var count = 0;
+
+        try
+        {
+            await foreach (var entry in _services.Search.SearchAsync(FileSystem, CurrentPath, options, null, cancellationToken)
+                               .ConfigureAwait(true))
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                var parent = FileSystem.GetParent(entry.Path);
+                _searchResults.Add(new FileItemViewModel(entry, FileSystem.GetDisplayPath(parent)));
+                count++;
+                if (count % 20 == 0)
+                    SearchStatus = $"正在搜索… 已找到 {count} 个";
+            }
+
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                SortSearchResults();
+                SearchStatus = $"找到 {count} 个结果";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            SearchStatus = $"已停止 · {count} 个结果";
+        }
+        catch (Exception ex)
+        {
+            SearchStatus = "搜索失败";
+            Toast("搜索失败", ex.Message, true);
+        }
+        finally
+        {
+            IsSearching = false;
+            IsEmpty = !HasError && _searchResults.Count == 0;
+            EmptyHint = "没有搜索结果";
+            OnPropertyChanged(nameof(ItemCountText));
+        }
+    }
+
+    private void SortSearchResults()
+    {
+        var comparer = new FileEntryComparer(SortColumn, SortDescending, false);
+        var sorted = _searchResults.OrderBy(i => i.Entry, comparer).ToList();
+        _searchResults.Clear();
+        foreach (var item in sorted)
+            _searchResults.Add(item);
+    }
+
+    private void CancelSearch()
+    {
+        _searchCts?.Cancel();
+        _searchCts?.Dispose();
+        _searchCts = null;
+    }
+
+    private void ApplySortAndFilter()
+    {
+        IEnumerable<FileItemViewModel> items = _entries;
+        if (!string.IsNullOrWhiteSpace(FilterText))
+        {
+            var query = FilterText.Trim();
+            items = items.Where(i => i.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        var comparer = new FileEntryComparer(SortColumn, SortDescending, FoldersFirst);
+        var list = items.ToList();
+        list.Sort((a, b) => comparer.Compare(a.Entry, b.Entry));
+        VisibleItems = list;
+        OnPropertyChanged(nameof(ItemCountText));
+        UpdateEmptyState();
+    }
+
+    private void UpdateEmptyState()
+    {
+        IsEmpty = !IsLoading && !HasError && VisibleItems.Count == 0;
+        EmptyHint = IsSearchActive
+            ? "没有搜索结果"
+            : HasFilter ? "没有匹配的项目" : "此文件夹为空";
+    }
+
+    private void UpdateBreadcrumbs()
+    {
+        if (IsTrash)
+        {
+            Breadcrumbs = [new BreadcrumbItem("回收站", "/", true)];
+            return;
+        }
+
+        var items = new List<BreadcrumbItem>();
+        var root = FileSystem.RootPath;
+        var normalized = FileSystem.NormalizePath(CurrentPath);
+
+        if (FileSystem.IsLocal)
+        {
+            var pathRoot = Path.GetPathRoot(normalized) ?? "/";
+            items.Add(new BreadcrumbItem(string.IsNullOrEmpty(pathRoot) || pathRoot == "/" ? "根目录" : pathRoot, pathRoot, false));
+            var relative = normalized[pathRoot.Length..].Trim('/', '\\');
+            var accumulated = pathRoot;
+            foreach (var segment in relative.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries))
+            {
+                accumulated = Path.Combine(accumulated, segment);
+                items.Add(new BreadcrumbItem(segment, accumulated, false));
+            }
+        }
+        else
+        {
+            items.Add(new BreadcrumbItem(FileSystem.DisplayName, root, false));
+            var relative = PosixPath.RelativeTo(normalized, root);
+            var accumulated = root;
+            foreach (var segment in relative.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            {
+                accumulated = PosixPath.Combine(accumulated, segment);
+                items.Add(new BreadcrumbItem(segment, accumulated, false));
+            }
+        }
+
+        if (items.Count > 0)
+            items[^1] = items[^1] with { IsLast = true };
+        Breadcrumbs = items;
+    }
+
+    private void UpdateTitle()
+    {
+        if (IsTrash)
+        {
+            Title = "回收站";
+            return;
+        }
+
+        if (IsSearchActive)
+        {
+            Title = "搜索结果";
+            return;
+        }
+
+        if (FileSystem.IsRoot(CurrentPath))
+        {
+            Title = FileSystem.IsLocal
+                ? (CurrentPath == "/" ? "根目录" : KnownFolders.DisplayNameForPath(CurrentPath))
+                : FileSystem.DisplayName;
+            return;
+        }
+
+        Title = FileSystem.IsLocal
+            ? KnownFolders.DisplayNameForPath(CurrentPath)
+            : FileSystem.GetName(CurrentPath);
+    }
+
+    private void UpdateLocationText()
+    {
+        if (IsEditingLocation)
+            return;
+        LocationText = BuildEditablePath();
+    }
+
+    private string BuildEditablePath()
+    {
+        if (IsTrash)
+            return "回收站";
+        if (FileSystem.IsLocal)
+            return CurrentPath;
+        var display = FileSystem.GetDisplayPath(CurrentPath);
+        return display.Contains("://", StringComparison.Ordinal) ? display : $"{FileSystem.Scheme}://{display}";
+    }
+
+    private async Task UpdateFreeSpaceAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var space = await FileSystem.GetSpaceAsync(CurrentPath, cancellationToken).ConfigureAwait(true);
+            if (cancellationToken.IsCancellationRequested)
+                return;
+            if (space.IsKnown)
+            {
+                FreeSpaceText = $"{Humanize.Size(space.Free!.Value)} 可用";
+                FreeSpaceFraction = space.UsedFraction ?? 0;
+            }
+            else
+            {
+                FreeSpaceText = string.Empty;
+                FreeSpaceFraction = 0;
+            }
+        }
+        catch
+        {
+            FreeSpaceText = string.Empty;
+        }
+    }
+
+    private void BumpRecent()
+    {
+        if (IsTrash || HasError)
+            return;
+        try
+        {
+            _services.Recent.Add(FileSystem, CurrentPath, Title);
+        }
+        catch { /* ignore */ }
+    }
+
+    private void NotifyNavigationState()
+    {
+        OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(CanGoForward));
+        OnPropertyChanged(nameof(CanGoUp));
+        OnPropertyChanged(nameof(CanCreateFolder));
+        OnPropertyChanged(nameof(CanCreateFile));
+        OnPropertyChanged(nameof(CanPaste));
+        OnPropertyChanged(nameof(CanDelete));
+        OnPropertyChanged(nameof(CanRename));
+        OnPropertyChanged(nameof(CanCompress));
+        OnPropertyChanged(nameof(CanExtract));
+        OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanOpenTerminal));
+        OnPropertyChanged(nameof(CanRestore));
+        OnPropertyChanged(nameof(CanEmptyTrash));
+        OnPropertyChanged(nameof(CanSelectAll));
+        OnPropertyChanged(nameof(ItemCountText));
+        OnPropertyChanged(nameof(DisplayPath));
+        OnPropertyChanged(nameof(IsTrash));
+        OnPropertyChanged(nameof(IsRemote));
+        OnPropertyChanged(nameof(FsBadgeText));
+    }
+
+    private async Task RestoreAndOpenAsync(FileItemViewModel item)
+    {
+        try
+        {
+            var destination = await _services.Trash.RestoreAsync(item.Path).ConfigureAwait(true);
+            Toast("已恢复", destination, false);
+            await RefreshAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Toast("恢复失败", ex.Message, true);
+        }
+    }
+
+    private async Task OpenRemoteFileAsync(FileItemViewModel item)
+    {
+        if (IsOpeningRemote)
+            return;
+
+        IsOpeningRemote = true;
+        try
+        {
+            var safeName = string.Join("_", item.Name.Split(Path.GetInvalidFileNameChars()));
+            var directory = Path.Combine(AppPaths.CacheDirectory, "open", FileSystem.Id);
+            Directory.CreateDirectory(directory);
+            var localPath = Path.Combine(directory, safeName);
+
+            Toast("正在下载", item.Name, false);
+            await using (var input = await FileSystem.OpenReadAsync(item.Path).ConfigureAwait(true))
+            await using (var output = new FileStream(localPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                await input.CopyToAsync(output).ConfigureAwait(true);
+            }
+
+            if (!OperatingSystem.IsWindows())
+            {
+                try { File.SetUnixFileMode(localPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); }
+                catch { /* best effort */ }
+            }
+
+            await _services.Shell.OpenAsync(localPath).ConfigureAwait(true);
+            Toast("已下载并打开", localPath, false);
+        }
+        catch (Exception ex)
+        {
+            Toast("无法打开远程文件", ex.Message, true);
+        }
+        finally
+        {
+            IsOpeningRemote = false;
+        }
+    }
+
+    private void StartThumbnailLoading()
+    {
+        _thumbCts?.Cancel();
+        _thumbCts?.Dispose();
+        _thumbCts = null;
+
+        if (!IsGrid || !_services.Settings.Current.ShowThumbnails || !FileSystem.IsLocal || _entries.Count > 700)
+            return;
+
+        _thumbCts = new CancellationTokenSource();
+        _ = LoadThumbnailsAsync(_thumbCts.Token);
+    }
+
+    private async Task LoadThumbnailsAsync(CancellationToken cancellationToken)
+    {
+        foreach (var item in _entries)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return;
+            if (item.IsDirectory || item.Thumbnail is not null)
+                continue;
+            if (!MimeTypes.IsImage(item.Extension))
+                continue;
+
+            var bitmap = await _services.Thumbnails.GetAsync(FileSystem, item.Entry, 72, cancellationToken)
+                .ConfigureAwait(true);
+            if (bitmap is not null && !cancellationToken.IsCancellationRequested)
+                item.Thumbnail = bitmap;
+        }
+    }
+
+    private void StartWatcher()
+    {
+        StopWatcher();
+        if (_disposed || !FileSystem.IsLocal || IsTrash || !Directory.Exists(CurrentPath))
+            return;
+
+        try
+        {
+            var watcher = new FileSystemWatcher(CurrentPath)
+            {
+                IncludeSubdirectories = false,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite |
+                               NotifyFilters.Size | NotifyFilters.Attributes,
+                EnableRaisingEvents = true,
+            };
+            watcher.Created += (_, _) => ScheduleWatchRefresh();
+            watcher.Changed += (_, _) => ScheduleWatchRefresh();
+            watcher.Deleted += (_, _) => ScheduleWatchRefresh();
+            watcher.Renamed += (_, _) => ScheduleWatchRefresh();
+            watcher.Error += (_, _) => ScheduleWatchRefresh();
+            _watcher = watcher;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"无法监听目录变化: {CurrentPath}", ex);
+        }
+    }
+
+    private void StopWatcher()
+    {
+        _watchDebounce?.Cancel();
+        _watchDebounce?.Dispose();
+        _watchDebounce = null;
+
+        if (_watcher is null)
+            return;
+
+        try
+        {
+            _watcher.EnableRaisingEvents = false;
+            _watcher.Dispose();
+        }
+        catch { /* ignore */ }
+        _watcher = null;
+    }
+
+    private void ScheduleWatchRefresh()
+    {
+        if (_disposed)
+            return;
+
+        _watchDebounce?.Cancel();
+        _watchDebounce?.Dispose();
+        var cts = new CancellationTokenSource();
+        _watchDebounce = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(320, cts.Token).ConfigureAwait(false);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!_disposed && !IsLoading && !IsSearchActive)
+                        _ = RefreshAsync();
+                });
+            }
+            catch (OperationCanceledException) { /* superseded */ }
+        }, cts.Token);
+    }
+
+    private void OnSettingsChanged(object? sender, EventArgs e)
+    {
+        var settings = _services.Settings.Current;
+        if (settings.ShowHidden != _lastShowHidden)
+        {
+            _lastShowHidden = settings.ShowHidden;
+            ShowHidden = settings.ShowHidden;
+            _ = LoadAsync().ConfigureAwait(true);
+        }
+    }
+
+    private void OnClipboardChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(CanPaste));
+    }
+
+    private string? ValidateNewName(string value)
+    {
+        value = value.Trim();
+        if (value.Length == 0)
+            return "名称不能为空";
+        if (value is "." or "..")
+            return "名称无效";
+        if (value.IndexOfAny(['/', '\\', '\0']) >= 0)
+            return "名称中不能包含路径分隔符";
+        if (value.Length > 255)
+            return "名称过长";
+        return null;
+    }
+
+    private string? ValidateName(string value, string current)
+    {
+        if (string.Equals(value, current, StringComparison.Ordinal))
+            return null;
+        return ValidateNewName(value);
+    }
+
+    private bool IsNameFree(string name) => !IsNameTaken(name);
+
+    private bool IsNameTaken(string name)
+    {
+        var path = Path.Combine(CurrentPath, name);
+        return File.Exists(path) || Directory.Exists(path);
+    }
+
+    private string BuildDeleteMessage(IReadOnlyList<OperationSource> sources)
+    {
+        var names = string.Join("、", sources.Take(3).Select(s => s.Name));
+        if (sources.Count > 3)
+            names += $" 等 {sources.Count} 个项目";
+        return $"“{names}”将被永久删除，此操作无法撤销。";
+    }
+
+    private static string FriendlyError(Exception ex) => ex switch
+    {
+        UnauthorizedAccessException => "没有权限访问此位置",
+        DirectoryNotFoundException => "文件夹不存在或已被移动",
+        FileNotFoundException => "文件不存在",
+        _ => ex.Message,
+    };
+
+    private void Toast(string title, string message, bool error)
+        => NotificationRequested?.Invoke(title, message, error);
+
+    public void Notify(string title, string message, bool error = false) => Toast(title, message, error);
+
+    public void EnqueueDropTransfer(IReadOnlyList<OperationSource> sources, string destinationPath, bool move)
+    {
+        if (sources.Count == 0 || IsTrash)
+            return;
+        _services.Operations.Copy(sources, FileSystem, destinationPath, move);
+        OperationStarted?.Invoke(this);
+        Toast(move ? "正在移动" : "正在复制", $"{sources.Count} 个项目", false);
+    }
+
+    public void Activate()
+    {
+        if (!IsActive)
+            IsActive = true;
+    }
+
+    public void Deactivate() => IsActive = false;
+
+    public void SetDropTarget(bool value) => IsDropTarget = value;
+
+    public IReadOnlyList<FileItemViewModel> SelectedItems => _selected;
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        CancelSearch();
+        _thumbCts?.Cancel();
+        _thumbCts?.Dispose();
+        StopWatcher();
+        _services.Settings.Changed -= OnSettingsChanged;
+        _services.Clipboard.Changed -= OnClipboardChanged;
+    }
+
+    private sealed record HistoryEntry(IFileSystem FileSystem, string Path);
+}

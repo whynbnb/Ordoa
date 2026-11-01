@@ -1,0 +1,70 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Ordoa.App.Views.ChecksumWindow"
+        Title="SHA-256 校验和"
+        Width="720" Height="560" CanResize="True" MinWidth="560" MinHeight="400" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,16,22,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="2">
+        <TextBlock Text="SHA-256 校验和" Classes="h2" />
+        <TextBlock Text="对文件内容计算 SHA-256 摘要，用于校验完整性" Classes="caption" />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="1" Padding="18,12,18,10" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Classes="card" Padding="12,9" Margin="0,0,0,8">
+              <StackPanel Spacing="5">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Path}" Classes="tiny" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="1" Text="{Binding SizeText}" Classes="tiny"
+                             VerticalAlignment="Center" />
+                </Grid>
+
+                <SelectableTextBlock Text="{Binding Hash}" FontFamily="{DynamicResource MonoFontFamily}"
+                                     FontSize="11.5" TextWrapping="Wrap"
+                                     IsVisible="{Binding HasHash}" />
+                <TextBlock Text="计算中…" Classes="tiny" IsVisible="{Binding !IsDone}" />
+                <ProgressBar Value="{Binding Progress}" Maximum="1" Height="3" MinHeight="3"
+                             IsVisible="{Binding !IsDone}" />
+                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding HasHash}">
+                  <TextBlock Text="{Binding Error}" Foreground="{DynamicResource ErrorBrush}" Classes="tiny" />
+                  <Button Grid.Column="1" Content="复制" Classes="link" FontSize="11"
+                          Command="{Binding $parent[Window].DataContext.CopyRowCommand}"
+                          CommandParameter="{Binding}" />
+                </Grid>
+                <TextBlock Text="{Binding Error}" Foreground="{DynamicResource ErrorBrush}" Classes="tiny"
+                           IsVisible="{Binding HasError}" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Status}" Classes="caption" />
+          <ProgressBar IsIndeterminate="True" Width="70" Height="3" IsVisible="{Binding IsRunning}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Content="取消计算" Classes="subtle" Command="{Binding CancelCommand}"
+                  IsVisible="{Binding IsRunning}" />
+          <Button Content="复制全部" Classes="subtle" Command="{Binding CopyAllCommand}"
+                  IsEnabled="{Binding HasResults}" />
+          <Button Content="关闭" Click="OnCloseClick" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

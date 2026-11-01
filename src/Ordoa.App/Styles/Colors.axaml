@@ -1,0 +1,112 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Default">
+      <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F6F7F6"/>
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="SurfaceAltBrush" Color="#F0F2F1"/>
+      <SolidColorBrush x:Key="SidebarBrush" Color="#EEF1EF"/>
+      <SolidColorBrush x:Key="BorderBrush" Color="#E3E7E4"/>
+      <SolidColorBrush x:Key="BorderStrongBrush" Color="#CBD3CE"/>
+      <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1C2320"/>
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5E6A64"/>
+      <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8B958F"/>
+      <SolidColorBrush x:Key="HoverBrush" Color="#E8ECE9"/>
+      <SolidColorBrush x:Key="PressedBrush" Color="#DDE3DF"/>
+      <SolidColorBrush x:Key="SelectionBrush" Color="#DCEEE9"/>
+      <SolidColorBrush x:Key="ToolbarBrush" Color="#FBFCFB"/>
+      <SolidColorBrush x:Key="StatusBrush" Color="#F3F5F3"/>
+      <SolidColorBrush x:Key="MenuBackgroundBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="ShadowBrush" Color="#1A1C2320"/>
+      <SolidColorBrush x:Key="ScrollThumbBrush" Color="#C7CEC9"/>
+      <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#A9B2AC"/>
+      <SolidColorBrush x:Key="ErrorBrush" Color="#C94F4F"/>
+      <SolidColorBrush x:Key="ErrorSoftBrush" Color="#FBEAEA"/>
+      <SolidColorBrush x:Key="WarningBrush" Color="#A9741C"/>
+      <SolidColorBrush x:Key="WarningSoftBrush" Color="#FBF2E1"/>
+      <SolidColorBrush x:Key="SuccessBrush" Color="#2E8B61"/>
+      <SolidColorBrush x:Key="DropOverlayBrush" Color="#141E9E8A"/>
+      <SolidColorBrush x:Key="OverlayBrush" Color="#66000000"/>
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F6F7F6"/>
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="SurfaceAltBrush" Color="#F0F2F1"/>
+      <SolidColorBrush x:Key="SidebarBrush" Color="#EEF1EF"/>
+      <SolidColorBrush x:Key="BorderBrush" Color="#E3E7E4"/>
+      <SolidColorBrush x:Key="BorderStrongBrush" Color="#CBD3CE"/>
+      <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1C2320"/>
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5E6A64"/>
+      <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8B958F"/>
+      <SolidColorBrush x:Key="HoverBrush" Color="#E8ECE9"/>
+      <SolidColorBrush x:Key="PressedBrush" Color="#DDE3DF"/>
+      <SolidColorBrush x:Key="SelectionBrush" Color="#DCEEE9"/>
+      <SolidColorBrush x:Key="ToolbarBrush" Color="#FBFCFB"/>
+      <SolidColorBrush x:Key="StatusBrush" Color="#F3F5F3"/>
+      <SolidColorBrush x:Key="MenuBackgroundBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="ShadowBrush" Color="#1A1C2320"/>
+      <SolidColorBrush x:Key="ScrollThumbBrush" Color="#C7CEC9"/>
+      <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#A9B2AC"/>
+      <SolidColorBrush x:Key="ErrorBrush" Color="#C94F4F"/>
+      <SolidColorBrush x:Key="ErrorSoftBrush" Color="#FBEAEA"/>
+      <SolidColorBrush x:Key="WarningBrush" Color="#A9741C"/>
+      <SolidColorBrush x:Key="WarningSoftBrush" Color="#FBF2E1"/>
+      <SolidColorBrush x:Key="SuccessBrush" Color="#2E8B61"/>
+      <SolidColorBrush x:Key="DropOverlayBrush" Color="#141E9E8A"/>
+      <SolidColorBrush x:Key="OverlayBrush" Color="#66000000"/>
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#141816"/>
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#1B201D"/>
+      <SolidColorBrush x:Key="SurfaceAltBrush" Color="#222824"/>
+      <SolidColorBrush x:Key="SidebarBrush" Color="#171C19"/>
+      <SolidColorBrush x:Key="BorderBrush" Color="#2A312D"/>
+      <SolidColorBrush x:Key="BorderStrongBrush" Color="#3A433E"/>
+      <SolidColorBrush x:Key="TextPrimaryBrush" Color="#E9EEEA"/>
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A3ADA7"/>
+      <SolidColorBrush x:Key="TextTertiaryBrush" Color="#748078"/>
+      <SolidColorBrush x:Key="HoverBrush" Color="#252C28"/>
+      <SolidColorBrush x:Key="PressedBrush" Color="#2E3631"/>
+      <SolidColorBrush x:Key="SelectionBrush" Color="#1F443C"/>
+      <SolidColorBrush x:Key="ToolbarBrush" Color="#181D1A"/>
+      <SolidColorBrush x:Key="StatusBrush" Color="#151A17"/>
+      <SolidColorBrush x:Key="MenuBackgroundBrush" Color="#202622"/>
+      <SolidColorBrush x:Key="InputBackgroundBrush" Color="#1E2420"/>
+      <SolidColorBrush x:Key="ShadowBrush" Color="#70000000"/>
+      <SolidColorBrush x:Key="ScrollThumbBrush" Color="#3A443E"/>
+      <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#4C5951"/>
+      <SolidColorBrush x:Key="ErrorBrush" Color="#E57979"/>
+      <SolidColorBrush x:Key="ErrorSoftBrush" Color="#382020"/>
+      <SolidColorBrush x:Key="WarningBrush" Color="#D8A14B"/>
+      <SolidColorBrush x:Key="WarningSoftBrush" Color="#352B1B"/>
+      <SolidColorBrush x:Key="SuccessBrush" Color="#57BE8B"/>
+      <SolidColorBrush x:Key="DropOverlayBrush" Color="#331E9E8A"/>
+      <SolidColorBrush x:Key="OverlayBrush" Color="#99000000"/>
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- Accent resources are replaced at runtime by ThemeService. -->
+  <SolidColorBrush x:Key="AccentBrush" Color="#17937F"/>
+  <SolidColorBrush x:Key="AccentHoverBrush" Color="#1EA78F"/>
+  <SolidColorBrush x:Key="AccentPressedBrush" Color="#117363"/>
+  <SolidColorBrush x:Key="AccentSoftBrush" Color="#2A17937F"/>
+  <SolidColorBrush x:Key="AccentBorderBrush" Color="#5517937F"/>
+  <SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF"/>
+
+  <SolidColorBrush x:Key="FolderIconBrush" Color="#E0A63C"/>
+  <SolidColorBrush x:Key="FileIconBrush" Color="#87918B"/>
+  <SolidColorBrush x:Key="ImageIconBrush" Color="#2FAE9B"/>
+  <SolidColorBrush x:Key="AudioIconBrush" Color="#D969A7"/>
+  <SolidColorBrush x:Key="VideoIconBrush" Color="#5E8BDE"/>
+  <SolidColorBrush x:Key="ArchiveIconBrush" Color="#A17BE0"/>
+  <SolidColorBrush x:Key="CodeIconBrush" Color="#4FAF6E"/>
+  <SolidColorBrush x:Key="TextIconBrush" Color="#7D8794"/>
+  <SolidColorBrush x:Key="PdfIconBrush" Color="#E05D5D"/>
+  <SolidColorBrush x:Key="DocumentIconBrush" Color="#4E84D8"/>
+  <SolidColorBrush x:Key="SheetIconBrush" Color="#4B9C6B"/>
+  <SolidColorBrush x:Key="SlideIconBrush" Color="#DD7A45"/>
+  <SolidColorBrush x:Key="DiskIconBrush" Color="#7C8A99"/>
+  <SolidColorBrush x:Key="CloudIconBrush" Color="#5A9BD5"/>
+</ResourceDictionary>

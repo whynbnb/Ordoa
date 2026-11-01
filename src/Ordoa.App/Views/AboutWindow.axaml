@@ -1,0 +1,103 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Ordoa.App.Views.AboutWindow"
+        Title="关于 Ordoa 安序"
+        Width="700" Height="690" CanResize="False" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
+  <Window.Styles>
+    <Style Selector="TextBlock.shortcut">
+      <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.shortcutdesc">
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="*,Auto">
+    <ScrollViewer Grid.Row="0" Padding="28,24,28,10" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="16">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+          <Image Source="/Assets/ordoa.png" Width="72" Height="72" VerticalAlignment="Top" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+            <TextBlock Text="Ordoa 安序" Classes="h1" />
+            <TextBlock Text="有秩序的文件管理 · Linux 优先，同时兼容 macOS 与 Windows" Classes="muted" />
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+              <TextBlock Text="版本" Classes="tiny" />
+              <TextBlock Text="{Binding Version}" Classes="tiny" FontFamily="{DynamicResource MonoFontFamily}" />
+              <TextBlock Text="{Binding Runtime}" Classes="tiny" />
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+
+        <TextBlock Text="Ordoa 取自 Ordo（秩序）加上 Avalonia 的 A。安序希望用克制、清晰的界面，把常用的文件操作留在手边，把高级能力放在需要时触手可及的位置。" Classes="muted" TextWrapping="Wrap" />
+
+        <Border Classes="divider" />
+
+        <TextBlock Text="能力" Classes="section" />
+        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="18" RowSpacing="7">
+          <TextBlock Text="· 多标签页与可拖拽分屏" Classes="shortcutdesc" />
+          <TextBlock Grid.Column="1" Text="· 本地、FTP/FTPS、SFTP、SMB、WebDAV" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="1" Text="· 跨文件系统复制、移动与传输队列" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Text="· 符合 XDG 规范的回收站与恢复" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="2" Text="· zip / tar / tar.gz 压缩与解压" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="2" Grid.Column="1" Text="· SHA-256 校验和与权限查看" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="3" Text="· 递归搜索、自然排序、缩略图" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="3" Grid.Column="1" Text="· 命令面板与完整键盘操作" Classes="shortcutdesc" />
+        </Grid>
+
+        <Border Classes="divider" />
+
+        <TextBlock Text="快捷键" Classes="section" />
+        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+              ColumnSpacing="18" RowSpacing="6">
+          <TextBlock Text="Ctrl+T" Classes="shortcut" /><TextBlock Grid.Column="1" Text="新建标签页" Classes="shortcutdesc" />
+          <TextBlock Grid.Column="2" Text="Ctrl+W" Classes="shortcut" /><TextBlock Grid.Column="3" Text="关闭标签页" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="1" Text="Ctrl+Tab" Classes="shortcut" /><TextBlock Grid.Row="1" Grid.Column="1" Text="切换标签页" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="1" Grid.Column="2" Text="Ctrl+\" Classes="shortcut" /><TextBlock Grid.Row="1" Grid.Column="3" Text="切换分屏" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="2" Text="Ctrl+L" Classes="shortcut" /><TextBlock Grid.Row="2" Grid.Column="1" Text="编辑地址" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="2" Grid.Column="2" Text="Ctrl+F" Classes="shortcut" /><TextBlock Grid.Row="2" Grid.Column="3" Text="搜索" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="3" Text="Ctrl+H" Classes="shortcut" /><TextBlock Grid.Row="3" Grid.Column="1" Text="显示隐藏文件" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="3" Grid.Column="2" Text="Ctrl+D" Classes="shortcut" /><TextBlock Grid.Row="3" Grid.Column="3" Text="添加书签" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="4" Text="Ctrl+1/2" Classes="shortcut" /><TextBlock Grid.Row="4" Grid.Column="1" Text="列表 / 网格视图" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="4" Grid.Column="2" Text="Ctrl+Shift+P" Classes="shortcut" /><TextBlock Grid.Row="4" Grid.Column="3" Text="命令面板" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="5" Text="F2" Classes="shortcut" /><TextBlock Grid.Row="5" Grid.Column="1" Text="重命名" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="5" Grid.Column="2" Text="Delete" Classes="shortcut" /><TextBlock Grid.Row="5" Grid.Column="3" Text="移到回收站" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="6" Text="Shift+Delete" Classes="shortcut" /><TextBlock Grid.Row="6" Grid.Column="1" Text="永久删除" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="6" Grid.Column="2" Text="F5" Classes="shortcut" /><TextBlock Grid.Row="6" Grid.Column="3" Text="刷新" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="7" Text="F9" Classes="shortcut" /><TextBlock Grid.Row="7" Grid.Column="1" Text="显示 / 隐藏侧栏" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="7" Grid.Column="2" Text="Alt+←/→/↑" Classes="shortcut" /><TextBlock Grid.Row="7" Grid.Column="3" Text="后退 / 前进 / 上一级" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="8" Text="Ctrl+Shift+N" Classes="shortcut" /><TextBlock Grid.Row="8" Grid.Column="1" Text="新建文件夹" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="8" Grid.Column="2" Text="Alt+Enter" Classes="shortcut" /><TextBlock Grid.Row="8" Grid.Column="3" Text="属性" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="9" Text="F1" Classes="shortcut" /><TextBlock Grid.Row="9" Grid.Column="1" Text="快捷键与关于" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="9" Grid.Column="2" Text="Ctrl+," Classes="shortcut" /><TextBlock Grid.Row="9" Grid.Column="3" Text="设置" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="10" Text="F11" Classes="shortcut" /><TextBlock Grid.Row="10" Grid.Column="1" Text="全屏" Classes="shortcutdesc" />
+        </Grid>
+
+        <Border Classes="divider" />
+
+        <TextBlock Text="技术" Classes="section" />
+        <TextBlock Text="Avalonia 12 · C# 14 / .NET 10 · CommunityToolkit.Mvvm · FluentFTP · SSH.NET · SMBLibrary · Skia" Classes="tiny" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Platform}" Classes="tiny" />
+
+        <TextBlock Text="Ordoa 是一个开源项目。图标、界面与代码均可自由修改。远程连接密码优先保存在系统密钥环（libsecret / Keychain）；不可用时回退到仅当前用户可读的配置文件。" Classes="tiny" TextWrapping="Wrap" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="1" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+      <Button Content="关闭" Classes="accent" HorizontalAlignment="Right" Click="OnCloseClick" IsDefault="True" />
+    </Border>
+  </Grid>
+</Window>

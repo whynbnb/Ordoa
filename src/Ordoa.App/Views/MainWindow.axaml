@@ -1,0 +1,274 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:Ordoa.App.Views"
+        x:Class="Ordoa.App.Views.MainWindow"
+        Title="{Binding WindowTitle}"
+        Icon="/Assets/ordoa.ico"
+        Width="1200" Height="760"
+        MinWidth="840" MinHeight="540"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        WindowStartupLocation="CenterScreen">
+  <Window.Styles>
+    <Style Selector="Border.tab">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="9,5" />
+      <Setter Property="Margin" Value="2,0" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Border.tab:pointerover">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="Border.tab.active">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    </Style>
+    <Style Selector="Border.tab TextBlock.tabtitle">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="MaxWidth" Value="180" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="6,0,4,0" />
+    </Style>
+    <Style Selector="Border.tab.active TextBlock.tabtitle">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.tab Path.tabicon">
+      <Setter Property="Fill" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Border.tab.active Path.tabicon">
+      <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.tab Button.tabclose">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border.tab:pointerover Button.tabclose">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+    <Style Selector="Border.tab.active Button.tabclose">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+    <Style Selector="Border.toast">
+      <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+      <Setter Property="MaxWidth" Value="380" />
+      <Setter Property="MinWidth" Value="260" />
+    </Style>
+    <Style Selector="Border.toast.error">
+      <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}" />
+    </Style>
+    <Style Selector="Border.toast.success">
+      <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
+    </Style>
+    <Style Selector="Button.tabadd">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Margin" Value="3,0,0,0" />
+    </Style>
+  </Window.Styles>
+
+  <Grid x:Name="RootGrid" ColumnDefinitions="Auto,Auto,*">
+    <Border x:Name="SidebarBorder" Grid.Column="0" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0"
+            IsVisible="{Binding IsSidebarVisible}">
+      <views:SidebarView />
+    </Border>
+
+    <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="1" ResizeDirection="Columns"
+                  IsVisible="{Binding IsSidebarVisible}" Background="{DynamicResource BorderBrush}"
+                  DragCompleted="OnSidebarSplitterDragCompleted" />
+
+    <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto">
+      <Border Grid.Row="0" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="0,0,0,1" Height="41">
+        <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,0,8,0">
+          <Button Classes="tool" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="显示/隐藏侧栏 (F9)"
+                  VerticalAlignment="Center" Width="28" Height="28">
+            <Path Data="{StaticResource IconPanel}" Width="15" Height="15" Stretch="Uniform"
+                  Fill="{DynamicResource TextSecondaryBrush}" />
+          </Button>
+
+          <ScrollViewer x:Name="TabScroller" Grid.Column="1" HorizontalScrollBarVisibility="Hidden"
+                        VerticalScrollBarVisibility="Disabled" PointerWheelChanged="OnTabScrollerWheel"
+                        Margin="6,0,6,0">
+            <ItemsControl ItemsSource="{Binding Tabs}" VerticalAlignment="Center">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Classes="tab" Classes.active="{Binding IsActive}"
+                          PointerPressed="OnTabPointerPressed" ToolTip.Tip="{Binding Tooltip}">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                      <Path Classes="tabicon" Data="{Binding Icon}" Width="14" Height="14" Stretch="Uniform"
+                            VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding Title}" Classes="tabtitle" />
+                      <Path Grid.Column="2" Data="{StaticResource IconSplit}" Width="10" Height="10"
+                            Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}"
+                            VerticalAlignment="Center" Margin="0,0,3,0"
+                            IsVisible="{Binding IsSplit}" />
+                      <Button Grid.Column="3" Classes="tabclose" Click="OnTabCloseClick"
+                              ToolTip.Tip="关闭标签页">
+                        <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
+                              Fill="{DynamicResource TextSecondaryBrush}" />
+                      </Button>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="1">
+            <Button Classes="tabadd" Command="{Binding NewTabCommand}" ToolTip.Tip="新建标签页 (Ctrl+T)">
+              <Path Data="{StaticResource IconPlus}" Width="14" Height="14" Stretch="Uniform"
+                    Fill="{DynamicResource TextSecondaryBrush}" />
+            </Button>
+
+            <Panel Margin="3,0,0,0">
+              <Button Classes="tool" Command="{Binding ToggleTransferPanelCommand}" ToolTip.Tip="传输队列"
+                      Width="28" Height="28">
+                <Path Data="{StaticResource IconSync}" Width="15" Height="15" Stretch="Uniform"
+                      Fill="{DynamicResource TextSecondaryBrush}" />
+              </Button>
+              <Border Background="{DynamicResource AccentBrush}" CornerRadius="6"
+                      MinWidth="13" Height="13" Padding="2,0" IsVisible="{Binding ActiveTransferCount, Converter={StaticResource CountToBoolConverter}}"
+                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-3,0">
+                <TextBlock Text="{Binding ActiveTransferCount}" FontSize="8.5" FontWeight="Bold"
+                           Foreground="{DynamicResource AccentTextBrush}" TextAlignment="Center"
+                           VerticalAlignment="Center" />
+              </Border>
+            </Panel>
+
+            <Button Classes="tool" Command="{Binding ShowCommandPaletteCommand}"
+                    ToolTip.Tip="命令面板 (Ctrl+Shift+P)" Width="28" Height="28">
+              <Path Data="{StaticResource IconKeyboard}" Width="15" Height="15" Stretch="Uniform"
+                    Fill="{DynamicResource TextSecondaryBrush}" />
+            </Button>
+
+            <Button Classes="tool" ToolTip.Tip="更多" Width="28" Height="28">
+              <Path Data="{StaticResource IconDots}" Width="15" Height="15" Stretch="Uniform"
+                    Fill="{DynamicResource TextSecondaryBrush}" />
+              <Button.Flyout>
+                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                  <MenuItem Header="新建标签页" Command="{Binding NewTabCommand}" />
+                  <MenuItem Header="复制当前标签页" Command="{Binding DuplicateActiveTabCommand}" />
+                  <MenuItem Header="切换分屏" Command="{Binding ToggleSplitCommand}" />
+                  <Separator />
+                  <MenuItem Header="显示/隐藏隐藏文件" Command="{Binding ToggleHiddenCommand}" />
+                  <MenuItem Header="刷新" Command="{Binding RefreshAllCommand}" />
+                  <Separator />
+                  <MenuItem Header="设置…" Command="{Binding OpenSettingsCommand}" />
+                  <MenuItem Header="键盘快捷键与关于" Command="{Binding OpenAboutCommand}" />
+                  <Separator />
+                  <MenuItem Header="退出 Ordoa" Click="OnExitClick" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <ContentControl Grid.Row="1" Content="{Binding ActiveTab}" />
+
+      <views:TransferPanelView Grid.Row="2" IsVisible="{Binding IsTransferPanelOpen}"
+                               DataContext="{Binding}" />
+    </Grid>
+
+    <!-- Splash -->
+    <Grid Grid.ColumnSpan="3" Background="{DynamicResource WindowBackgroundBrush}"
+          IsVisible="{Binding IsInitialized, Converter={StaticResource InverseBoolConverter}}">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" Width="320">
+        <Image Source="/Assets/ordoa.png" Width="96" Height="96" HorizontalAlignment="Center" />
+        <TextBlock Text="Ordoa 安序" Classes="h1" HorizontalAlignment="Center" />
+        <TextBlock Text="有秩序的文件管理" Classes="muted" HorizontalAlignment="Center" />
+        <ProgressBar IsIndeterminate="True" Width="160" Height="3" Margin="0,8,0,0" />
+        <TextBlock Text="{Binding StartupStatus}" Classes="caption" HorizontalAlignment="Center" />
+      </StackPanel>
+    </Grid>
+
+    <!-- Toasts -->
+    <ItemsControl Grid.ColumnSpan="3" ItemsSource="{Binding Toasts}" ZIndex="50"
+                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,50,16,0"
+                  Width="380">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Border Classes="toast" Classes.error="{Binding IsError}" Classes.success="{Binding IsSuccess}">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+              <Path Data="{Binding Icon}" Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Top"
+                    Fill="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Message}" Classes="caption" TextWrapping="Wrap" MaxLines="4"
+                           IsVisible="{Binding Message, Converter={StaticResource NotNullConverter}}" />
+              </StackPanel>
+              <Button Grid.Column="2" Classes="tool" Width="20" Height="20" VerticalAlignment="Top"
+                      Click="OnDismissToastClick" ToolTip.Tip="关闭">
+                <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
+                      Fill="{DynamicResource TextTertiaryBrush}" />
+              </Button>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- Command palette -->
+    <Grid Grid.ColumnSpan="3" IsVisible="{Binding IsCommandPaletteOpen}" ZIndex="60"
+          Background="{DynamicResource OverlayBrush}" PointerPressed="OnPaletteBackdropPressed">
+      <Border Width="640" MaxHeight="520" VerticalAlignment="Top" Margin="0,100,0,0"
+              Background="{DynamicResource MenuBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
+              Padding="10">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <Grid ColumnDefinitions="Auto,*" Margin="2,0,2,4">
+            <Path Data="{StaticResource IconSearch}" Width="16" Height="16" Stretch="Uniform"
+                  Fill="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="8,0,8,0" />
+            <TextBox x:Name="PaletteSearch" Grid.Column="1" Text="{Binding PaletteQuery, Mode=TwoWay}"
+                     PlaceholderText="输入命令或搜索操作…" BorderThickness="0" Background="Transparent"
+                     FontSize="14" MinHeight="38" />
+          </Grid>
+
+          <ListBox Grid.Row="1" x:Name="PaletteList" ItemsSource="{Binding FilteredCommands}"
+                   SelectedItem="{Binding SelectedPaletteCommand, Mode=TwoWay}"
+                   MaxHeight="390" Margin="0,2,0,2"
+                   DoubleTapped="OnPaletteItemDoubleTapped"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="8,7">
+                  <Path Data="{Binding Icon}" Width="16" Height="16" Stretch="Uniform"
+                        Fill="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Spacing="1">
+                    <TextBlock Text="{Binding Title}" FontSize="12.5" />
+                    <TextBlock Text="{Binding DisplaySubtitle}" Classes="tiny" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Text="{Binding Shortcut}" Classes="tiny"
+                             VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="6,5,6,1">
+            <TextBlock Text="输入以筛选命令" Classes="tiny" />
+            <TextBlock Grid.Column="1" Classes="tiny">
+              <Run Text="↑↓ 选择" /> <Run Text="  ·  " /> <Run Text="Enter 执行" /> <Run Text="  ·  " /> <Run Text="Esc 关闭" />
+            </TextBlock>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>

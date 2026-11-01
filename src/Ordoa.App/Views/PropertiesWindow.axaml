@@ -1,0 +1,87 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Ordoa.App.Views.PropertiesWindow"
+        Title="属性"
+        Width="640" Height="620" CanResize="False" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,18,22,14" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+        <Border Width="48" Height="48" CornerRadius="10" Background="{DynamicResource SurfaceBrush}">
+          <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="28" Height="28" Stretch="Uniform"
+                HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="{Binding Name}" Classes="h2" TextTrimming="CharacterEllipsis" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="{Binding KindText}" Classes="caption" />
+            <TextBlock Text="·" Classes="caption" />
+            <TextBlock Text="{Binding FsLabel}" Classes="caption" />
+            <TextBlock Text="回收站项目" Classes="caption" Foreground="{DynamicResource WarningBrush}"
+                       IsVisible="{Binding IsTrash}" />
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <ScrollViewer Grid.Row="1" Padding="22,14,22,10" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="14">
+        <Border Classes="card" Padding="14,10">
+          <ItemsControl ItemsSource="{Binding Items}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="110,*" Margin="0,4">
+                  <TextBlock Text="{Binding Label}" Classes="caption" VerticalAlignment="Top" />
+                  <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12"
+                                       TextWrapping="Wrap" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+
+        <Border Classes="card" Padding="14,10" IsVisible="{Binding CanEditPermissions}">
+          <StackPanel Spacing="8">
+            <StackPanel Spacing="2">
+              <TextBlock Text="权限（chmod）" FontWeight="SemiBold" FontSize="12" />
+              <TextBlock Text="输入八进制权限，例如 755、644、700。修改会立即生效。" Classes="tiny" />
+            </StackPanel>
+            <Grid ColumnDefinitions="120,Auto,*,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding OctalInput, Mode=TwoWay}" MaxLength="4" FontFamily="{DynamicResource MonoFontFamily}" />
+              <Button Grid.Column="1" Content="应用权限" Classes="subtle"
+                      Command="{Binding ApplyPermissionsCommand}" />
+              <TextBlock Grid.Column="2" Text="{Binding PermissionsText}" Classes="mono" FontSize="11.5"
+                         VerticalAlignment="Center" />
+              <TextBlock Grid.Column="3" Text="{Binding PermissionStatus}" Classes="tiny"
+                         VerticalAlignment="Center" MaxWidth="180" TextTrimming="CharacterEllipsis" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Padding="14,10" IsVisible="{Binding IsDirectory}">
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="2">
+                <TextBlock Text="内容统计" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="统计文件夹中的文件数量与总大小" Classes="tiny" />
+              </StackPanel>
+              <Button Grid.Column="1" Content="计算" Classes="subtle" Command="{Binding MeasureCommand}"
+                      IsEnabled="{Binding IsMeasuring, Converter={StaticResource InverseBoolConverter}}" />
+            </Grid>
+            <ProgressBar IsIndeterminate="True" Height="3" IsVisible="{Binding IsMeasuring}" />
+            <TextBlock Text="{Binding ContentSummary}" Classes="caption"
+                       IsVisible="{Binding ContentSummary, Converter={StaticResource NotNullConverter}}" />
+            <TextBlock Text="{Binding MeasureError}" Foreground="{DynamicResource ErrorBrush}" Classes="caption"
+                       IsVisible="{Binding MeasureError, Converter={StaticResource NotNullConverter}}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+      <Button Content="关闭" Classes="accent" HorizontalAlignment="Right" Click="OnCloseClick" IsDefault="True" />
+    </Border>
+  </Grid>
+</Window>

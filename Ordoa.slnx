@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Ordoa.App/Ordoa.App.csproj" />
+    <Project Path="src/Ordoa.Core/Ordoa.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ordoa.Core.Tests/Ordoa.Core.Tests.csproj" />
+  </Folder>
+</Solution>

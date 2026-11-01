@@ -1,0 +1,34 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ordoa.App.ViewModels"
+             xmlns:views="using:Ordoa.App.Views"
+             xmlns:conv="using:Ordoa.App.Converters"
+             x:Class="Ordoa.App.App"
+             RequestedThemeVariant="Default">
+  <Application.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:TabViewModel}">
+      <views:TabView />
+    </DataTemplate>
+  </Application.DataTemplates>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://Ordoa/Styles/Colors.axaml" />
+        <ResourceInclude Source="avares://Ordoa/Styles/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+      <conv:EqualsConverter x:Key="EqualsConverter" />
+      <conv:InverseBoolConverter x:Key="InverseBoolConverter" />
+      <conv:NotNullConverter x:Key="NotNullConverter" />
+      <conv:CountToBoolConverter x:Key="CountToBoolConverter" />
+      <conv:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+      <conv:DoubleToPercentageConverter x:Key="PercentageConverter" />
+      <conv:SortArrowConverter x:Key="SortArrowConverter" />
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://Ordoa/Styles/Theme.axaml" />
+  </Application.Styles>
+</Application>

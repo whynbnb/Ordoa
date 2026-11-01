@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Ordoa
+Name[zh_CN]=Ordoa 安序
+GenericName=File Manager
+GenericName[zh_CN]=文件管理器
+Comment=A minimal, powerful file manager for Linux
+Comment[zh_CN]=Linux 优先的极简文件管理器
+Exec=ordoa %U
+Icon=ordoa
+Terminal=false
+StartupNotify=true
+StartupWMClass=Ordoa
+Categories=System;FileManager;Utility;
+Keywords=files;manager;folder;explorer;file;manager;文件;管理;
+MimeType=inode/directory;x-scheme-handler/sftp;x-scheme-handler/ftp;x-scheme-handler/ftps;x-scheme-handler/smb;x-scheme-handler/dav;x-scheme-handler/webdav;

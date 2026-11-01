@@ -1,0 +1,76 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Ordoa.App.Views.ConflictWindow"
+        Title="文件已存在"
+        Width="580" SizeToContent="Height" CanResize="False" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
+  <Window.Styles>
+    <Style Selector="Border.conflictcard">
+      <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.replace">
+      <Setter Property="Background" Value="{DynamicResource ErrorBrush}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Padding" Value="14,7" />
+    </Style>
+    <Style Selector="Button.replace:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#D95B5B" />
+    </Style>
+  </Window.Styles>
+
+  <Border Padding="22,20,22,18">
+    <StackPanel Spacing="14">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+        <Path Data="{StaticResource IconWarning}" Width="24" Height="24" Stretch="Uniform"
+              Fill="{DynamicResource WarningBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+        <StackPanel Grid.Column="1" Spacing="3">
+          <TextBlock Text="目标位置已存在同名项目" Classes="h2" />
+          <TextBlock Text="{Binding Name}" Classes="caption" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+      </Grid>
+
+      <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="10">
+        <Border Classes="conflictcard">
+          <StackPanel Spacing="4">
+            <TextBlock Text="来自" Classes="section" />
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding SourceKindText}" Classes="tiny" />
+            <TextBlock Text="{Binding SourceSizeText}" Classes="tiny" />
+            <TextBlock Text="{Binding SourcePath}" Classes="tiny" TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding SourcePath}" />
+          </StackPanel>
+        </Border>
+        <Path Grid.Column="1" Data="{StaticResource IconForward}" Width="16" Height="16" Stretch="Uniform"
+              Fill="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+        <Border Grid.Column="2" Classes="conflictcard">
+          <StackPanel Spacing="4">
+            <TextBlock Text="已存在" Classes="section" />
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding DestinationKindText}" Classes="tiny" />
+            <TextBlock Text="{Binding DestinationSizeText}" Classes="tiny" />
+            <TextBlock Text="{Binding DestinationPath}" Classes="tiny" TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding DestinationPath}" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <TextBlock Text="{Binding MergeHint}" Classes="caption" TextWrapping="Wrap"
+                 IsVisible="{Binding BothDirectories}" />
+
+      <CheckBox Content="对之后所有冲突应用此选择" IsChecked="{Binding ApplyAll, Mode=TwoWay}" />
+
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
+        <Button Content="跳过" Click="OnSkipClick" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+          <Button Content="取消" Click="OnCancelClick" />
+          <Button Content="替换" Classes="replace" Click="OnReplaceClick" />
+          <Button Content="保留两者" Classes="accent" Click="OnRenameClick" IsDefault="True" />
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </Border>
+</Window>

@@ -1,0 +1,400 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Ordoa.App.Views.PaneView"
+             x:Name="Root"
+             Background="{DynamicResource SurfaceBrush}">
+  <UserControl.Styles>
+    <Style Selector="Button.crumb">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="5,3" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="Button.crumb:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="Button.header">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.header:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.header:pointerover TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.columnvalue">
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="ListBox.files ListBoxItem">
+      <Setter Property="MinHeight" Value="33" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Margin" Value="8,1" />
+    </Style>
+    <Style Selector="ListBox.tiles ListBoxItem">
+      <Setter Property="MinHeight" Value="100" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Margin" Value="2" />
+      <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="Border.sortbadge">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6,2" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Border Height="2" VerticalAlignment="Top" Background="{DynamicResource AccentBrush}" ZIndex="20"
+            IsVisible="{Binding IsActive}" />
+
+    <!-- Toolbar -->
+    <Border Grid.Row="0" Background="{DynamicResource ToolbarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="7,5">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="2">
+        <Button Classes="tool" Command="{Binding GoBackCommand}" IsEnabled="{Binding CanGoBack}"
+                ToolTip.Tip="后退 (Alt+←)">
+          <Path Data="{StaticResource IconBack}" Width="15" Height="15" Stretch="Uniform"
+                Fill="{DynamicResource TextSecondaryBrush}" />
+        </Button>
+        <Button Grid.Column="1" Classes="tool" Command="{Binding GoForwardCommand}"
+                IsEnabled="{Binding CanGoForward}" ToolTip.Tip="前进 (Alt+→)">
+          <Path Data="{StaticResource IconForward}" Width="15" Height="15" Stretch="Uniform"
+                Fill="{DynamicResource TextSecondaryBrush}" />
+        </Button>
+        <Button Grid.Column="2" Classes="tool" Command="{Binding GoUpCommand}" IsEnabled="{Binding CanGoUp}"
+                ToolTip.Tip="上一级 (Alt+↑)">
+          <Path Data="{StaticResource IconUp}" Width="15" Height="15" Stretch="Uniform"
+                Fill="{DynamicResource TextSecondaryBrush}" />
+        </Button>
+        <Button Grid.Column="3" Classes="tool" Command="{Binding RefreshCommand}"
+                ToolTip.Tip="刷新 (F5)">
+          <Path Data="{StaticResource IconRefresh}" Width="14" Height="14" Stretch="Uniform"
+                Fill="{DynamicResource TextSecondaryBrush}" />
+        </Button>
+
+        <Border Grid.Column="4" Background="Transparent" Margin="5,0,6,0" MinHeight="28"
+                DoubleTapped="OnBreadcrumbDoubleTapped">
+          <Grid>
+            <ScrollViewer x:Name="BreadcrumbScroller" IsVisible="{Binding !IsNarrow}"
+                          HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+              <ItemsControl ItemsSource="{Binding Breadcrumbs}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                      <Button Classes="crumb" Click="OnBreadcrumbClick" ToolTip.Tip="{Binding Path}">
+                        <TextBlock Text="{Binding Label}" FontSize="12" MaxWidth="180"
+                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </Button>
+                      <Path Data="{StaticResource IconChevronRight}" Width="10" Height="10" Stretch="Uniform"
+                            Fill="{DynamicResource TextTertiaryBrush}" Margin="0,0,0,0"
+                            IsVisible="{Binding IsLast, Converter={StaticResource InverseBoolConverter}}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+
+            <Button Classes="crumb" IsVisible="{Binding IsNarrow}" Click="OnCompactBreadcrumbClick"
+                    HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip.Tip="{Binding DisplayPath}">
+              <TextBlock Text="{Binding Title}" FontSize="12" MaxWidth="160"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </Button>
+
+            <TextBox x:Name="LocationBox" Classes="path" Text="{Binding LocationText, Mode=TwoWay}"
+                     IsVisible="{Binding IsEditingLocation}" KeyDown="OnLocationKeyDown"
+                     LostFocus="OnLocationLostFocus" FontSize="12.5" MinHeight="26" Padding="5,3"
+                     PlaceholderText="输入路径或远程地址" />
+          </Grid>
+        </Border>
+
+        <Button Grid.Column="4" Classes="tool" Width="24" Height="24" Margin="0,0,2,0"
+                IsVisible="{Binding !IsNarrow}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                Click="OnEditPathClick" ToolTip.Tip="编辑路径 (Ctrl+L)">
+          <Path Data="{StaticResource IconRename}" Width="11" Height="11" Stretch="Uniform"
+                Fill="{DynamicResource TextTertiaryBrush}" />
+        </Button>
+
+        <Grid Grid.Column="5" Width="140" VerticalAlignment="Center">
+          <TextBox x:Name="SearchBox" Classes="search" Text="{Binding FilterText, Mode=TwoWay}"
+                   Padding="26,4,8,4" MinHeight="28" KeyDown="OnSearchKeyDown"
+                   PlaceholderText="搜索" ToolTip.Tip="输入以过滤；按 Enter 进行深度搜索" />
+          <Path Data="{StaticResource IconSearch}" Width="13" Height="13" Stretch="Uniform"
+                Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Left"
+                VerticalAlignment="Center" Margin="9,0,0,0" IsHitTestVisible="False" />
+        </Grid>
+
+        <Button Grid.Column="6" Classes="tool" Command="{Binding ToggleViewCommand}"
+                IsVisible="{Binding !IsNarrow}" ToolTip.Tip="{Binding ViewTooltip}">
+          <Path Data="{Binding ViewIcon}" Width="14" Height="14" Stretch="Uniform"
+                Fill="{DynamicResource TextSecondaryBrush}" />
+        </Button>
+
+        <Button Grid.Column="7" Classes="tool" IsVisible="{Binding !IsNarrow}"
+                Command="{Binding $parent[Window].DataContext.ToggleSplitCommand}"
+                ToolTip.Tip="分屏 (Ctrl+\)">
+          <Path Data="{StaticResource IconSplit}" Width="14" Height="14" Stretch="Uniform"
+                Fill="{DynamicResource TextSecondaryBrush}" />
+        </Button>
+
+        <Button Grid.Column="8" Classes="tool" ToolTip.Tip="更多操作">
+          <Path Data="{StaticResource IconDots}" Width="15" Height="15" Stretch="Uniform"
+                Fill="{DynamicResource TextSecondaryBrush}" />
+          <Button.Flyout>
+            <MenuFlyout Placement="BottomEdgeAlignedRight">
+              <MenuItem Header="排序">
+                <MenuItem Header="名称" Click="OnSortNameClick" />
+                <MenuItem Header="大小" Click="OnSortSizeClick" />
+                <MenuItem Header="修改时间" Click="OnSortModifiedClick" />
+                <MenuItem Header="类型" Click="OnSortTypeClick" />
+                <Separator />
+                <MenuItem Header="文件夹优先" Click="OnToggleFoldersFirstClick" />
+              </MenuItem>
+              <MenuItem Header="新建文件夹" Click="OnNewFolderClick" />
+              <MenuItem Header="新建空文件" Click="OnNewFileClick" />
+              <MenuItem Header="粘贴" Click="OnPasteClick" />
+              <MenuItem Header="全选" Click="OnSelectAllClick" />
+              <Separator />
+              <MenuItem Header="压缩为 ZIP" Click="OnCompressZipClick" />
+              <MenuItem Header="压缩为 tar.gz" Click="OnCompressTarClick" />
+              <MenuItem Header="解压到此处" Click="OnExtractClick" />
+              <MenuItem Header="计算 SHA-256" Click="OnChecksumClick" />
+              <Separator />
+              <MenuItem Header="切换列表 / 网格" Click="OnToggleViewClick" />
+              <MenuItem Header="切换分屏" Click="OnToggleSplitClick" />
+              <MenuItem Header="刷新" Click="OnRefreshClick" />
+              <MenuItem Header="在终端中打开" Click="OnOpenTerminalClick" />
+              <MenuItem Header="复制路径" Click="OnCopyPathClick" />
+              <MenuItem Header="属性" Click="OnPropertiesClick" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- Trash actions -->
+    <Border Grid.Row="1" Background="{DynamicResource WarningSoftBrush}" Padding="10,5"
+            IsVisible="{Binding IsTrash}">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+        <Path Data="{StaticResource IconTrash}" Width="13" Height="13" Stretch="Uniform"
+              Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="回收站中的项目可以恢复；清空后无法撤销。"
+                   Classes="caption" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Content="恢复选中" Classes="subtle" FontSize="11.5"
+                Padding="10,3" Click="OnRestoreClick" IsEnabled="{Binding CanRestore}" />
+        <Button Grid.Column="3" Content="清空回收站" Classes="subtle" FontSize="11.5"
+                Padding="10,3" Click="OnEmptyTrashClick" IsEnabled="{Binding CanEmptyTrash}" />
+      </Grid>
+    </Border>
+
+    <!-- Search banner -->
+    <Border Grid.Row="1" Background="{DynamicResource AccentSoftBrush}" Padding="10,5"
+            IsVisible="{Binding IsSearchActive}">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+        <Path Data="{StaticResource IconSearch}" Width="12" Height="12" Stretch="Uniform"
+              Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="{Binding SearchStatus}" FontSize="11.5" />
+          <ProgressBar IsIndeterminate="True" Width="60" Height="2" IsVisible="{Binding IsSearching}" />
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="{Binding DisplayPath}" Classes="tiny" VerticalAlignment="Center"
+                   MaxWidth="300" TextTrimming="CharacterEllipsis" />
+        <Button Grid.Column="3" Classes="tool" Width="22" Height="22" Click="OnExitSearchClick"
+                ToolTip.Tip="退出搜索">
+          <Path Data="{StaticResource IconClose}" Width="10" Height="10" Stretch="Uniform"
+                Fill="{DynamicResource TextSecondaryBrush}" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- Files -->
+    <Panel Grid.Row="2">
+      <Grid RowDefinitions="Auto,*" IsVisible="{Binding !IsGrid}">
+        <Border Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1" Padding="16,0,14,0" Height="27">
+          <Grid ColumnDefinitions="*,74,116,88" ColumnSpacing="0">
+            <Button Classes="header" Tag="Name" Click="OnSortHeaderClick">
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <TextBlock Text="名称" Classes="columnvalue" />
+                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Name}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="1" Classes="header" Tag="Size" Click="OnSortHeaderClick"
+                    HorizontalContentAlignment="Right">
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <TextBlock Text="大小" Classes="columnvalue" />
+                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Size}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Classes="header" Tag="Modified" Click="OnSortHeaderClick">
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <TextBlock Text="修改时间" Classes="columnvalue" />
+                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Modified}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="3" Classes="header" Tag="Type" Click="OnSortHeaderClick">
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <TextBlock Text="类型" Classes="columnvalue" />
+                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Type}" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Border>
+
+        <ListBox x:Name="FileList" Grid.Row="1" Classes="files" ItemsSource="{Binding VisibleItems}"
+                 SelectionMode="Multiple" DragDrop.AllowDrop="True"
+                 SelectionChanged="OnListSelectionChanged"
+                 DoubleTapped="OnListDoubleTapped"
+                 ContextRequested="OnFileContextRequested"
+                 PointerPressed="OnFilePointerPressed"
+                 PointerMoved="OnFilePointerMoved"
+                 DragDrop.DragOver="OnFileDragOver" DragDrop.DragLeave="OnFileDragLeave" DragDrop.Drop="OnFileDrop"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="*,74,116,88" ToolTip.Tip="{Binding TooltipText}" Background="Transparent">
+                <Grid ColumnDefinitions="Auto,*" Margin="2,0,0,0">
+                  <Panel Width="22" Height="22" VerticalAlignment="Center">
+                    <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="17" Height="17"
+                          Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <Image Source="{Binding Thumbnail}" Width="20" Height="20" Stretch="UniformToFill"
+                           IsVisible="{Binding HasThumbnail}" HorizontalAlignment="Left" />
+                    <Path Data="{StaticResource IconLink}" Width="8" Height="8" Stretch="Uniform"
+                          Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Right"
+                          VerticalAlignment="Bottom" IsVisible="{Binding IsSymlink}" />
+                  </Panel>
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
+                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </Grid>
+                <TextBlock Grid.Column="1" Text="{Binding SizeText}" Classes="columnvalue"
+                           HorizontalAlignment="Right" Margin="0,0,12,0" />
+                <TextBlock Grid.Column="2" Text="{Binding ModifiedText}" Classes="columnvalue"
+                           Margin="0,0,8,0" />
+                <TextBlock Grid.Column="3" Text="{Binding TypeText}" Classes="columnvalue"
+                           TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+
+      <ListBox x:Name="FileGrid" Classes="tiles" IsVisible="{Binding IsGrid}" ItemsSource="{Binding VisibleItems}"
+               SelectionMode="Multiple" DragDrop.AllowDrop="True"
+               SelectionChanged="OnGridSelectionChanged"
+               DoubleTapped="OnListDoubleTapped"
+               ContextRequested="OnFileContextRequested"
+               PointerPressed="OnFilePointerPressed"
+               PointerMoved="OnFilePointerMoved"
+               DragDrop.DragOver="OnFileDragOver" DragDrop.DragLeave="OnFileDragLeave" DragDrop.Drop="OnFileDrop"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" ItemWidth="118" ItemHeight="108" />
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Width="104" Spacing="3" ToolTip.Tip="{Binding TooltipText}">
+              <Panel Height="62" HorizontalAlignment="Center">
+                <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="44" Height="44"
+                      Stretch="Uniform" IsVisible="{Binding !HasThumbnail}" />
+                <Image Source="{Binding Thumbnail}" Height="60" Stretch="Uniform"
+                       IsVisible="{Binding HasThumbnail}" />
+              </Panel>
+              <TextBlock Text="{Binding Name}" FontSize="11.5" TextAlignment="Center"
+                         TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding GridSubtitle}" Classes="tiny" TextAlignment="Center" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <!-- Loading -->
+      <Border Background="{DynamicResource SurfaceBrush}" Opacity="0.88" IsVisible="{Binding IsLoading}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="9">
+          <ProgressBar IsIndeterminate="True" Width="120" Height="3" />
+          <TextBlock Text="正在读取…" Classes="caption" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Border>
+
+      <!-- Error -->
+      <Border Background="{DynamicResource SurfaceBrush}" IsVisible="{Binding HasError}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="340">
+          <Path Data="{StaticResource IconWarning}" Width="30" Height="30" Stretch="Uniform"
+                Fill="{DynamicResource WarningBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{Binding ErrorMessage}" TextAlignment="Center" TextWrapping="Wrap" />
+          <Button Classes="subtle" Content="重试" HorizontalAlignment="Center"
+                  Command="{Binding RefreshCommand}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Empty -->
+      <Border Background="Transparent" IsVisible="{Binding IsEmpty}" IsHitTestVisible="False">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="9">
+          <Path Data="{StaticResource IconFolderOpen}" Width="42" Height="42" Stretch="Uniform"
+                Fill="{DynamicResource BorderStrongBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{Binding EmptyHint}" Classes="muted" HorizontalAlignment="Center" />
+          <TextBlock Text="将文件拖到这里即可复制" Classes="tiny" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Border>
+
+      <!-- Drop target -->
+      <Border IsVisible="{Binding IsDropTarget}" IsHitTestVisible="False"
+              Background="{DynamicResource DropOverlayBrush}"
+              BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" CornerRadius="4"
+              Margin="4">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+          <Path Data="{StaticResource IconDownload}" Width="28" Height="28" Stretch="Uniform"
+                Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="松开以复制到" HorizontalAlignment="Center" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding DisplayPath}" HorizontalAlignment="Center" Classes="caption" />
+        </StackPanel>
+      </Border>
+    </Panel>
+
+    <!-- Status bar -->
+    <Border Grid.Row="3" Height="26" Background="{DynamicResource StatusBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="10,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Text="{Binding ItemCountText}" Classes="tiny" />
+          <TextBlock Text="{Binding SelectionText}" Classes="tiny"
+                     IsVisible="{Binding HasSelection}" />
+          <TextBlock Text="{Binding FsBadgeText}" Classes="tiny" Foreground="{DynamicResource AccentBrush}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="{Binding FreeSpaceText}" Classes="tiny" />
+          <TextBlock Text="{Binding SortColumnLabel}" Classes="tiny" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

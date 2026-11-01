@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Ordoa.App.Views.ConfirmWindow"
+        Title="{Binding TitleText}"
+        Width="480" SizeToContent="Height" CanResize="False" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
+  <Window.Styles>
+    <Style Selector="Button.confirmdanger">
+      <Setter Property="Background" Value="{DynamicResource ErrorBrush}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Padding" Value="16,7" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.confirmdanger:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#D95B5B" />
+    </Style>
+    <Style Selector="Button.confirmdanger TextBlock">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+  </Window.Styles>
+
+  <Border Padding="22,20,22,18">
+    <StackPanel Spacing="14">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+        <Path Data="{StaticResource IconWarning}" Width="24" Height="24" Stretch="Uniform"
+              Fill="{DynamicResource WarningBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+        <TextBlock Grid.Column="1" Text="{Binding TitleText}" Classes="h2" TextWrapping="Wrap" />
+      </Grid>
+
+      <TextBlock Text="{Binding Message}" Classes="muted" TextWrapping="Wrap" MaxWidth="420" />
+
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,4,0,0">
+        <Button Content="{Binding CancelText}" IsVisible="{Binding ShowCancel}" Click="OnCancelClick" />
+        <Button Content="{Binding ConfirmText}" Click="OnConfirmClick"
+                Classes.confirmdanger="{Binding Destructive}" Classes="accent"
+                IsDefault="True" />
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>

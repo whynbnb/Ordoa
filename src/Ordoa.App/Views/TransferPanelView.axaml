@@ -1,0 +1,98 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Ordoa.App.Views.TransferPanelView"
+             x:Name="Root">
+  <UserControl.Styles>
+    <Style Selector="Border.transferrow">
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="Margin" Value="0,1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.transferrow.failed">
+      <Setter Property="Background" Value="{DynamicResource ErrorSoftBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
+          BorderThickness="0,1,0,0">
+    <Grid RowDefinitions="Auto,Auto">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="12,7,10,5">
+        <Path Data="{StaticResource IconSync}" Fill="{DynamicResource TextSecondaryBrush}"
+              Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0"
+                    VerticalAlignment="Center">
+          <TextBlock Text="传输队列" FontWeight="SemiBold" FontSize="12" />
+          <TextBlock Text="{Binding TransferSummary}" Classes="caption" VerticalAlignment="Center" />
+        </StackPanel>
+        <Button Grid.Column="2" Classes="tool" Command="{Binding ClearTransfersCommand}"
+                ToolTip.Tip="清除已完成" Width="26" Height="26">
+          <Path Data="{StaticResource IconDelete}" Fill="{DynamicResource TextSecondaryBrush}"
+                Width="13" Height="13" Stretch="Uniform" />
+        </Button>
+        <Button Grid.Column="3" Classes="tool" Command="{Binding ToggleTransferPanelCommand}"
+                ToolTip.Tip="收起传输队列" Width="26" Height="26">
+          <Path Data="{StaticResource IconChevronDown}" Fill="{DynamicResource TextSecondaryBrush}"
+                Width="13" Height="13" Stretch="Uniform" />
+        </Button>
+      </Grid>
+
+      <TextBlock Grid.Row="1" Text="暂无传输任务" Classes="caption" HorizontalAlignment="Center"
+                 Margin="0,10,0,14" IsVisible="{Binding !HasTransfers}" />
+
+      <ScrollViewer Grid.Row="1" MaxHeight="190" Padding="8,0,8,7"
+                    VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Services.Operations.Operations}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Classes="transferrow" Classes.failed="{Binding IsFailed}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+                  <Panel Width="18" Height="18" VerticalAlignment="Center">
+                    <Path Data="{StaticResource IconCheckCircle}" IsVisible="{Binding IsCompleted}"
+                          Fill="{DynamicResource SuccessBrush}" Width="16" Height="16" Stretch="Uniform" />
+                    <Path Data="{StaticResource IconWarning}" IsVisible="{Binding IsFailed}"
+                          Fill="{DynamicResource ErrorBrush}" Width="16" Height="16" Stretch="Uniform" />
+                    <Path Data="{StaticResource IconClose}" IsVisible="{Binding IsCancelled}"
+                          Fill="{DynamicResource TextTertiaryBrush}" Width="14" Height="14" Stretch="Uniform" />
+                    <Path Data="{StaticResource IconSync}" IsVisible="{Binding IsRunning}"
+                          Fill="{DynamicResource AccentBrush}" Width="15" Height="15" Stretch="Uniform" />
+                  </Panel>
+
+                  <StackPanel Grid.Column="1" Spacing="3">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Title}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Text="{Binding StateText}" Classes="tiny"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock Text="{Binding CurrentItem}" Classes="tiny" IsVisible="{Binding CurrentItem, Converter={StaticResource NotNullConverter}}"
+                               TextTrimming="CharacterEllipsis" />
+                    <ProgressBar Value="{Binding Progress}" Maximum="1" IsIndeterminate="{Binding IsIndeterminate}"
+                                 Height="3" MinHeight="3" />
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding ProgressText}" Classes="tiny" />
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding SpeedText}" Classes="tiny" />
+                        <TextBlock Text="{Binding EtaText}" Classes="tiny" />
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{Binding Error}" Classes="tiny" Foreground="{DynamicResource ErrorBrush}"
+                               TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding IsFailed}" />
+                  </StackPanel>
+
+                  <Button Grid.Column="2" Classes="tool" Width="24" Height="24" VerticalAlignment="Top"
+                          IsVisible="{Binding CanCancel}"
+                          Command="{Binding $parent[UserControl].DataContext.CancelTransferCommand}"
+                          CommandParameter="{Binding}"
+                          ToolTip.Tip="取消">
+                    <Path Data="{StaticResource IconClose}" Fill="{DynamicResource TextSecondaryBrush}"
+                          Width="12" Height="12" Stretch="Uniform" />
+                  </Button>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Grid>
+  </Border>
+</UserControl>
