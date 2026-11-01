@@ -50,7 +50,7 @@ public partial class SidebarView : UserControl
         }
 
         button.ContextMenu = menu;
-        menu.Open(button);
+        PopupHelper.OpenContextMenu(menu, button);
         e.Handled = true;
     }
 

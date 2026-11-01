@@ -216,7 +216,7 @@ public partial class MainWindow : Window
             menu.Items.Add(new Separator());
             menu.Items.Add(CreateMenuItem("新建标签页", () => _viewModel.NewTabCommand.Execute(null)));
             border.ContextMenu = menu;
-            menu.Open(border);
+            PopupHelper.OpenContextMenu(menu, border);
             e.Handled = true;
         }
     }
