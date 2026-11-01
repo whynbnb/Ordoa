@@ -44,6 +44,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<TabViewModel> Tabs { get; } = [];
     public ObservableCollection<SidebarSectionViewModel> SidebarSections { get; } = [];
+
+    private SidebarSectionViewModel? _systemSection;
+    /// <summary>Pinned above the sidebar footer so it never scrolls away.</summary>
+    public SidebarSectionViewModel? SystemSection
+    {
+        get => _systemSection;
+        private set => SetProperty(ref _systemSection, value);
+    }
+
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
     public ObservableCollection<PaletteCommand> PaletteCommands { get; } = [];
     public ObservableCollection<PaletteCommand> FilteredCommands { get; } = [];
@@ -1157,7 +1166,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             Path = "/",
             ActivateAsync = ActivateSidebarEntryAsync,
         });
-        SidebarSections.Add(system);
+        SystemSection = system;
 
         UpdateSidebarActive();
     }
@@ -1167,7 +1176,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void UpdateSidebarActive()
     {
         var pane = ActivePane;
-        foreach (var entry in SidebarSections.SelectMany(s => s.Items))
+        var entries = SidebarSections.SelectMany(s => s.Items);
+        if (SystemSection is not null)
+            entries = entries.Concat(SystemSection.Items);
+        foreach (var entry in entries)
         {
             var active = false;
             if (pane is not null)

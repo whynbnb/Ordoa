@@ -3,6 +3,38 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Ordoa.App.ViewModels"
              x:Class="Ordoa.App.Views.SidebarView">
+  <UserControl.Resources>
+    <DataTemplate x:Key="SidebarEntryTemplate" DataType="{x:Type vm:SidebarEntryViewModel}">
+    <Button Classes="sidebaritem"
+            Classes.active="{Binding IsActive}"
+            Classes.drop="{Binding IsDropTarget}"
+            Click="OnEntryClick"
+            ContextRequested="OnEntryContextRequested"
+            ToolTip.Tip="{Binding Detail}"
+            DragDrop.AllowDrop="True"
+            DragDrop.DragOver="OnEntryDragOver"
+            DragDrop.DragLeave="OnEntryDragLeave"
+            DragDrop.Drop="OnEntryDrop">
+      <Panel>
+        <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,2" VerticalAlignment="Center">
+          <Path Data="{Binding Icon}" Fill="{Binding IconBrush}"
+                Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"
+                Margin="0,0,9,0" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Label}" Classes="sidebarlabel" />
+            <TextBlock Text="{Binding Detail}" Classes="sidebardetail"
+                       IsVisible="{Binding Detail, Converter={StaticResource NotNullConverter}}" />
+          </StackPanel>
+        </Grid>
+        <ProgressBar Height="2" MinHeight="2"
+                     VerticalAlignment="Bottom" Margin="24,0,4,0"
+                     Value="{Binding UsageFraction}" Maximum="1"
+                     IsVisible="{Binding ShowUsage}" />
+      </Panel>
+    </Button>
+    </DataTemplate>
+  </UserControl.Resources>
+
   <UserControl.Styles>
     <Style Selector="Button.sidebaritem">
       <Setter Property="Background" Value="Transparent" />
@@ -57,7 +89,7 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
     <Border Padding="14,12,10,8">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <Image Source="/Assets/ordoa.png" Width="28" Height="28" VerticalAlignment="Center" />
@@ -80,39 +112,8 @@
           <DataTemplate DataType="{x:Type vm:SidebarSectionViewModel}">
             <StackPanel Classes="sidebarsection" Margin="0,3,0,7">
               <TextBlock Text="{Binding Title}" Classes="section" Margin="9,5,8,4" />
-              <ItemsControl Classes="sidebaritems" ItemsSource="{Binding Items}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate DataType="{x:Type vm:SidebarEntryViewModel}">
-                    <Button Classes="sidebaritem"
-                            Classes.active="{Binding IsActive}"
-                            Classes.drop="{Binding IsDropTarget}"
-                            Click="OnEntryClick"
-                            ContextRequested="OnEntryContextRequested"
-                            ToolTip.Tip="{Binding Detail}"
-                            DragDrop.AllowDrop="True"
-                            DragDrop.DragOver="OnEntryDragOver"
-                            DragDrop.DragLeave="OnEntryDragLeave"
-                            DragDrop.Drop="OnEntryDrop">
-                      <Panel>
-                        <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,2" VerticalAlignment="Center">
-                          <Path Data="{Binding Icon}" Fill="{Binding IconBrush}"
-                                Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"
-                                Margin="0,0,9,0" />
-                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Label}" Classes="sidebarlabel" />
-                            <TextBlock Text="{Binding Detail}" Classes="sidebardetail"
-                                       IsVisible="{Binding Detail, Converter={StaticResource NotNullConverter}}" />
-                          </StackPanel>
-                        </Grid>
-                        <ProgressBar Height="2" MinHeight="2"
-                                     VerticalAlignment="Bottom" Margin="24,0,4,0"
-                                     Value="{Binding UsageFraction}" Maximum="1"
-                                     IsVisible="{Binding ShowUsage}" />
-                      </Panel>
-                    </Button>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
+              <ItemsControl Classes="sidebaritems" ItemsSource="{Binding Items}"
+                            ItemTemplate="{StaticResource SidebarEntryTemplate}" />
             </StackPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
@@ -120,6 +121,16 @@
     </ScrollViewer>
 
     <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
+            Padding="8,5,8,4"
+            IsVisible="{Binding SystemSection, Converter={StaticResource NotNullConverter}}">
+      <StackPanel Classes="sidebarsection">
+        <TextBlock Text="{Binding SystemSection.Title}" Classes="section" Margin="9,3,8,3" />
+        <ItemsControl Classes="sidebaritems" ItemsSource="{Binding SystemSection.Items}"
+                      ItemTemplate="{StaticResource SidebarEntryTemplate}" />
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
             Padding="8,7,8,10">
       <StackPanel>
         <Button Classes="sidebaritem" Click="OnSettingsClick">

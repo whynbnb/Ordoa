@@ -188,7 +188,11 @@ public partial class SidebarView : UserControl
 
     private static void ClearDropTargets(MainViewModel vm)
     {
-        foreach (var item in vm.SidebarSections.SelectMany(section => section.Items))
+        var sections = vm.SidebarSections.AsEnumerable();
+        if (vm.SystemSection is not null)
+            sections = sections.Append(vm.SystemSection);
+
+        foreach (var item in sections.SelectMany(section => section.Items))
         {
             if (item.IsDropTarget)
                 item.IsDropTarget = false;
