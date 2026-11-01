@@ -86,7 +86,7 @@
           <TextBlock Grid.Row="10" Text="F11" Classes="shortcut" /><TextBlock Grid.Row="10" Grid.Column="1" Text="{loc:Tr 全屏}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="10" Grid.Column="2" Text="{loc:Tr 拖拽文件}" Classes="shortcut" /><TextBlock Grid.Row="10" Grid.Column="3" Text="{loc:Tr 默认移动；Ctrl 复制 · Shift 移动}" Classes="shortcutdesc" />
 
-          <TextBlock Grid.Row="11" Text="{loc:Tr 拖到回收站}" Classes="shortcut" /><TextBlock Grid.Row="11" Grid.Column="1" Text="{loc:Tr 直接移到回收站}" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="11" Text="{loc:Tr 拖到回收站}" Classes="shortcut" /><TextBlock Grid.Row="11" Grid.Column="1" Text="{loc:Tr 直接移到回收站；Shift 永久删除}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="11" Grid.Column="2" Text="{loc:Tr Ctrl/Shift+单击}" Classes="shortcut" /><TextBlock Grid.Row="11" Grid.Column="3" Text="{loc:Tr 加选 / 连选}" Classes="shortcutdesc" />
         </Grid>
 

@@ -764,6 +764,31 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             L10n.Format("{0} 个项目", sources.Count), ToastKind.Info);
     }
 
+    /// <summary>Shift+drop onto the Trash entry: delete the sources permanently.</summary>
+    public async Task DeleteDroppedSourcesPermanentlyAsync(IReadOnlyList<OperationSource> sources)
+    {
+        if (sources.Count == 0)
+            return;
+        if (sources.Any(s => s.FileSystem is TrashFileSystem))
+            return;
+
+        if (_services.Settings.Current.ConfirmPermanentDelete)
+        {
+            var ok = await _services.Dialogs.ConfirmAsync(
+                L10n.T("永久删除这些项目？"),
+                L10n.Format("将永久删除 {0} 个项目，此操作无法撤销。", sources.Count),
+                L10n.T("永久删除"),
+                true).ConfigureAwait(true);
+            if (!ok)
+                return;
+        }
+
+        _services.Operations.Delete(sources, permanent: true);
+        if (_services.Settings.Current.ShowTransferPanel)
+            IsTransferPanelOpen = true;
+        AddToast(L10n.T("正在删除"), L10n.Format("{0} 个项目", sources.Count), ToastKind.Info);
+    }
+
     /// <summary>Drop onto the Trash entry: move local sources to the XDG trash.</summary>
     public void MoveDroppedSourcesToTrash(IReadOnlyList<OperationSource> sources)
     {

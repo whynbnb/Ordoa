@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Ordoa.App.Services;
 using Ordoa.App.ViewModels;
 using Ordoa.Core.Abstractions;
+using Ordoa.Core.FileSystems;
 using Ordoa.Core.Localization;
 using Ordoa.Core.Services;
 
@@ -65,8 +66,9 @@ public partial class SidebarView : UserControl
 
         var payload = FileDropHelper.GetPayload(e.DataTransfer);
         var sources = payload?.Sources;
+        var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         if (!FileDropHelper.HasData(e.DataTransfer, payload) ||
-            !CanDrop(entry, sources, payload is null, vm))
+            !CanDrop(entry, sources, payload is null, shift, vm))
         {
             entry.IsDropTarget = false;
             e.DragEffects = DragDropEffects.None;
@@ -81,7 +83,7 @@ public partial class SidebarView : UserControl
     }
 
     private static bool CanDrop(SidebarEntryViewModel entry, IReadOnlyList<OperationSource>? sources,
-        bool external, MainViewModel vm)
+        bool external, bool permanent, MainViewModel vm)
     {
         if (string.IsNullOrEmpty(entry.Path))
             return false;
@@ -95,8 +97,14 @@ public partial class SidebarView : UserControl
             case SidebarEntryKind.Connection:
                 return true;
             case SidebarEntryKind.Trash:
-                return vm.Services.Trash.IsSupported &&
-                       (external || FileDropHelper.IsTrashable(sources));
+                if (external)
+                    return permanent || vm.Services.Trash.IsSupported;
+                if (sources is not { Count: > 0 })
+                    return false;
+                // Shift+drag deletes permanently and also works for remote files.
+                return permanent
+                    ? sources.All(s => s.FileSystem is not TrashFileSystem)
+                    : vm.Services.Trash.IsSupported && FileDropHelper.IsTrashable(sources);
             default:
                 return false;
         }
@@ -130,7 +138,10 @@ public partial class SidebarView : UserControl
 
             if (entry.Kind == SidebarEntryKind.Trash)
             {
-                vm.MoveDroppedSourcesToTrash(sources);
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                    await vm.DeleteDroppedSourcesPermanentlyAsync(sources);
+                else
+                    vm.MoveDroppedSourcesToTrash(sources);
                 return;
             }
 

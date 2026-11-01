@@ -56,9 +56,16 @@ public partial class PaneView : UserControl
             return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Shift))
-            return;
         if (GetItemAt(e.Source) is not { } item)
+            return;
+
+        // ListBoxItem handles the bubbling press event itself, so start
+        // tracking the drag from the tunnel handler before that happens.
+        _dragTrigger = e;
+        _dragStart = e.GetPosition(this);
+        _dragItem = item;
+
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Shift))
             return;
         if (list.SelectedItems is not { Count: > 1 } selected || !selected.Contains(item))
             return;
@@ -152,6 +159,13 @@ public partial class PaneView : UserControl
         var container = visual.FindAncestorOfType<ListBoxItem>(includeSelf: true);
         return container?.DataContext as FileItemViewModel;
     }
+
+    /// <summary>
+    /// Drop targets are the ListBox itself, so resolve the row under the
+    /// pointer with a hit test instead of looking at the event source.
+    /// </summary>
+    private static FileItemViewModel? GetItemAtPoint(ListBox list, Point point)
+        => GetItemAt(list.InputHitTest(point));
 
     private void OnFilePointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -437,9 +451,13 @@ public partial class PaneView : UserControl
 
         if (_pane.IsTrash)
         {
+            var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
             var canTrash = payload is null
-                ? _pane.Services.Trash.IsSupported
-                : FileDropHelper.IsTrashable(sources) && _pane.Services.Trash.IsSupported;
+                ? shift || _pane.Services.Trash.IsSupported
+                : shift
+                    ? sources is { Count: > 0 } &&
+                      sources.All(s => s.FileSystem is not TrashFileSystem)
+                    : _pane.Services.Trash.IsSupported && FileDropHelper.IsTrashable(sources);
             if (!canTrash)
             {
                 e.DragEffects = DragDropEffects.None;
@@ -448,12 +466,14 @@ public partial class PaneView : UserControl
             }
 
             e.DragEffects = DragDropEffects.Move;
-            _pane.SetDropTarget(true, destination: L10n.T("回收站"), trash: true);
+            _pane.SetDropTarget(true, destination: L10n.T(shift ? "永久删除" : "回收站"),
+                trash: true, permanent: shift);
             e.Handled = true;
             return;
         }
 
-        var target = GetItemAt(e.Source);
+        var list = sender as ListBox ?? GetActiveList();
+        var target = list is null ? null : GetItemAtPoint(list, e.GetPosition(list));
         var destination = target is { IsDirectory: true } ? target.Path : _pane.CurrentPath;
         var destinationLabel = target is { IsDirectory: true }
             ? _pane.FileSystem.GetDisplayPath(destination)
@@ -485,11 +505,15 @@ public partial class PaneView : UserControl
 
             if (_pane.IsTrash)
             {
-                _pane.EnqueueTrashDrop(sources);
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                    await _pane.EnqueuePermanentDropAsync(sources);
+                else
+                    _pane.EnqueueTrashDrop(sources);
                 return;
             }
 
-            var target = GetItemAt(e.Source);
+            var list = sender as ListBox ?? GetActiveList();
+            var target = list is null ? null : GetItemAtPoint(list, e.GetPosition(list));
             var destination = target is { IsDirectory: true } ? target.Path : _pane.CurrentPath;
             var move = FileDropHelper.IsMove(e.KeyModifiers, sources, _pane.FileSystem.Id,
                 FileDropHelper.GetPayload(e.DataTransfer) is not { Sources.Count: > 0 });
