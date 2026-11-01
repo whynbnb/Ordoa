@@ -82,13 +82,15 @@
                             ContextRequested="OnEntryContextRequested"
                             ToolTip.Tip="{Binding Detail}">
                       <Panel>
-                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,2">
-                          <Path Grid.RowSpan="2" Data="{Binding Icon}" Fill="{Binding IconBrush}"
+                        <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,2" VerticalAlignment="Center">
+                          <Path Data="{Binding Icon}" Fill="{Binding IconBrush}"
                                 Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"
                                 Margin="0,0,9,0" />
-                          <TextBlock Grid.Column="1" Text="{Binding Label}" Classes="sidebarlabel" />
-                          <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}"
-                                     Classes="sidebardetail" IsVisible="{Binding Detail, Converter={StaticResource NotNullConverter}}" />
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Label}" Classes="sidebarlabel" />
+                            <TextBlock Text="{Binding Detail}" Classes="sidebardetail"
+                                       IsVisible="{Binding Detail, Converter={StaticResource NotNullConverter}}" />
+                          </StackPanel>
                         </Grid>
                         <ProgressBar Height="2" MinHeight="2"
                                      VerticalAlignment="Bottom" Margin="24,0,4,0"
