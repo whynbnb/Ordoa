@@ -76,6 +76,12 @@
       <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
+    <Style Selector="Button.sectionadd Path">
+      <Setter Property="Fill" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+    <Style Selector="Button.sectionadd:pointerover Path">
+      <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+    </Style>
     <Style Selector="TextBlock.sidebarlabel">
       <Setter Property="FontSize" Value="12.5" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -111,7 +117,14 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type vm:SidebarSectionViewModel}">
             <StackPanel Classes="sidebarsection" Margin="0,3,0,7">
-              <TextBlock Text="{Binding Title}" Classes="section" Margin="9,5,8,4" />
+              <Grid ColumnDefinitions="*,Auto" Margin="9,5,6,4">
+                <TextBlock Text="{Binding Title}" Classes="section" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="tool sectionadd" Width="20" Height="20"
+                        IsVisible="{Binding HasHeaderAction}" ToolTip.Tip="{Binding HeaderTooltip}"
+                        Click="OnSectionHeaderClick">
+                  <Path Data="{Binding HeaderIcon}" Width="12" Height="12" Stretch="Uniform" />
+                </Button>
+              </Grid>
               <ItemsControl Classes="sidebaritems" ItemsSource="{Binding Items}"
                             ItemTemplate="{StaticResource SidebarEntryTemplate}" />
             </StackPanel>

@@ -18,6 +18,22 @@ public partial class SidebarView : UserControl
 
     private MainViewModel? ViewModel => DataContext as MainViewModel;
 
+    private async void OnSectionHeaderClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: SidebarSectionViewModel section } ||
+            section.HeaderAction is null)
+            return;
+
+        try
+        {
+            await section.HeaderAction();
+        }
+        catch (Exception ex)
+        {
+            ViewModel?.AddToast(L10n.T("操作失败"), ex.Message, ToastKind.Error);
+        }
+    }
+
     private async void OnEntryClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (sender is Button { DataContext: SidebarEntryViewModel entry } && ViewModel is { } vm)

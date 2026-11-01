@@ -53,6 +53,12 @@ public sealed class SidebarSectionViewModel
 {
     public required string Title { get; init; }
     public ObservableCollection<SidebarEntryViewModel> Items { get; } = [];
+
+    /// <summary>Optional action rendered as a small + button in the header.</summary>
+    public Func<Task>? HeaderAction { get; init; }
+    public Geometry? HeaderIcon { get; init; }
+    public string? HeaderTooltip { get; init; }
+    public bool HasHeaderAction => HeaderAction is not null;
 }
 
 public enum ToastKind

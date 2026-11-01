@@ -1106,7 +1106,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             SidebarSections.Add(volumes);
         }
 
-        var network = new SidebarSectionViewModel { Title = L10n.T("网络") };
+        var network = new SidebarSectionViewModel
+        {
+            Title = L10n.T("网络"),
+            HeaderAction = () => ShowConnectionDialogAsync(null),
+            HeaderIcon = FileIconCatalog.Resource("IconPlus"),
+            HeaderTooltip = L10n.T("添加远程连接"),
+        };
         foreach (var connection in _services.FileSystems.Connections.GetAll())
         {
             network.Items.Add(new SidebarEntryViewModel
@@ -1122,15 +1128,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 ActivateAsync = ActivateSidebarEntryAsync,
             });
         }
-        network.Items.Add(new SidebarEntryViewModel
-        {
-            Label = L10n.T("添加远程连接"),
-            Detail = "FTP · SFTP · SMB · WebDAV",
-            Kind = SidebarEntryKind.AddConnection,
-            Icon = FileIconCatalog.Resource("IconCloudAdd"),
-            IconBrush = accentIcon,
-            ActivateAsync = ActivateSidebarEntryAsync,
-        });
         SidebarSections.Add(network);
 
         var recent = _services.Recent.GetAll().Take(5).ToList();
