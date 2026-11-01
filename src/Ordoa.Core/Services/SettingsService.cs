@@ -34,6 +34,8 @@ public sealed class AppSettings
     public bool ConfirmPermanentDelete { get; set; } = true;
     public bool RestoreSession { get; set; } = true;
     public bool ShowSidebar { get; set; } = true;
+    /// <summary>Known-folder keys hidden from the sidebar's Places section.</summary>
+    public List<string> HiddenPlaces { get; set; } = [];
     public double SidebarWidth { get; set; } = 232;
     public bool ShowThumbnails { get; set; } = true;
     public bool ShowTransferPanel { get; set; } = true;
@@ -99,6 +101,10 @@ public sealed class SettingsService
             Current.WindowWidth = 1200;
         if (Current.WindowHeight < 480)
             Current.WindowHeight = 760;
+        Current.HiddenPlaces = (Current.HiddenPlaces ?? [])
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
         Current.SearchDepth = Math.Clamp(Current.SearchDepth, 1, 64);
         Current.MaxSearchResults = Math.Clamp(Current.MaxSearchResults, 100, 20000);
     }

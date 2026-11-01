@@ -36,6 +36,12 @@ public partial class SettingsWindow : Window
             vm.SetAccent(accent);
     }
 
+    private void OnResetPlacesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+            vm.ResetPlaces();
+    }
+
     private void OnResetClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm)

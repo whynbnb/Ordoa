@@ -1040,7 +1040,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var neutralIcon = ThemeService.Brush("TextTertiaryBrush", "#8B958F");
 
         var places = new SidebarSectionViewModel { Title = L10n.T("位置") };
-        foreach (var place in KnownFolders.GetPlaces())
+        var hiddenPlaces = _services.Settings.Current.HiddenPlaces;
+        foreach (var place in KnownFolders.GetPlaces()
+                     .Where(place => !hiddenPlaces.Contains(place.Key, StringComparer.OrdinalIgnoreCase)))
         {
             places.Items.Add(new SidebarEntryViewModel
             {

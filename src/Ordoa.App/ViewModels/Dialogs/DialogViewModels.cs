@@ -269,6 +269,15 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     }
 }
 
+public sealed partial class PlaceVisibilityViewModel : ObservableObject
+{
+    public required string Key { get; init; }
+    public required string Label { get; init; }
+
+    [ObservableProperty]
+    private bool _isVisible;
+}
+
 public sealed partial class SettingsDialogViewModel : ObservableObject
 {
     private readonly AppSettings _original;
@@ -290,7 +299,20 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _showTransferPanel = settings.ShowTransferPanel;
         _searchDepth = settings.SearchDepth;
         _maxSearchResults = settings.MaxSearchResults;
+
+        var hidden = new HashSet<string>(settings.HiddenPlaces ?? [], StringComparer.OrdinalIgnoreCase);
+        foreach (var place in KnownFolders.GetPlaces())
+        {
+            Places.Add(new PlaceVisibilityViewModel
+            {
+                Key = place.Key,
+                Label = place.Label,
+                IsVisible = !hidden.Contains(place.Key),
+            });
+        }
     }
+
+    public System.Collections.ObjectModel.ObservableCollection<PlaceVisibilityViewModel> Places { get; } = [];
 
     [ObservableProperty]
     private UiLanguage _language;
@@ -353,6 +375,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.ShowTransferPanel = ShowTransferPanel;
         settings.SearchDepth = Math.Clamp((int)SearchDepth, 1, 64);
         settings.MaxSearchResults = Math.Clamp((int)MaxSearchResults, 100, 20000);
+        settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
         return settings;
     }
 
@@ -373,6 +396,13 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         ShowTransferPanel = defaults.ShowTransferPanel;
         SearchDepth = defaults.SearchDepth;
         MaxSearchResults = defaults.MaxSearchResults;
+        ResetPlaces();
+    }
+
+    public void ResetPlaces()
+    {
+        foreach (var place in Places)
+            place.IsVisible = true;
     }
 
     public void SetLanguage(string value)

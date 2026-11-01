@@ -139,6 +139,28 @@
 
         <Border Classes="divider" />
 
+        <!-- Sidebar places -->
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{loc:Tr 侧栏位置}" Classes="section" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="{loc:Tr 恢复默认位置}" Classes="ghost" FontSize="11"
+                  Padding="8,3" Click="OnResetPlacesClick" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Places}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <CheckBox Width="180" Margin="0,2,8,2" Content="{Binding Label}"
+                        IsChecked="{Binding IsVisible, Mode=TwoWay}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border Classes="divider" />
+
         <!-- Behaviour -->
         <TextBlock Text="{loc:Tr 行为与安全}" Classes="section" />
         <StackPanel Spacing="7">
