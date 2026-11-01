@@ -1056,7 +1056,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (places.Items.Count > 0)
             SidebarSections.Add(places);
 
-        var bookmarks = new SidebarSectionViewModel { Title = L10n.T("书签") };
+        var bookmarks = new SidebarSectionViewModel
+        {
+            Title = L10n.T("书签"),
+            HeaderAction = AddCurrentBookmarkAsync,
+            HeaderIcon = FileIconCatalog.Resource("IconPlus"),
+            HeaderTooltip = L10n.T("添加当前文件夹"),
+        };
         foreach (var bookmark in _services.Bookmarks.GetAll())
         {
             bookmarks.Items.Add(new SidebarEntryViewModel
@@ -1072,14 +1078,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 ActivateAsync = ActivateSidebarEntryAsync,
             });
         }
-        bookmarks.Items.Add(new SidebarEntryViewModel
-        {
-            Label = L10n.T("添加当前文件夹"),
-            Kind = SidebarEntryKind.AddBookmark,
-            Icon = FileIconCatalog.Resource("IconPlusCircle"),
-            IconBrush = accentIcon,
-            ActivateAsync = ActivateSidebarEntryAsync,
-        });
         SidebarSections.Add(bookmarks);
 
         if (_volumes.Count > 0)
