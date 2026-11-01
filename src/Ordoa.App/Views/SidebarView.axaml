@@ -5,6 +5,7 @@
   <UserControl.Styles>
     <Style Selector="Button.sidebaritem">
       <Setter Property="Background" Value="Transparent" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Padding" Value="9,6" />
@@ -12,6 +13,16 @@
       <Setter Property="CornerRadius" Value="7" />
       <Setter Property="Margin" Value="0,1" />
       <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="ItemsControl.sidebar > ContentPresenter">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ItemsControl.sidebaritems > ContentPresenter">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="StackPanel.sidebarsection">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
     <Style Selector="Button.sidebaritem /template/ ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
@@ -57,12 +68,12 @@
 
     <ScrollViewer Grid.Row="1" Padding="8,2,8,10" VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
-      <ItemsControl ItemsSource="{Binding SidebarSections}">
+      <ItemsControl Classes="sidebar" ItemsSource="{Binding SidebarSections}">
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type vm:SidebarSectionViewModel}">
-            <StackPanel Margin="0,3,0,7">
+            <StackPanel Classes="sidebarsection" Margin="0,3,0,7">
               <TextBlock Text="{Binding Title}" Classes="section" Margin="9,5,8,4" />
-              <ItemsControl ItemsSource="{Binding Items}">
+              <ItemsControl Classes="sidebaritems" ItemsSource="{Binding Items}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate DataType="{x:Type vm:SidebarEntryViewModel}">
                     <Button Classes="sidebaritem"
