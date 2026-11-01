@@ -16,6 +16,7 @@ public partial class MainWindow : Window
 {
     private MainViewModel? _viewModel;
     private bool _initialized;
+    private bool _initialSizeApplied;
     private double _lastNormalWidth;
     private double _lastNormalHeight;
 
@@ -44,7 +45,37 @@ public partial class MainWindow : Window
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
             _viewModel.CloseWindowRequested += OnCloseWindowRequested;
             _viewModel.ActiveTabChanged += OnActiveTabChanged;
+            ApplySavedWindowSize();
         }
+    }
+
+    /// <summary>
+    /// 在窗口首次显示前应用上次的尺寸。必须在 Show 之前设置：
+    /// 平铺合成器（如 niri）会把映射后的 resize 当成窗口高度请求，
+    /// 导致窗口缩在列的上半部分、下方留空。
+    /// </summary>
+    private void ApplySavedWindowSize()
+    {
+        if (_initialSizeApplied || _viewModel is null)
+            return;
+        _initialSizeApplied = true;
+
+        var settings = _viewModel.Services.Settings.Current;
+        var width = settings.WindowWidth;
+        var height = settings.WindowHeight;
+
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen is not null)
+        {
+            var scaling = screen.Scaling <= 0 ? 1 : screen.Scaling;
+            width = Math.Min(width, Math.Max(840, screen.WorkingArea.Width / scaling - 48));
+            height = Math.Min(height, Math.Max(540, screen.WorkingArea.Height / scaling - 48));
+        }
+
+        Width = width;
+        Height = height;
+        _lastNormalWidth = width;
+        _lastNormalHeight = height;
     }
 
     private void OnCloseWindowRequested() => Close();
@@ -68,21 +99,8 @@ public partial class MainWindow : Window
             return;
 
         var settings = _viewModel.Services.Settings.Current;
-        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
-        var maxWidth = settings.WindowWidth;
-        var maxHeight = settings.WindowHeight;
-        if (screen is not null)
-        {
-            var scaling = screen.Scaling <= 0 ? 1 : screen.Scaling;
-            maxWidth = Math.Max(840, screen.WorkingArea.Width / scaling - 48);
-            maxHeight = Math.Max(540, screen.WorkingArea.Height / scaling - 48);
-        }
-        Width = Math.Min(settings.WindowWidth, maxWidth);
-        Height = Math.Min(settings.WindowHeight, maxHeight);
         if (settings.WindowMaximized)
             WindowState = WindowState.Maximized;
-        _lastNormalWidth = Width;
-        _lastNormalHeight = Height;
         UpdateSidebarColumn();
 
         try
