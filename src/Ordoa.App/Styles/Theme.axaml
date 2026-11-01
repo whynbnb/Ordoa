@@ -220,6 +220,7 @@
        which clips the right border. -->
   <Style Selector="ContextMenu /template/ Border">
     <Setter Property="Margin" Value="0,0,2,0"/>
+    <Setter Property="VerticalAlignment" Value="Stretch"/>
   </Style>
   <Style Selector="MenuFlyoutPresenter">
     <Setter Property="Margin" Value="0,0,2,0"/>
