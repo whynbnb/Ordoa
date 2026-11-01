@@ -118,6 +118,7 @@ public partial class MainWindow : Window
             _lastNormalWidth = Width;
             _lastNormalHeight = Height;
         }
+        UpdateSidebarColumn();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -135,6 +136,9 @@ public partial class MainWindow : Window
         }
     }
 
+    private double MaximumSidebarWidth =>
+        Bounds.Width <= 1 ? 480 : Math.Clamp(Bounds.Width - 520, 200, 480);
+
     private void UpdateSidebarColumn()
     {
         if (_viewModel is null)
@@ -143,7 +147,10 @@ public partial class MainWindow : Window
         if (RootGrid.ColumnDefinitions.Count == 0)
             return;
 
-        var width = _viewModel.IsSidebarVisible ? Math.Clamp(_viewModel.SidebarWidth, 170, 560) : 0;
+        var max = MaximumSidebarWidth;
+        var width = _viewModel.IsSidebarVisible
+            ? Math.Clamp(_viewModel.SidebarWidth, 200, max)
+            : 0;
         RootGrid.ColumnDefinitions[0].Width = new GridLength(width);
     }
 
@@ -151,7 +158,8 @@ public partial class MainWindow : Window
     {
         if (_viewModel is null)
             return;
-        _viewModel.SidebarWidth = RootGrid.ColumnDefinitions[0].ActualWidth;
+        _viewModel.SidebarWidth = Math.Clamp(RootGrid.ColumnDefinitions[0].ActualWidth, 200, MaximumSidebarWidth);
+        UpdateSidebarColumn();
     }
 
     private void OnTabScrollerWheel(object? sender, PointerWheelEventArgs e)

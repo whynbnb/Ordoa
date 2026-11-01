@@ -89,7 +89,7 @@ public sealed class SettingsService
 
     private void Sanitize()
     {
-        if (Current.SidebarWidth is < 160 or > 600)
+        if (Current.SidebarWidth is < 200 or > 480)
             Current.SidebarWidth = 232;
         if (Current.WindowWidth < 720)
             Current.WindowWidth = 1200;

@@ -8,9 +8,10 @@
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Padding" Value="9,6" />
-      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="MinHeight" Value="36" />
       <Setter Property="CornerRadius" Value="7" />
       <Setter Property="Margin" Value="0,1" />
+      <Setter Property="ClipToBounds" Value="True" />
     </Style>
     <Style Selector="Button.sidebaritem /template/ ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
@@ -69,18 +70,20 @@
                             Click="OnEntryClick"
                             ContextRequested="OnEntryContextRequested"
                             ToolTip.Tip="{Binding Detail}">
-                      <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
-                        <Path Grid.RowSpan="3" Data="{Binding Icon}" Fill="{Binding IconBrush}"
-                              Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"
-                              Margin="0,0,9,0" />
-                        <TextBlock Grid.Column="1" Text="{Binding Label}" Classes="sidebarlabel" />
-                        <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}"
-                                   Classes="sidebardetail" IsVisible="{Binding Detail, Converter={StaticResource NotNullConverter}}" />
-                        <ProgressBar Grid.Column="1" Grid.Row="2" Height="2" MinHeight="2"
-                                     Margin="0,4,2,0"
+                      <Panel>
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,2">
+                          <Path Grid.RowSpan="2" Data="{Binding Icon}" Fill="{Binding IconBrush}"
+                                Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"
+                                Margin="0,0,9,0" />
+                          <TextBlock Grid.Column="1" Text="{Binding Label}" Classes="sidebarlabel" />
+                          <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}"
+                                     Classes="sidebardetail" IsVisible="{Binding Detail, Converter={StaticResource NotNullConverter}}" />
+                        </Grid>
+                        <ProgressBar Height="2" MinHeight="2"
+                                     VerticalAlignment="Bottom" Margin="24,0,4,0"
                                      Value="{Binding UsageFraction}" Maximum="1"
                                      IsVisible="{Binding ShowUsage}" />
-                      </Grid>
+                      </Panel>
                     </Button>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

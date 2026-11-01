@@ -57,8 +57,18 @@ public partial class PaneView : UserControl
 
     private void UpdateNarrowState()
     {
-        if (_pane is not null)
-            _pane.IsNarrow = Bounds.Width is > 0 and < 560;
+        if (_pane is null)
+            return;
+        _pane.IsNarrow = Bounds.Width is > 0 and < 560;
+        if (_pane.IsNarrow)
+        {
+            if (!FileList.Classes.Contains("narrow"))
+                FileList.Classes.Add("narrow");
+        }
+        else
+        {
+            FileList.Classes.Remove("narrow");
+        }
     }
 
     private void OnPanePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

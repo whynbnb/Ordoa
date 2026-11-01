@@ -96,7 +96,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         get => _sidebarWidth;
         set
         {
-            if (SetProperty(ref _sidebarWidth, Math.Clamp(value, 170, 560)))
+            if (SetProperty(ref _sidebarWidth, Math.Clamp(value, 200, 480)))
                 _services.Settings.Current.SidebarWidth = _sidebarWidth;
         }
     }
