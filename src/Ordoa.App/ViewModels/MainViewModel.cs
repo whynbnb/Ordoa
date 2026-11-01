@@ -962,6 +962,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         SidebarSections.Clear();
 
+        var accentIcon = ThemeService.Brush("AccentBrush", "#17937F");
+        var neutralIcon = ThemeService.Brush("TextTertiaryBrush", "#8B958F");
+
         var places = new SidebarSectionViewModel { Title = L10n.T("位置") };
         foreach (var place in KnownFolders.GetPlaces())
         {
@@ -970,7 +973,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 Label = place.Label,
                 Kind = SidebarEntryKind.Place,
                 Icon = FileIconCatalog.Resource(PlaceIcon(place.Key)),
-                IconBrush = SidebarEntryViewModel.Brush(place.Key == "home" ? "#17937F" : "#7E8E86"),
+                IconBrush = place.Key == "home" ? accentIcon : neutralIcon,
                 FileSystemId = "local",
                 Path = place.Path,
                 ActivateAsync = ActivateSidebarEntryAsync,
@@ -1000,7 +1003,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             Label = L10n.T("添加当前文件夹"),
             Kind = SidebarEntryKind.AddBookmark,
             Icon = FileIconCatalog.Resource("IconPlusCircle"),
-            IconBrush = SidebarEntryViewModel.Brush("#17937F"),
+            IconBrush = accentIcon,
             ActivateAsync = ActivateSidebarEntryAsync,
         });
         SidebarSections.Add(bookmarks);
@@ -1051,7 +1054,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             Detail = "FTP · SFTP · SMB · WebDAV",
             Kind = SidebarEntryKind.AddConnection,
             Icon = FileIconCatalog.Resource("IconCloudAdd"),
-            IconBrush = SidebarEntryViewModel.Brush("#17937F"),
+            IconBrush = accentIcon,
             ActivateAsync = ActivateSidebarEntryAsync,
         });
         SidebarSections.Add(network);

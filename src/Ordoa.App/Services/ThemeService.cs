@@ -53,6 +53,8 @@ public static class ThemeService
         resources["AccentBorderBrush"] = new Avalonia.Media.SolidColorBrush(Color.FromArgb(0x66, color.R, color.G, color.B));
         resources["AccentTextBrush"] = new Avalonia.Media.SolidColorBrush(text);
         resources["SelectionBrush"] = resources["AccentSoftBrush"];
+        resources["DropOverlayBrush"] = new Avalonia.Media.SolidColorBrush(Color.FromArgb(dark ? (byte)0x33 : (byte)0x14,
+            color.R, color.G, color.B));
 
         resources["SystemAccentColor"] = color;
         resources["SystemAccentColorLight1"] = Blend(color, Colors.White, 0.12);
@@ -71,6 +73,22 @@ public static class ThemeService
         resources["AccentFillColorTertiaryBrush"] = new Avalonia.Media.SolidColorBrush(Blend(color, Colors.White, 0.20));
         resources["AccentTextFillColorPrimaryBrush"] = new Avalonia.Media.SolidColorBrush(text);
         resources["TextOnAccentFillColorPrimaryBrush"] = new Avalonia.Media.SolidColorBrush(text);
+    }
+
+    /// <summary>
+    /// Resolves a theme resource to a brush so view models can colour icons that
+    /// follow the active theme variant and accent.
+    /// </summary>
+    public static IBrush Brush(string resourceKey, string fallback)
+    {
+        if (Application.Current is { } app &&
+            app.TryFindResource(resourceKey, out var value) &&
+            value is IBrush brush)
+        {
+            return brush;
+        }
+
+        return new SolidColorBrush(Color.Parse(fallback));
     }
 
     public static void ApplyDensity(Window window, bool compact)
