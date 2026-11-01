@@ -100,7 +100,7 @@
 ### 依赖
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/)（C# 14）
-- Linux：X11 或 Wayland（默认通过 XWayland），fontconfig；可选 `libsecret` / `secret-tool` 用于系统密钥环
+- Linux：原生 Wayland（Avalonia 12.1 实验性后端，可用时优先启用）或 X11/XWayland；fontconfig；可选 `libsecret` / `secret-tool` 用于系统密钥环
 - 构建不依赖系统原生文件管理器组件
 
 ### 命令
@@ -248,7 +248,7 @@ tests/Ordoa.Core.Tests
 - 网格视图使用 `WrapPanel`，超大目录（数万项）建议使用虚拟化的列表视图。
 - 不提供内置预览器、媒体播放器或“打开方式”应用选择器；文件交给系统默认应用。
 - 未实现单实例、D-Bus `org.freedesktop.FileManager1` 集成和系统级挂载。
-- Linux 默认使用 Avalonia 的 X11/XWayland 后端；Avalonia 12 的实验性原生 Wayland 后端暂未启用。
+- Linux 优先使用原生 Wayland 后端（Avalonia 12.1，实验性）；没有可用合成器时自动回退 X11/XWayland。可设置 `ORDOA_NO_WAYLAND=1` 强制使用 X11。Wayland 下 KDE 全局菜单、窗口图标、背景模糊等能力暂不可用。
 
 ## 路线图
 
@@ -256,7 +256,7 @@ tests/Ordoa.Core.Tests
 - SMB 加密共享、DFS 与端口配置
 - 网格视图虚拟化
 - 批量重命名、文件比较、预览面板
-- 原生 Wayland CSD 与全局菜单
+- Wayland 下的 CSD 细节与 KDE 全局菜单
 - 单实例与 D-Bus 文件管理器接口
 
 ## 致谢
