@@ -237,6 +237,16 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isActive;
 
+    /// <summary>True while this pane shares a tab with a second pane.</summary>
+    [ObservableProperty]
+    private bool _isInSplit;
+
+    public bool ShowsActiveBar => IsActive && IsInSplit;
+
+    partial void OnIsActiveChanged(bool value) => OnPropertyChanged(nameof(ShowsActiveBar));
+
+    partial void OnIsInSplitChanged(bool value) => OnPropertyChanged(nameof(ShowsActiveBar));
+
     [ObservableProperty]
     private string _selectionText = string.Empty;
 

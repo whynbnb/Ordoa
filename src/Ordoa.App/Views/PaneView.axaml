@@ -70,8 +70,9 @@
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <!-- Active-pane indicator: only shown while the tab is split. -->
     <Border Height="2" VerticalAlignment="Top" Background="{DynamicResource AccentBrush}" ZIndex="20"
-            IsVisible="{Binding IsActive}" />
+            IsVisible="{Binding ShowsActiveBar}" />
 
     <!-- Toolbar -->
     <Border Grid.Row="0" Background="{DynamicResource ToolbarBrush}"

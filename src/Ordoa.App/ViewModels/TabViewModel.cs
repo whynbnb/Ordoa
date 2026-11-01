@@ -75,6 +75,8 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
 
     partial void OnIsSplitChanged(bool value)
     {
+        foreach (var pane in Panes)
+            pane.IsInSplit = value;
         OnPropertyChanged(nameof(Tooltip));
     }
 
