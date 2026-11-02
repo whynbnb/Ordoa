@@ -208,7 +208,7 @@ jobs:
 
   macos-framework:
     name: macOS arm64 framework-dependent
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -229,7 +229,7 @@ jobs:
 
   macos-aot-dmg:
     name: macOS arm64 AOT dmg
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
