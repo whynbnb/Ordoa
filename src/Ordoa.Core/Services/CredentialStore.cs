@@ -152,7 +152,7 @@ public sealed class CredentialStore : ICredentialStore
             if (!File.Exists(AppPaths.CredentialsFile))
                 return new Dictionary<string, string>(StringComparer.Ordinal);
             var json = File.ReadAllText(AppPaths.CredentialsFile);
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonFile.Options) ?? new Dictionary<string, string>();
+            return JsonSerializer.Deserialize(json, CoreJsonContext.Default.DictionaryStringString) ?? new Dictionary<string, string>();
         }
         catch
         {
@@ -163,7 +163,7 @@ public sealed class CredentialStore : ICredentialStore
     private static void WriteFallbackFile(Dictionary<string, string> map)
     {
         Directory.CreateDirectory(AppPaths.ConfigDirectory);
-        var json = JsonSerializer.Serialize(map, JsonFile.Options);
+        var json = JsonSerializer.Serialize(map, CoreJsonContext.Default.DictionaryStringString);
         var temp = AppPaths.CredentialsFile + ".tmp";
         File.WriteAllText(temp, json, new UTF8Encoding(false));
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

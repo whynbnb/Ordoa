@@ -12,6 +12,8 @@ using Ordoa.Core.Localization;
 
 namespace Ordoa.App.ViewModels.Dialogs;
 
+public sealed record PropertyItem(string Label, string Value, bool IsMono = false);
+
 public sealed partial class PropertiesDialogViewModel : ObservableObject, IDisposable
 {
     private readonly IFileSystem _fileSystem;
@@ -39,8 +41,6 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
         CanEditPermissions = fileSystem.Capabilities.Has(FileSystemCapabilities.UnixPermissions) && entry.UnixMode is not null;
         BuildItems();
     }
-
-    public sealed record PropertyItem(string Label, string Value, bool IsMono = false);
 
     public ObservableCollection<PropertyItem> Items { get; } = [];
 

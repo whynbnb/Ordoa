@@ -1,6 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
              xmlns:loc="using:Ordoa.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:PropertiesDialogViewModel"
+        x:CompileBindings="True"
         x:Class="Ordoa.App.Views.PropertiesWindow"
         Title="{loc:Tr 属性}"
         Width="640" Height="620" CanResize="False" ShowInTaskbar="False"
@@ -31,7 +34,7 @@
         <Border Classes="card" Padding="14,10">
           <ItemsControl ItemsSource="{Binding Items}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate>
+              <DataTemplate x:DataType="vm:PropertyItem">
                 <Grid ColumnDefinitions="110,*" Margin="0,4">
                   <TextBlock Text="{Binding Label}" Classes="caption" VerticalAlignment="Top" />
                   <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12"

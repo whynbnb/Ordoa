@@ -9,7 +9,7 @@
     <Version>0.1.0</Version>
     <Authors>Ordoa Contributors</Authors>
     <Product>Ordoa</Product>
-    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>

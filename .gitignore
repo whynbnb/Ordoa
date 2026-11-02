@@ -1,6 +1,7 @@
 bin/
 obj/
-artifacts/
+artifacts/*
+!artifacts/README.md
 .vs/
 .idea/
 *.user

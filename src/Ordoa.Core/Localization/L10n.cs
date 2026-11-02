@@ -83,7 +83,7 @@ public static class L10n
                 using var stream = assembly.GetManifestResourceStream("Ordoa.Core.Localization.en.json");
                 if (stream is not null)
                 {
-                    var loaded = JsonSerializer.Deserialize<Dictionary<string, string>>(stream, JsonFile.Options);
+                    var loaded = JsonSerializer.Deserialize(stream, CoreJsonContext.Default.DictionaryStringString);
                     if (loaded is not null)
                     {
                         foreach (var pair in loaded)

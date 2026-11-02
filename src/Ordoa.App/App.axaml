@@ -6,7 +6,7 @@
              x:Class="Ordoa.App.App"
              RequestedThemeVariant="Default">
   <Application.DataTemplates>
-    <DataTemplate DataType="{x:Type vm:TabViewModel}">
+    <DataTemplate DataType="{x:Type vm:TabViewModel}" x:DataType="vm:TabViewModel">
       <views:TabView />
     </DataTemplate>
   </Application.DataTemplates>

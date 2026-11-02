@@ -477,7 +477,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private Task RefreshCommandAsync() => RefreshAsync();
+    private Task Refresh() => RefreshAsync();
 
     [RelayCommand]
     private void ToggleView() => ViewMode = ViewMode == ViewKind.List ? ViewKind.Grid : ViewKind.List;

@@ -2,9 +2,11 @@
              xmlns:loc="using:Ordoa.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Ordoa.App.ViewModels"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True"
              x:Class="Ordoa.App.Views.SidebarView">
   <UserControl.Resources>
-    <DataTemplate x:Key="SidebarEntryTemplate" DataType="{x:Type vm:SidebarEntryViewModel}">
+    <DataTemplate x:Key="SidebarEntryTemplate" DataType="{x:Type vm:SidebarEntryViewModel}" x:DataType="vm:SidebarEntryViewModel">
     <Button Classes="sidebaritem"
             Classes.active="{Binding IsActive}"
             Classes.drop="{Binding IsDropTarget}"
@@ -115,7 +117,7 @@
                   HorizontalScrollBarVisibility="Disabled">
       <ItemsControl Classes="sidebar" ItemsSource="{Binding SidebarSections}">
         <ItemsControl.ItemTemplate>
-          <DataTemplate DataType="{x:Type vm:SidebarSectionViewModel}">
+          <DataTemplate DataType="{x:Type vm:SidebarSectionViewModel}" x:DataType="vm:SidebarSectionViewModel">
             <StackPanel Classes="sidebarsection" Margin="0,3,0,7">
               <Grid ColumnDefinitions="*,Auto" Margin="9,5,6,4">
                 <TextBlock Text="{Binding Title}" Classes="section" VerticalAlignment="Center" />

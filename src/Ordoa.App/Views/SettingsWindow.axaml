@@ -1,6 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
              xmlns:loc="using:Ordoa.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:SettingsDialogViewModel"
+        x:CompileBindings="True"
         x:Class="Ordoa.App.Views.SettingsWindow"
         Title="{loc:Tr 设置}"
         Width="660" Height="650" CanResize="False" ShowInTaskbar="False"
@@ -152,7 +155,7 @@
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
-            <DataTemplate>
+            <DataTemplate x:DataType="vm:PlaceVisibilityViewModel">
               <CheckBox Width="180" Margin="0,2,8,2" Content="{Binding Label}"
                         IsChecked="{Binding IsVisible, Mode=TwoWay}" />
             </DataTemplate>

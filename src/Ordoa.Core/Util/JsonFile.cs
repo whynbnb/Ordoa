@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Ordoa.Core.Util;
 
@@ -15,6 +16,10 @@ public static class JsonFile
         TypeInfoResolver = CoreJsonContext.Default,
     };
 
+    private static JsonTypeInfo<T> TypeInfo<T>()
+        => (JsonTypeInfo<T>?)Options.GetTypeInfo(typeof(T))
+           ?? throw new InvalidOperationException($"No JSON metadata registered for {typeof(T)}.");
+
     public static T? Load<T>(string path) where T : class
     {
         try
@@ -22,7 +27,7 @@ public static class JsonFile
             if (!File.Exists(path))
                 return null;
             var json = File.ReadAllText(path);
-            return string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<T>(json, Options);
+            return string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize(json, TypeInfo<T>());
         }
         catch
         {
@@ -33,7 +38,7 @@ public static class JsonFile
     public static void Save<T>(string path, T value)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
-        var json = JsonSerializer.Serialize(value, Options);
+        var json = JsonSerializer.Serialize(value, TypeInfo<T>());
         var temp = path + ".tmp";
         File.WriteAllText(temp, json, new UTF8Encoding(false));
         File.Move(temp, path, true);

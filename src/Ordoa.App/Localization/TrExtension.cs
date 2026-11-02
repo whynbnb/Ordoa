@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Avalonia;
 using Avalonia.Data;
+using Avalonia.Data.Core;
 using Avalonia.Markup.Xaml;
+using Avalonia.Markup.Xaml.MarkupExtensions.CompiledBindings;
 using Avalonia.Threading;
 using Ordoa.Core.Localization;
 
@@ -23,7 +24,17 @@ public sealed class TrExtension : MarkupExtension
     public override object ProvideValue(IServiceProvider serviceProvider)
     {
         var index = TrProxy.Instance.Register(Key);
-        return new Binding($"Values[{index}]")
+        var property = new ClrPropertyInfo(
+            nameof(TrProxy.Values),
+            target => ((TrProxy)target).Values,
+            null,
+            typeof(string[]));
+        var path = new CompiledBindingPathBuilder()
+            .Property(property, PropertyInfoAccessorFactory.CreateInpcPropertyAccessor)
+            .ArrayElement([index], typeof(string))
+            .Build();
+
+        return new CompiledBinding(path)
         {
             Source = TrProxy.Instance,
             Mode = BindingMode.OneWay,
@@ -42,7 +53,7 @@ public sealed class TrProxy : INotifyPropertyChanged
     private readonly object _sync = new();
     private readonly Dictionary<string, int> _index = new(StringComparer.Ordinal);
     private readonly List<string> _keys = new();
-    private IReadOnlyList<string> _values = Array.Empty<string>();
+    private string[] _values = [];
 
     private TrProxy()
     {
@@ -51,7 +62,7 @@ public sealed class TrProxy : INotifyPropertyChanged
 
     public static TrProxy Instance => Shared;
 
-    public IReadOnlyList<string> Values => _values;
+    public string[] Values => _values;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

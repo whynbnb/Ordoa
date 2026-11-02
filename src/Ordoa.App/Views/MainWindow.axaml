@@ -2,6 +2,10 @@
              xmlns:loc="using:Ordoa.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="using:Ordoa.App.Views"
+        xmlns:vm="using:Ordoa.App.ViewModels"
+        x:DataType="vm:MainViewModel"
+        x:CompileBindings="True"
+        xmlns:services="using:Ordoa.App.Services"
         x:Class="Ordoa.App.Views.MainWindow"
         Title="{Binding WindowTitle}"
         Icon="/Assets/ordoa.ico"
@@ -100,7 +104,7 @@
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate x:DataType="vm:TabViewModel">
                   <Border Classes="tab" Classes.active="{Binding IsActive}"
                           PointerPressed="OnTabPointerPressed" ToolTip.Tip="{Binding Tooltip}">
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto">
@@ -207,7 +211,7 @@
         </ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
-        <DataTemplate>
+        <DataTemplate x:DataType="vm:ToastViewModel">
           <Border Classes="toast" Classes.error="{Binding IsError}" Classes.success="{Binding IsSuccess}">
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
               <Path Data="{Binding Icon}" Width="17" Height="17" Stretch="Uniform" VerticalAlignment="Top"
@@ -278,7 +282,7 @@
                               Padding="2,5">
                   <ItemsControl ItemsSource="{Binding Preview.Rows}">
                     <ItemsControl.ItemTemplate>
-                      <DataTemplate>
+                      <DataTemplate x:DataType="services:PreviewRow">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="10,3">
                           <Path Data="{Binding Icon}" Width="15" Height="15" Stretch="Uniform"
                                 Fill="{Binding IconBrush}" VerticalAlignment="Center" />
@@ -327,7 +331,7 @@
                   <TextBlock Text="{loc:Tr 详细信息}" Classes="section" />
                   <ItemsControl ItemsSource="{Binding Preview.Details}">
                     <ItemsControl.ItemTemplate>
-                      <DataTemplate>
+                      <DataTemplate x:DataType="services:PreviewDetail">
                         <Grid ColumnDefinitions="70,*" ColumnSpacing="6" Margin="0,2">
                           <TextBlock Text="{Binding Label}" Classes="tiny" VerticalAlignment="Top" />
                           <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11.5"
@@ -378,7 +382,7 @@
                    DoubleTapped="OnPaletteItemDoubleTapped"
                    ScrollViewer.VerticalScrollBarVisibility="Auto">
             <ListBox.ItemTemplate>
-              <DataTemplate>
+              <DataTemplate x:DataType="vm:PaletteCommand">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="8,7">
                   <Path Data="{Binding Icon}" Width="16" Height="16" Stretch="Uniform"
                         Fill="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />

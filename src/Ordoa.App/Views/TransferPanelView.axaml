@@ -1,6 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:loc="using:Ordoa.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ordoa.App.ViewModels"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True"
+             xmlns:core="using:Ordoa.Core.Services"
              x:Class="Ordoa.App.Views.TransferPanelView"
              x:Name="Root">
   <UserControl.Styles>
@@ -45,7 +49,7 @@
                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <ItemsControl ItemsSource="{Binding Services.Operations.Operations}">
           <ItemsControl.ItemTemplate>
-            <DataTemplate>
+            <DataTemplate x:DataType="core:FileOperationItem">
               <Border Classes="transferrow" Classes.failed="{Binding IsFailed}">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
                   <Panel Width="18" Height="18" VerticalAlignment="Center">

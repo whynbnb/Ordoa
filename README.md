@@ -177,7 +177,7 @@ scripts\publish.bat aot
 | `single` | 依赖 .NET 10 Desktop Runtime | 单文件；原生库首次启动时自解压 |
 | `aot` | 不依赖 .NET | NativeAOT 原生程序，仍需携带 SkiaSharp / HarfBuzz 原生库 |
 
-默认输出到 `artifacts/publish/<模式>/<RID|portable>`。省略 `RID` 时会自动检测当前平台；framework 模式可用 `--portable` 生成不绑定 RID 的版本（会包含多个平台的原生资源，目录更大）。常用选项：
+默认输出到项目根目录下的 `artifacts/publish/<模式>/<RID|portable>`。该目录已在 `.gitignore` 中忽略，只保留 `artifacts/README.md` 作为说明。省略 `RID` 时会自动检测当前平台；framework 模式可用 `--portable` 生成不绑定 RID 的版本（会包含多个平台的原生资源，目录更大）。常用选项：
 
 ```bash
 ./scripts/publish.sh framework --rid linux-x64 --configuration Release
@@ -188,7 +188,7 @@ scripts\publish.bat aot
 
 NativeAOT 需要本机 C/C++ 工具链：Linux 上为 clang 或 gcc，Windows 上为 Visual Studio C++ 生成工具与 Windows SDK。AOT 输出不是单文件，`libSkiaSharp.so` / `libHarfBuzzSharp.so`（Windows 为对应 DLL）需要与可执行文件放在同一目录。
 
-AOT 发布时可能看到较多 `IL2026` / `IL3050` 裁剪警告，主要来自 Avalonia 的反射绑定；项目已通过 `TrimmerRootAssembly` 保留应用程序集，发布脚本仍会完成构建。release 输出会自动移除 `*.pdb`。
+AOT 发布现在只会出现 `SMBLibrary` 的 `IL2104` 提示。Avalonia 已启用编译绑定（所有 Window/UserControl 与 DataTemplate 都声明了 `x:DataType`），本地化 `{loc:Tr}` 扩展也已改为编译绑定路径；同时通过 `TrimmerRootAssembly` 保留应用程序集，release 输出会自动移除 `*.pdb`。
 
 macOS 与 Windows 使用对应的 RID（`osx-arm64`、`osx-x64`、`win-x64`）即可构建。
 
@@ -252,6 +252,7 @@ PREFIX=/usr/local sudo -E ./scripts/install.sh
 | 缩略图 / 临时下载 | `~/.cache/ordoa` |
 | 日志 | `~/.local/state/ordoa/ordoa.log` |
 | 回收站 | `~/.local/share/Trash`（见 XDG Trash 规范） |
+| 发布/打包产物 | `artifacts/`（gitignored） |
 
 macOS 使用 `~/Library/Application Support/Ordoa` 与 `~/Library/Caches/Ordoa`；Windows 使用 `%APPDATA%\Ordoa` 与 `%LOCALAPPDATA%\Ordoa`。
 
