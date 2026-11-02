@@ -227,7 +227,7 @@ echo
 
 dotnet "${PUBLISH_ARGS[@]}"
 
-if [[ "${CONFIGURATION,,}" == "release" || "$MODE" == "single" ]]; then
+if [[ "$CONFIGURATION" == "Release" || "$CONFIGURATION" == "release" || "$MODE" == "single" ]]; then
     # Debug symbols from managed/native packages are not needed at runtime.
     find "$OUTPUT_ABS" -type f -name '*.pdb' -delete
 fi

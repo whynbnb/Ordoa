@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMMAND="${1:-}"
+
+fail() {
+    echo "错误: $*" >&2
+    exit 1
+}
+
+usage() {
+    cat <<EOF
+用法:
+  scripts/package-macos.sh zip <发布目录> <输出.zip>
+  scripts/package-macos.sh dmg <发布目录> <版本> <输出.dmg>
+EOF
+}
+
+package_zip() {
+    local source="$1"
+    local output="$2"
+    [[ -d "$source" ]] || fail "发布目录不存在: $source"
+    mkdir -p "$(dirname "$output")"
+    ditto -c -k --sequesterRsrc "$source" "$output"
+}
+
+package_dmg() {
+    local source="$1"
+    local version="${2#v}"
+    local output="$3"
+    [[ -d "$source" ]] || fail "发布目录不存在: $source"
+    [[ -n "$version" ]] || fail "缺少版本号"
+    command -v hdiutil >/dev/null 2>&1 || fail "此脚本只能在 macOS 上创建 DMG。"
+    command -v iconutil >/dev/null 2>&1 || fail "未找到 iconutil。"
+
+    local app="$TMP/Ordoa.app"
+    local contents="$app/Contents"
+    mkdir -p "$contents/MacOS" "$contents/Resources"
+
+    cp -R "$source/." "$contents/MacOS/"
+    if [[ -f "$ROOT/LICENSE" ]]; then
+        cp "$ROOT/LICENSE" "$contents/Resources/LICENSE"
+    fi
+
+    local iconset="$TMP/Ordoa.iconset"
+    mkdir -p "$iconset"
+    cp "$ROOT/packaging/icons/ordoa-16.png" "$iconset/icon_16x16.png"
+    cp "$ROOT/packaging/icons/ordoa-32.png" "$iconset/icon_16x16@2x.png"
+    cp "$ROOT/packaging/icons/ordoa-32.png" "$iconset/icon_32x32.png"
+    cp "$ROOT/packaging/icons/ordoa-64.png" "$iconset/icon_32x32@2x.png"
+    cp "$ROOT/packaging/icons/ordoa-128.png" "$iconset/icon_128x128.png"
+    cp "$ROOT/packaging/icons/ordoa-256.png" "$iconset/icon_128x128@2x.png"
+    cp "$ROOT/packaging/icons/ordoa-256.png" "$iconset/icon_256x256.png"
+    cp "$ROOT/packaging/icons/ordoa-512.png" "$iconset/icon_256x256@2x.png"
+    cp "$ROOT/packaging/icons/ordoa-512.png" "$iconset/icon_512x512.png"
+    sips -z 1024 1024 "$ROOT/packaging/icons/ordoa-512.png" --out "$iconset/icon_512x512@2x.png" >/dev/null
+    iconutil -c icns "$iconset" -o "$contents/Resources/Ordoa.icns"
+
+    cat > "$contents/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDisplayName</key><string>Ordoa 安序</string>
+  <key>CFBundleExecutable</key><string>Ordoa</string>
+  <key>CFBundleIconFile</key><string>Ordoa.icns</string>
+  <key>CFBundleIdentifier</key><string>io.github.whynbnb.ordoa</string>
+  <key>CFBundleName</key><string>Ordoa</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>$version</string>
+  <key>CFBundleVersion</key><string>$version</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+</dict>
+</plist>
+EOF
+
+    chmod +x "$contents/MacOS/Ordoa"
+
+    local dmgroot="$TMP/dmg"
+    mkdir -p "$dmgroot"
+    cp -R "$app" "$dmgroot/Ordoa.app"
+    ln -s /Applications "$dmgroot/Applications"
+
+    mkdir -p "$(dirname "$output")"
+    hdiutil create -volname "Ordoa $version" -srcfolder "$dmgroot" \
+        -ov -format UDZO "$output" >/dev/null
+}
+
+case "$COMMAND" in
+    zip)
+        [[ $# -eq 3 ]] || { usage; exit 1; }
+        TMP="$(mktemp -d)"
+        trap 'rm -rf "$TMP"' EXIT
+        package_zip "$2" "$3"
+        ;;
+    dmg)
+        [[ $# -eq 4 ]] || { usage; exit 1; }
+        TMP="$(mktemp -d)"
+        trap 'rm -rf "$TMP"' EXIT
+        package_dmg "$2" "$3" "$4"
+        ;;
+    -h|--help|help|"")
+        usage
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac

@@ -206,6 +206,29 @@ NativeAOT 需要本机 C/C++ 工具链：Linux 上为 clang 或 gcc，Windows �
 
 macOS 使用 `aot-static` 时还需要 `StaticLink.Avalonia.Native`（脚本/项目已按 macOS RID 条件引用），并要求 macOS 13 或更高。
 
+### GitHub Actions 自动发布
+
+推送 `v*` 标签会自动触发 `.github/workflows/release.yml`：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+发布会生成：
+
+- Windows x64 框架依赖 zip
+- Windows x64 AOT zip
+- Windows x64 AOT 静态单文件 zip
+- macOS arm64 框架依赖 zip
+- macOS arm64 AOT DMG
+- Linux x64 框架依赖 tar.gz
+- Linux x64 AOT deb
+- Linux x64 AOT AppImage
+- Linux x64 AOT 静态单文件 tar.gz
+
+macOS DMG 未做代码签名；首次打开可能需要在 Finder 中右键选择“打开”。
+
 AOT 发布现在只会出现 `SMBLibrary` 的 `IL2104` 提示。Avalonia 已启用编译绑定（所有 Window/UserControl 与 DataTemplate 都声明了 `x:DataType`），本地化 `{loc:Tr}` 扩展也已改为编译绑定路径；同时通过 `TrimmerRootAssembly` 保留应用程序集，release 输出会自动移除 `*.pdb`。
 
 macOS 与 Windows 使用对应的 RID（`osx-arm64`、`osx-x64`、`win-x64`）即可构建。

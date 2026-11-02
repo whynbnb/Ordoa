@@ -1,0 +1,279 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  DOTNET_VERSION: "10.0.x"
+
+jobs:
+  linux-framework:
+    name: Linux x64 framework-dependent
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish
+        run: |
+          chmod +x scripts/publish.sh scripts/package-linux.sh
+          ./scripts/publish.sh framework --rid linux-x64 --output "$RUNNER_TEMP/linux-framework"
+          ./scripts/package-linux.sh tar "$RUNNER_TEMP/linux-framework" \
+            "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-linux-x64-framework.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-framework
+          path: ${{ runner.temp }}/ordoa-*-linux-x64-framework.tar.gz
+          if-no-files-found: error
+
+  linux-aot-deb:
+    name: Linux x64 AOT deb
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Install NativeAOT dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld zlib1g-dev
+      - name: Publish and package
+        run: |
+          chmod +x scripts/publish.sh scripts/package-linux.sh
+          ./scripts/publish.sh aot --rid linux-x64 --output "$RUNNER_TEMP/linux-aot-deb"
+          ./scripts/package-linux.sh deb "$RUNNER_TEMP/linux-aot-deb" \
+            "${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/ordoa_${GITHUB_REF_NAME#v}_amd64.deb"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-aot-deb
+          path: ${{ runner.temp }}/ordoa_*_amd64.deb
+          if-no-files-found: error
+
+  linux-aot-appimage:
+    name: Linux x64 AOT AppImage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Install NativeAOT and AppImage dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld zlib1g-dev squashfs-tools desktop-file-utils
+      - name: Download appimagetool
+        run: |
+          curl -L --fail --retry 3 \
+            -o "$RUNNER_TEMP/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/appimagetool"
+      - name: Publish and package
+        run: |
+          chmod +x scripts/publish.sh scripts/package-linux.sh
+          ./scripts/publish.sh aot --rid linux-x64 --output "$RUNNER_TEMP/linux-aot-appimage"
+          APPIMAGETOOL="$RUNNER_TEMP/appimagetool" \
+            ./scripts/package-linux.sh appimage "$RUNNER_TEMP/linux-aot-appimage" \
+            "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-linux-x64-aot.AppImage"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-aot-appimage
+          path: ${{ runner.temp }}/ordoa-*-linux-x64-aot.AppImage
+          if-no-files-found: error
+
+  linux-aot-static:
+    name: Linux x64 AOT static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Install static-link dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld zlib1g-dev libfontconfig1-dev libfreetype6-dev \
+            libx11-dev libxext-dev libxcb1-dev libwayland-dev libffi-dev libgl1
+      - name: Publish and package
+        run: |
+          chmod +x scripts/publish.sh scripts/package-linux.sh
+          ./scripts/publish.sh aot-static --rid linux-x64 --output "$RUNNER_TEMP/linux-aot-static"
+          test "$(find "$RUNNER_TEMP/linux-aot-static" -type f | wc -l)" -eq 1
+          ./scripts/package-linux.sh tar "$RUNNER_TEMP/linux-aot-static" \
+            "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-linux-x64-aot-static.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-aot-static
+          path: ${{ runner.temp }}/ordoa-*-linux-x64-aot-static.tar.gz
+          if-no-files-found: error
+
+  windows-framework:
+    name: Windows x64 framework-dependent
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish and package
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $out = Join-Path $env:RUNNER_TEMP "win-framework"
+          & .\scripts\publish.ps1 framework -Rid win-x64 -Output $out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archive = Join-Path $env:RUNNER_TEMP "ordoa-$version-win-x64-framework.zip"
+          Compress-Archive -Path (Join-Path $out "*") -DestinationPath $archive -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-framework
+          path: ${{ runner.temp }}/ordoa-*-win-x64-framework.zip
+          if-no-files-found: error
+
+  windows-aot:
+    name: Windows x64 AOT
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msvc-dev@v3
+        with:
+          arch: x64
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish and package
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $out = Join-Path $env:RUNNER_TEMP "win-aot"
+          & .\scripts\publish.ps1 aot -Rid win-x64 -Output $out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archive = Join-Path $env:RUNNER_TEMP "ordoa-$version-win-x64-aot.zip"
+          Compress-Archive -Path (Join-Path $out "*") -DestinationPath $archive -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-aot
+          path: ${{ runner.temp }}/ordoa-*-win-x64-aot.zip
+          if-no-files-found: error
+
+  windows-aot-static:
+    name: Windows x64 AOT static
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msvc-dev@v3
+        with:
+          arch: x64
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Install LLVM for static linking
+        shell: pwsh
+        run: |
+          choco install llvm -y --no-progress
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\LLVM\bin"
+      - name: Publish and package
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $out = Join-Path $env:RUNNER_TEMP "win-aot-static"
+          & .\scripts\publish.ps1 aot-static -Rid win-x64 -Output $out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $exe = Join-Path $out "Ordoa.exe"
+          if (-not (Test-Path -LiteralPath $exe)) { throw "Missing Ordoa.exe" }
+          if (@(Get-ChildItem -LiteralPath $out -File -Recurse | Where-Object { $_.Extension -in @(".dll", ".lib", ".a") }).Count -gt 0) {
+            throw "AOT static output still contains native library files."
+          }
+          $archive = Join-Path $env:RUNNER_TEMP "ordoa-$version-win-x64-aot-static.zip"
+          Compress-Archive -Path $exe -DestinationPath $archive -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-aot-static
+          path: ${{ runner.temp }}/ordoa-*-win-x64-aot-static.zip
+          if-no-files-found: error
+
+  macos-framework:
+    name: macOS arm64 framework-dependent
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish and package
+        run: |
+          chmod +x scripts/publish.sh scripts/package-macos.sh
+          ./scripts/publish.sh framework --rid osx-arm64 --output "$RUNNER_TEMP/macos-framework"
+          ./scripts/package-macos.sh zip "$RUNNER_TEMP/macos-framework" \
+            "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-macos-arm64-framework.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-framework
+          path: ${{ runner.temp }}/ordoa-*-macos-arm64-framework.zip
+          if-no-files-found: error
+
+  macos-aot-dmg:
+    name: macOS arm64 AOT dmg
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish and package
+        run: |
+          chmod +x scripts/publish.sh scripts/package-macos.sh
+          ./scripts/publish.sh aot --rid osx-arm64 --output "$RUNNER_TEMP/macos-aot"
+          ./scripts/package-macos.sh dmg "$RUNNER_TEMP/macos-aot" \
+            "${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-macos-arm64-aot.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-aot-dmg
+          path: ${{ runner.temp }}/ordoa-*-macos-arm64-aot.dmg
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs:
+      - linux-framework
+      - linux-aot-deb
+      - linux-aot-appimage
+      - linux-aot-static
+      - windows-framework
+      - windows-aot
+      - windows-aot-static
+      - macos-framework
+      - macos-aot-dmg
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Show release assets
+        run: ls -lh artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Ordoa 安序 ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: true
+          files: artifacts/*
