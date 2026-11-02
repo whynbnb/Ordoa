@@ -14,6 +14,7 @@ artifacts/publish/<模式>/<RID|portable>/
 artifacts/publish/framework/linux-x64/
 artifacts/publish/single/win-x64/
 artifacts/publish/aot/linux-x64/
+artifacts/publish/aot-static/linux-x64/
 ```
 
 可用 `--output` / `-Output` 指定其他位置。

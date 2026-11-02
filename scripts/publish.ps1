@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("framework", "single", "aot")]
+    [ValidateSet("framework", "single", "aot", "aot-static")]
     [string]$Mode = "framework",
 
     [string]$Rid = "",
@@ -33,9 +33,10 @@ Modes:
   framework   Framework-dependent, multi-file (requires .NET 10 runtime)
   single      Framework-dependent single-file (requires .NET 10 runtime)
   aot         NativeAOT, self-contained (requires a C/C++ toolchain)
+  aot-static  NativeAOT static single-file (statically links SkiaSharp/HarfBuzz/ANGLE)
 
 Options:
-  -Mode <mode>              framework, single or aot
+  -Mode <mode>              framework, single, aot or aot-static
   -Rid <RID>                Runtime identifier, e.g. win-x64, linux-x64, osx-arm64.
                             Current RID is detected when omitted.
   -Configuration <value>    Release or Debug (default: Release)
@@ -50,7 +51,8 @@ Examples:
   .\scripts\publish.bat framework
   .\scripts\publish.bat single -Rid win-x64
   .\scripts\publish.bat aot
-  .\scripts\publish.ps1 aot -Rid win-x64 -Configuration Release
+  .\scripts\publish.bat aot-static
+  .\scripts\publish.ps1 aot-static -Rid win-x64 -Configuration Release
 "@
 }
 
@@ -148,10 +150,13 @@ if (-not $NoClean) {
 }
 
 $onWindows = ($env:OS -eq "Windows_NT")
-if ($Mode -eq "aot") {
+if ($Mode -eq "aot" -or $Mode -eq "aot-static") {
     if ($onWindows) {
         if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
             Write-Warning "NativeAOT on Windows needs the Visual Studio C++ build tools and a Windows SDK."
+        }
+        if ($Mode -eq "aot-static" -and -not (Get-Command lld-link -ErrorAction SilentlyContinue)) {
+            Write-Warning "aot-static on Windows usually needs LLVM lld-link."
         }
     }
     elseif (-not (Get-Command clang -ErrorAction SilentlyContinue) -and
@@ -159,6 +164,12 @@ if ($Mode -eq "aot") {
             -not (Get-Command cc -ErrorAction SilentlyContinue)) {
         Write-Warning "NativeAOT usually needs clang or gcc."
     }
+}
+
+if ($Mode -eq "aot-static" -and $Rid -like "linux-*" -and
+    -not (Get-Command ld.lld -ErrorAction SilentlyContinue) -and
+    -not (Get-Command lld -ErrorAction SilentlyContinue)) {
+    Fail "aot-static on Linux needs lld. Install lld and retry."
 }
 
 $publishArgs = @(
@@ -174,7 +185,7 @@ if (-not [string]::IsNullOrWhiteSpace($Rid)) {
 }
 if ($NoRestore) {
     $publishArgs += "--no-restore"
-    if ($Mode -eq "aot") {
+    if ($Mode -eq "aot" -or $Mode -eq "aot-static") {
         Write-Warning "AOT with -NoRestore is only reliable after an AOT restore for $Rid."
     }
 }
@@ -194,6 +205,16 @@ switch ($Mode) {
         $publishArgs += @(
             "--self-contained", "true",
             "-p:PublishAot=true",
+            "-p:StripSymbols=true",
+            "-p:TrimmerSingleWarn=true"
+        )
+    }
+    "aot-static" {
+        $publishArgs += @(
+            "--self-contained", "true",
+            "-p:PublishAot=true",
+            "-p:PublishSingleFile=false",
+            "-p:UseStaticLinkAvalonia=true",
             "-p:StripSymbols=true",
             "-p:TrimmerSingleWarn=true"
         )
@@ -223,12 +244,21 @@ if ($null -eq $size) { $size = 0 }
 $exeName = if ($Rid -like "win*" -or $onWindows) { "Ordoa.exe" } else { "Ordoa" }
 $exe = Join-Path $Output $exeName
 
-if ($Mode -eq "aot") {
+if ($Mode -eq "aot" -or $Mode -eq "aot-static") {
     if (-not (Test-Path -LiteralPath $exe)) {
         Fail "The AOT publish did not produce a native executable. If you used -NoRestore, retry after an AOT restore."
     }
     if (Test-Path -LiteralPath (Join-Path $Output "Ordoa.dll")) {
         Fail "The output looks framework-dependent instead of AOT. Retry without -NoRestore."
+    }
+}
+
+if ($Mode -eq "aot-static") {
+    $forbidden = @(Get-ChildItem -LiteralPath $Output -File -Recurse -Force | Where-Object {
+        $_.Extension -in @(".so", ".dylib", ".dll", ".a")
+    })
+    if ($forbidden.Count -gt 0) {
+        Fail "aot-static output still contains native library files. Check that StaticLink.Avalonia was applied."
     }
 }
 
@@ -243,6 +273,7 @@ switch ($Mode) {
     "framework" { Write-Host "    Note:   The target machine needs the .NET 10 Desktop Runtime." }
     "single"    { Write-Host "    Note:   The target machine needs the .NET 10 Desktop Runtime; native libraries self-extract on first launch." }
     "aot"       { Write-Host "    Note:   Keep the SkiaSharp / HarfBuzz native libraries next to the AOT executable." }
+    "aot-static" { Write-Host "    Note:   Single executable; SkiaSharp / HarfBuzz / ANGLE are static, but system fontconfig / freetype / zlib are still required." }
 }
 
 exit 0

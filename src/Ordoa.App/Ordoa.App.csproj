@@ -33,6 +33,15 @@
     <ProjectReference Include="..\Ordoa.Core\Ordoa.Core.csproj" />
   </ItemGroup>
 
+  <!-- Optional single-file NativeAOT mode. The package is only restored when
+       UseStaticLinkAvalonia is explicitly enabled by the publish script. -->
+  <ItemGroup Condition="'$(UseStaticLinkAvalonia)' == 'true'">
+    <PackageReference Include="StaticLink.Avalonia" Version="3.119.4.1" />
+    <PackageReference Include="StaticLink.Avalonia.Native" Version="12.1.4.1"
+                      Condition="'$(RuntimeIdentifier)' != '' and $(RuntimeIdentifier.StartsWith('osx'))" />
+  </ItemGroup>
+
+
   <!-- Reflection bindings are used throughout the XAML. Root the application
        assemblies so NativeAOT keeps the view-model members those bindings need. -->
   <ItemGroup Condition="'$(PublishAot)' == 'true'">

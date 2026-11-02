@@ -153,6 +153,9 @@ dotnet run --project src/Ordoa.App/Ordoa.App.csproj -- sftp://user@example.com/
 
 # NativeAOT：自包含，不需要 .NET 运行时
 ./scripts/publish.sh aot
+
+# NativeAOT 静态单文件：SkiaSharp / HarfBuzz / ANGLE 静态链接
+./scripts/publish.sh aot-static
 ```
 
 Windows 提供批处理和 PowerShell 两套入口（需要 Windows PowerShell 5.1 或 PowerShell 7；`publish.bat` 会自动选择可用的那个）：
@@ -161,6 +164,7 @@ Windows 提供批处理和 PowerShell 两套入口（需要 Windows PowerShell 5
 scripts\publish.bat framework
 scripts\publish.bat single -Rid win-x64
 scripts\publish.bat aot
+scripts\publish.bat aot-static
 ```
 
 也可以直接运行 PowerShell：
@@ -169,13 +173,14 @@ scripts\publish.bat aot
 .\scripts\publish.ps1 aot -Rid win-x64 -Configuration Release
 ```
 
-三种模式：
+四种模式：
 
 | 模式 | 运行时 | 输出 |
 | --- | --- | --- |
 | `framework` | 依赖 .NET 10 Desktop Runtime | 多文件；默认自动检测当前 RID，加 `--portable` 可输出可移植版本 |
 | `single` | 依赖 .NET 10 Desktop Runtime | 单文件；原生库首次启动时自解压 |
 | `aot` | 不依赖 .NET | NativeAOT 原生程序，仍需携带 SkiaSharp / HarfBuzz 原生库 |
+| `aot-static` | 不依赖 .NET | 单文件；通过 `StaticLink.Avalonia` 静态链接 SkiaSharp / HarfBuzz / ANGLE，仍依赖系统 fontconfig / freetype / zlib 等库 |
 
 默认输出到项目根目录下的 `artifacts/publish/<模式>/<RID|portable>`。该目录已在 `.gitignore` 中忽略，只保留 `artifacts/README.md` 作为说明。省略 `RID` 时会自动检测当前平台；framework 模式可用 `--portable` 生成不绑定 RID 的版本（会包含多个平台的原生资源，目录更大）。常用选项：
 
@@ -184,9 +189,22 @@ scripts\publish.bat aot
 ./scripts/publish.sh framework --portable
 ./scripts/publish.sh single --output /tmp/ordoa-single --no-clean
 ./scripts/publish.sh aot --no-restore
+./scripts/publish.sh aot-static --rid linux-x64
 ```
 
-NativeAOT 需要本机 C/C++ 工具链：Linux 上为 clang 或 gcc，Windows 上为 Visual Studio C++ 生成工具与 Windows SDK。AOT 输出不是单文件，`libSkiaSharp.so` / `libHarfBuzzSharp.so`（Windows 为对应 DLL）需要与可执行文件放在同一目录。
+NativeAOT 需要本机 C/C++ 工具链：Linux 上为 clang 或 gcc，Windows 上为 Visual Studio C++ 生成工具与 Windows SDK。
+
+`aot-static` 还需要：
+
+- `lld`（Linux）
+- `StaticLink.Avalonia` 对应的系统开发库：fontconfig、freetype、zlib、libx11、libxext、libxcb、wayland、libffi 等
+- 首次还原会下载较大的静态库包（约 115 MB，解压约 533 MB）
+
+`aot-static` 输出为单文件；`aot` 输出不是单文件，`libSkiaSharp.so` / `libHarfBuzzSharp.so`（Windows 为对应 DLL）需要与可执行文件放在同一目录。
+
+`aot-static` 使用的是第三方 MIT 包 [StaticLink.Avalonia](https://github.com/greepar/StaticLink.Avalonia)，版本与 Avalonia 12.1.4 / SkiaSharp 3.119.4 / HarfBuzzSharp 8.3.1.3 对齐。它不是完全静态可执行文件，运行时仍依赖 glibc、fontconfig、freetype 等系统库。
+
+macOS 使用 `aot-static` 时还需要 `StaticLink.Avalonia.Native`（脚本/项目已按 macOS RID 条件引用），并要求 macOS 13 或更高。
 
 AOT 发布现在只会出现 `SMBLibrary` 的 `IL2104` 提示。Avalonia 已启用编译绑定（所有 Window/UserControl 与 DataTemplate 都声明了 `x:DataType`），本地化 `{loc:Tr}` 扩展也已改为编译绑定路径；同时通过 `TrimmerRootAssembly` 保留应用程序集，release 输出会自动移除 `*.pdb`。
 

@@ -23,9 +23,10 @@ usage() {
   framework   托管发布（多文件，依赖目标机安装 .NET 10 运行时）
   single      托管单文件（依赖目标机安装 .NET 10 运行时）
   aot         NativeAOT 自包含发布（无需 .NET 运行时，但需要 C/C++ 工具链）
+  aot-static  NativeAOT 静态单文件（SkiaSharp / HarfBuzz / ANGLE 静态链接）
 
 选项:
-  --mode <模式>       同位置参数，取值为 framework、single、aot
+  --mode <模式>       同位置参数，取值为 framework、single、aot、aot-static
   --rid <RID>         目标运行时标识，例如 linux-x64、linux-arm64、osx-arm64、win-x64
                       省略时自动检测当前 RID；framework 模式可用 --portable
   -c, --configuration <配置>   Release 或 Debug，默认 Release
@@ -39,12 +40,16 @@ usage() {
   ./scripts/publish.sh framework
   ./scripts/publish.sh single --rid linux-arm64
   ./scripts/publish.sh aot
-  MODE=aot RID=linux-x64 ./scripts/publish.sh
+  ./scripts/publish.sh aot-static
+  MODE=aot-static RID=linux-x64 ./scripts/publish.sh
 
 说明:
   - single 使用“托管单文件”，SkiaSharp / HarfBuzz 原生库会随单文件自解压。
   - aot 输出仍包含 SkiaSharp / HarfBuzz 原生库，不是单文件。
-  - NativeAOT 需要 clang 或 gcc；Windows 需要 Visual Studio C++ 生成工具。
+  - aot-static 使用 StaticLink.Avalonia 静态链接，输出一个可执行文件；
+    仍依赖系统 fontconfig / freetype / zlib 等库。
+  - NativeAOT 需要 clang 或 gcc；aot-static 在 Linux 上还需要 lld。
+  - Windows 需要 Visual Studio C++ 生成工具。
 EOF
 }
 
@@ -79,7 +84,7 @@ detect_rid() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        framework|single|aot)
+        framework|single|aot|aot-static)
             MODE="$1"
             ;;
         --mode|-m)
@@ -112,8 +117,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$MODE" in
-    framework|single|aot) ;;
-    *) fail "未知模式: $MODE（可选 framework、single、aot）" ;;
+    framework|single|aot|aot-static) ;;
+    *) fail "未知模式: $MODE（可选 framework、single、aot、aot-static）" ;;
 esac
 
 case "$CONFIGURATION" in
@@ -148,9 +153,20 @@ if [[ "$CLEAN" == true ]]; then
     shopt -u dotglob nullglob
 fi
 
-if [[ "$MODE" == "aot" ]] && ! command -v clang >/dev/null 2>&1 &&
+if [[ "$MODE" == "aot" || "$MODE" == "aot-static" ]] &&
+   ! command -v clang >/dev/null 2>&1 &&
    ! command -v gcc >/dev/null 2>&1 && ! command -v cc >/dev/null 2>&1; then
     echo "警告: 未找到 clang/gcc；NativeAOT 发布通常需要本机 C/C++ 工具链。" >&2
+fi
+
+if [[ "$MODE" == "aot-static" ]]; then
+    case "$RID" in
+        linux-*)
+            if ! command -v ld.lld >/dev/null 2>&1 && ! command -v lld >/dev/null 2>&1; then
+                fail "aot-static 在 Linux 上需要 lld。请安装 lld 后重试。"
+            fi
+            ;;
+    esac
 fi
 
 PUBLISH_ARGS=(
@@ -166,7 +182,7 @@ if [[ -n "$RID" ]]; then
 fi
 if [[ "$RESTORE" == false ]]; then
     PUBLISH_ARGS+=(--no-restore)
-    if [[ "$MODE" == "aot" ]]; then
+    if [[ "$MODE" == "aot" || "$MODE" == "aot-static" ]]; then
         echo "警告: AOT 与 --no-restore 仅在之前已针对 $RID 还原 AOT 工具链时可靠。" >&2
     fi
 fi
@@ -186,6 +202,16 @@ case "$MODE" in
         PUBLISH_ARGS+=(
             --self-contained true
             -p:PublishAot=true
+            -p:StripSymbols=true
+            -p:TrimmerSingleWarn=true
+        )
+        ;;
+    aot-static)
+        PUBLISH_ARGS+=(
+            --self-contained true
+            -p:PublishAot=true
+            -p:PublishSingleFile=false
+            -p:UseStaticLinkAvalonia=true
             -p:StripSymbols=true
             -p:TrimmerSingleWarn=true
         )
@@ -217,10 +243,16 @@ elif [[ -z "$RID" ]]; then
     esac
 fi
 
-if [[ "$MODE" == "aot" ]]; then
+if [[ "$MODE" == "aot" || "$MODE" == "aot-static" ]]; then
     [[ -f "$EXE" ]] || fail "AOT 发布未生成原生可执行文件。若使用了 --no-restore，请先去掉它重新发布。"
     if [[ -f "$OUTPUT_ABS/Ordoa.dll" ]]; then
         fail "输出看起来是托管发布而不是 AOT。请去掉 --no-restore 重新发布。"
+    fi
+fi
+
+if [[ "$MODE" == "aot-static" ]]; then
+    if find "$OUTPUT_ABS" -type f \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' -o -name '*.a' \) | grep -q .; then
+        fail "aot-static 输出仍包含动态/静态原生库文件；请检查 StaticLink.Avalonia 是否生效。"
     fi
 fi
 
@@ -235,6 +267,8 @@ if [[ "$MODE" == "framework" ]]; then
     echo "    提示: 目标机需要安装 .NET 10 Desktop Runtime。"
 elif [[ "$MODE" == "single" ]]; then
     echo "    提示: 目标机需要安装 .NET 10 Desktop Runtime；原生库在首次启动时自解压。"
-else
+elif [[ "$MODE" == "aot" ]]; then
     echo "    提示: AOT 输出仍需携带同目录下的 SkiaSharp / HarfBuzz 原生库。"
+else
+    echo "    提示: aot-static 为单文件；SkiaSharp / HarfBuzz / ANGLE 已静态链接，仍依赖系统 fontconfig / freetype / zlib 等库。"
 fi
