@@ -301,6 +301,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _maxSearchResults = settings.MaxSearchResults;
         _ffmpegPath = settings.FfmpegPath;
         _useSystemWindowFrame = settings.UseSystemWindowFrame;
+        _windowButtonMode = settings.WindowButtonMode;
 
         var hidden = new HashSet<string>(settings.HiddenPlaces ?? [], StringComparer.OrdinalIgnoreCase);
         foreach (var place in KnownFolders.GetPlaces())
@@ -364,6 +365,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     [ObservableProperty]
     private bool _useSystemWindowFrame;
 
+    [ObservableProperty]
+    private WindowButtonMode _windowButtonMode;
+
     public string SettingsPath => AppPaths.SettingsFile;
 
     public AppSettings ToSettings()
@@ -385,6 +389,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.MaxSearchResults = Math.Clamp((int)MaxSearchResults, 100, 20000);
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
         settings.UseSystemWindowFrame = UseSystemWindowFrame;
+        settings.WindowButtonMode = WindowButtonMode;
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
         return settings;
     }
@@ -408,6 +413,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         MaxSearchResults = defaults.MaxSearchResults;
         FfmpegPath = defaults.FfmpegPath;
         UseSystemWindowFrame = defaults.UseSystemWindowFrame;
+        WindowButtonMode = defaults.WindowButtonMode;
         ResetPlaces();
     }
 
@@ -439,5 +445,11 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     {
         if (Enum.TryParse<AccentKind>(value, true, out var accent))
             Accent = accent;
+    }
+
+    public void SetWindowButtonMode(string value)
+    {
+        if (Enum.TryParse<WindowButtonMode>(value, true, out var mode))
+            WindowButtonMode = mode;
     }
 }

@@ -229,7 +229,8 @@
           <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Stretch"
                       IsVisible="{Binding ShowWindowCaptionButtons}">
             <Button Classes="caption" Click="OnMinimizeWindowClick" ToolTip.Tip="{loc:Tr 最小化}">
-              <Path Data="{StaticResource IconMinus}" Width="11" Height="11" Stretch="Uniform"
+              <Path Data="{StaticResource IconMinimizeWindow}" Width="10" Height="1" Stretch="Fill"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
                     Fill="{DynamicResource TextSecondaryBrush}" />
             </Button>
             <Button Classes="caption" Click="OnMaximizeRestoreWindowClick" ToolTip.Tip="{loc:Tr 最大化 / 还原}">

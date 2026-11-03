@@ -19,6 +19,7 @@ public sealed class JsonFileTests
                 HiddenPlaces = ["music", "videos"],
                 WindowWidth = 1280,
                 UseSystemWindowFrame = true,
+                WindowButtonMode = WindowButtonMode.Show,
             };
 
             JsonFile.Save(path, settings);
@@ -30,6 +31,7 @@ public sealed class JsonFileTests
             Assert.Equal(["music", "videos"], loaded.HiddenPlaces);
             Assert.Equal(1280, loaded.WindowWidth);
             Assert.True(loaded.UseSystemWindowFrame);
+            Assert.Equal(WindowButtonMode.Show, loaded.WindowButtonMode);
         }
         finally
         {

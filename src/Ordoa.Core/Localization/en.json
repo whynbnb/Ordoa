@@ -582,5 +582,10 @@
  "使用系统标题栏（非沉浸式）": "Use system title bar (non-immersive)",
  "关闭时使用沉浸式自绘标题栏；打开时保留系统非客户区。": "When off, use the immersive app-drawn title bar; when on, keep the system non-client area.",
  "最小化": "Minimize",
- "最大化 / 还原": "Maximize / Restore"
+ "最大化 / 还原": "Maximize / Restore",
+ "窗口按钮": "Window buttons",
+ "自动": "Automatic",
+ "显示": "Show",
+ "隐藏": "Hide",
+ "自动会在 niri、Sway、Hyprland 等平铺合成器下隐藏窗口按钮。": "Automatic hides the window buttons on tiling compositors such as niri, Sway and Hyprland."
 }

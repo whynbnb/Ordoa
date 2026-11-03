@@ -36,6 +36,12 @@ public partial class SettingsWindow : Window
             vm.SetAccent(accent);
     }
 
+    private void OnWindowButtonModeClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string mode })
+            vm.SetWindowButtonMode(mode);
+    }
+
     private void OnResetPlacesClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm)

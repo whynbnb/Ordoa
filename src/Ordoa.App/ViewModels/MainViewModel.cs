@@ -130,7 +130,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public bool IsMacOS => OperatingSystem.IsMacOS();
 
-    public bool ShowWindowCaptionButtons => IsImmersiveWindow && !IsMacOS;
+    public bool ShowWindowCaptionButtons => IsImmersiveWindow && !IsMacOS &&
+        (_services.Settings.Current.WindowButtonMode switch
+        {
+            WindowButtonMode.Show => true,
+            WindowButtonMode.Hide => false,
+            _ => !WindowEnvironment.IsTilingCompositor,
+        });
 
     public bool ReserveMacOSTrafficLights => IsImmersiveWindow && IsMacOS;
 

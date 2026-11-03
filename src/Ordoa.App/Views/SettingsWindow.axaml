@@ -59,7 +59,7 @@
       <StackPanel Spacing="14">
         <!-- Appearance -->
         <TextBlock Text="{loc:Tr 外观}" Classes="section" />
-        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
+        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
           <TextBlock Text="{loc:Tr 主题}" Classes="fieldlabel" />
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
             <Button Classes="chip" Tag="System" Click="OnThemeClick"
@@ -119,8 +119,28 @@
                        Classes="fieldhint" TextWrapping="Wrap" />
           </StackPanel>
 
-          <TextBlock Grid.Row="5" Text="{loc:Tr 语言}" Classes="fieldlabel" />
-          <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+          <TextBlock Grid.Row="5" Text="{loc:Tr 窗口按钮}" Classes="fieldlabel" />
+          <StackPanel Grid.Row="5" Grid.Column="1" Spacing="3">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Classes="chip" Tag="Auto" Click="OnWindowButtonModeClick"
+                      Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Auto}">
+                <TextBlock Text="{loc:Tr 自动}" />
+              </Button>
+              <Button Classes="chip" Tag="Show" Click="OnWindowButtonModeClick"
+                      Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Show}">
+                <TextBlock Text="{loc:Tr 显示}" />
+              </Button>
+              <Button Classes="chip" Tag="Hide" Click="OnWindowButtonModeClick"
+                      Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Hide}">
+                <TextBlock Text="{loc:Tr 隐藏}" />
+              </Button>
+            </StackPanel>
+            <TextBlock Text="{loc:Tr 自动会在 niri、Sway、Hyprland 等平铺合成器下隐藏窗口按钮。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <TextBlock Grid.Row="6" Text="{loc:Tr 语言}" Classes="fieldlabel" />
+          <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="6">
             <Button Classes="chip" Tag="System" Click="OnLanguageClick"
                     Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
               <TextBlock Text="{loc:Tr 跟随系统}" />

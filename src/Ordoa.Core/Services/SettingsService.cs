@@ -20,6 +20,13 @@ public enum AccentKind
     Violet,
 }
 
+public enum WindowButtonMode
+{
+    Auto,
+    Show,
+    Hide,
+}
+
 public sealed class AppSettings
 {
     public UiLanguage Language { get; set; } = UiLanguage.System;
@@ -52,6 +59,12 @@ public sealed class AppSettings
     /// immersive, app-drawn title bar that blends into the tab strip.
     /// </summary>
     public bool UseSystemWindowFrame { get; set; }
+
+    /// <summary>
+    /// Controls the app-drawn minimize/maximize/close buttons. Auto hides them
+    /// on tiling compositors such as niri, Sway and Hyprland.
+    /// </summary>
+    public WindowButtonMode WindowButtonMode { get; set; } = WindowButtonMode.Auto;
 
     public AppSettings Clone() => (AppSettings)MemberwiseClone();
 }
@@ -105,6 +118,8 @@ public sealed class SettingsService
             Current.SidebarWidth = 232;
         if (!Enum.IsDefined(Current.Language))
             Current.Language = UiLanguage.System;
+        if (!Enum.IsDefined(Current.WindowButtonMode))
+            Current.WindowButtonMode = WindowButtonMode.Auto;
         if (Current.WindowWidth < 720)
             Current.WindowWidth = 1200;
         if (Current.WindowHeight < 480)
