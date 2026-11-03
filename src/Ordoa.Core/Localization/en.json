@@ -597,5 +597,7 @@
  "路径不存在或不是文件夹。": "The path does not exist or is not a folder.",
  "该路径已添加。": "That path is already added.",
  "路径格式无效。": "Invalid path format.",
- "请输入路径。": "Enter a path."
+ "请输入路径。": "Enter a path.",
+ "移动到此文件夹": "Move to this folder",
+ "复制到此文件夹": "Copy to this folder"
 }

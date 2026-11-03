@@ -1,5 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Ordoa.App.Services;
 using Ordoa.App.ViewModels;
 using Ordoa.Core.Abstractions;
@@ -11,12 +15,109 @@ namespace Ordoa.App.Views;
 
 public partial class SidebarView : UserControl
 {
+    private readonly DispatcherTimer _dropClearTimer;
+    private TopLevel? _keyTopLevel;
+    private SidebarEntryViewModel? _dropEntry;
+    private SidebarEntryViewModel? _pendingClear;
+    private FileDragPayload? _dropPayload;
+    private bool _dropExternal;
+    private bool? _dragCursorMove;
+
     public SidebarView()
     {
         InitializeComponent();
+
+        // DragLeave can fire while the pointer is still inside an entry.
+        // Delay clearing so moving within an entry does not flash the overlay.
+        _dropClearTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(90) };
+        _dropClearTimer.Tick += (_, _) =>
+        {
+            _dropClearTimer.Stop();
+            var entry = _pendingClear;
+            _pendingClear = null;
+            if (entry is null)
+                return;
+
+            if (!ReferenceEquals(entry, _dropEntry) || entry.IsDropTarget)
+                entry.SetDropTarget(false);
+            if (ReferenceEquals(entry, _dropEntry))
+            {
+                _dropEntry = null;
+                if (!FileDragContext.IsDragging)
+                    RestoreDragCursor();
+            }
+        };
+
+        AttachedToVisualTree += OnAttachedToVisualTree;
+        DetachedFromVisualTree += OnDetachedFromVisualTree;
     }
 
     private MainViewModel? ViewModel => DataContext as MainViewModel;
+
+    private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        FileDragContext.DragEnded += OnDragEnded;
+        _keyTopLevel = TopLevel.GetTopLevel(this);
+        if (_keyTopLevel is not null)
+        {
+            _keyTopLevel.AddHandler(KeyDownEvent, OnDropModifierChanged,
+                RoutingStrategies.Tunnel, handledEventsToo: true);
+            _keyTopLevel.AddHandler(KeyUpEvent, OnDropModifierChanged,
+                RoutingStrategies.Tunnel, handledEventsToo: true);
+        }
+    }
+
+    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        FileDragContext.DragEnded -= OnDragEnded;
+        if (_keyTopLevel is not null)
+        {
+            _keyTopLevel.RemoveHandler(KeyDownEvent, OnDropModifierChanged);
+            _keyTopLevel.RemoveHandler(KeyUpEvent, OnDropModifierChanged);
+            _keyTopLevel = null;
+        }
+        _dropClearTimer.Stop();
+        _dropEntry = null;
+        _pendingClear = null;
+        _dropPayload = null;
+        RestoreDragCursor();
+    }
+
+    private void OnDragEnded()
+    {
+        RestoreDragCursor();
+    }
+
+    private void OnDropModifierChanged(object? sender, KeyEventArgs e)
+    {
+        if (_dropEntry is not { } entry || ViewModel is not { } vm)
+            return;
+
+        if (!CanDrop(entry, _dropPayload?.Sources, _dropExternal,
+                e.KeyModifiers.HasFlag(KeyModifiers.Shift), vm))
+        {
+            ClearDropTargets(vm);
+            _dropEntry = null;
+            if (!FileDragContext.IsDragging)
+                RestoreDragCursor();
+            return;
+        }
+
+        var sources = _dropPayload?.Sources;
+        var move = entry.Kind == SidebarEntryKind.Trash ||
+                   FileDropHelper.IsMove(e.KeyModifiers, sources, TargetFileSystemId(entry), _dropExternal);
+        if (move && IsNoOpSidebarMove(vm, entry, sources))
+        {
+            ClearDropTargets(vm);
+            _dropEntry = null;
+            if (!FileDragContext.IsDragging)
+                RestoreDragCursor();
+            return;
+        }
+
+        var appliedMove = ApplyDropTarget(vm, entry, _dropPayload, _dropExternal, e.KeyModifiers);
+        SetDragCursor(appliedMove);
+    }
 
     private void OnSidebarHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -86,22 +187,119 @@ public partial class SidebarView : UserControl
         if (sender is not Button { DataContext: SidebarEntryViewModel entry } || ViewModel is not { } vm)
             return;
 
+        vm.ClearPaneDropTargets();
+        _dropClearTimer.Stop();
+        _pendingClear = null;
+
         var payload = FileDropHelper.GetPayload(e.DataTransfer);
         var sources = payload?.Sources;
         var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         if (!FileDropHelper.HasData(e.DataTransfer, payload) ||
             !CanDrop(entry, sources, payload is null, shift, vm))
         {
-            entry.IsDropTarget = false;
+            ClearDropTargets(vm);
+            _dropEntry = null;
+            _dropPayload = null;
+            if (!FileDragContext.IsDragging)
+                RestoreDragCursor();
             e.DragEffects = DragDropEffects.None;
             return;
         }
 
         var move = entry.Kind == SidebarEntryKind.Trash ||
                    FileDropHelper.IsMove(e.KeyModifiers, sources, TargetFileSystemId(entry), payload is null);
-        e.DragEffects = move ? DragDropEffects.Move : DragDropEffects.Copy;
-        entry.IsDropTarget = true;
+        if (move && IsNoOpSidebarMove(vm, entry, sources))
+        {
+            ClearDropTargets(vm);
+            _dropEntry = null;
+            _dropPayload = null;
+            if (!FileDragContext.IsDragging)
+                RestoreDragCursor();
+            e.DragEffects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        _dropEntry = entry;
+        _dropPayload = payload;
+        _dropExternal = payload is null;
+
+        var appliedMove = ApplyDropTarget(vm, entry, payload, _dropExternal, e.KeyModifiers);
+        SetDragCursor(appliedMove);
+        e.DragEffects = appliedMove ? DragDropEffects.Move : DragDropEffects.Copy;
         e.Handled = true;
+    }
+
+    private void SetDragCursor(bool move)
+    {
+        if (_dragCursorMove == move)
+            return;
+
+        _dragCursorMove = move;
+        var cursor = new Cursor(move ? StandardCursorType.DragMove : StandardCursorType.DragCopy);
+        foreach (var button in this.GetVisualDescendants().OfType<Button>())
+            button.Cursor = cursor;
+    }
+
+    private void RestoreDragCursor()
+    {
+        if (_dragCursorMove is null)
+            return;
+
+        _dragCursorMove = null;
+        foreach (var button in this.GetVisualDescendants().OfType<Button>())
+            button.ClearValue(InputElement.CursorProperty);
+    }
+
+    private static bool IsNoOpSidebarMove(MainViewModel vm, SidebarEntryViewModel entry,
+        IReadOnlyList<OperationSource>? sources)
+    {
+        if (entry.Kind == SidebarEntryKind.Trash || sources is not { Count: > 0 } ||
+            string.IsNullOrEmpty(entry.Path))
+            return false;
+
+        IFileSystem? fileSystem = null;
+        if (entry.FileSystemId is null or "local")
+        {
+            if (!sources.All(source => source.FileSystem.Id == "local"))
+                return false;
+            fileSystem = vm.Services.FileSystems.Local;
+        }
+        else
+        {
+            if (!sources.All(source => source.FileSystem.Id == entry.FileSystemId))
+                return false;
+            fileSystem = sources[0].FileSystem;
+        }
+
+        return FileDropHelper.IsNoOpMove(sources, fileSystem, entry.Path);
+    }
+
+    private static bool ApplyDropTarget(MainViewModel vm, SidebarEntryViewModel entry,
+        FileDragPayload? payload, bool external, KeyModifiers modifiers)
+    {
+        var sources = payload?.Sources;
+        var shift = modifiers.HasFlag(KeyModifiers.Shift);
+        var move = entry.Kind == SidebarEntryKind.Trash ||
+                   FileDropHelper.IsMove(modifiers, sources, TargetFileSystemId(entry), external);
+
+        ClearDropTargets(vm, entry);
+        if (entry.Kind == SidebarEntryKind.Trash)
+        {
+            var permanent = shift;
+            entry.SetDropTarget(true,
+                permanent ? L10n.T("永久删除") : L10n.T("删除"),
+                permanent ? "IconDelete" : "IconTrash",
+                destructive: true);
+        }
+        else
+        {
+            entry.SetDropTarget(true,
+                move ? L10n.T("移动到此文件夹") : L10n.T("复制到此文件夹"),
+                move ? "IconFolder" : "IconCopy");
+        }
+
+        return move;
     }
 
     private static bool CanDrop(SidebarEntryViewModel entry, IReadOnlyList<OperationSource>? sources,
@@ -139,8 +337,18 @@ public partial class SidebarView : UserControl
 
     private void OnEntryDragLeave(object? sender, DragEventArgs e)
     {
-        if (sender is Button { DataContext: SidebarEntryViewModel entry })
-            entry.IsDropTarget = false;
+        if (sender is not Button { DataContext: SidebarEntryViewModel entry } button)
+            return;
+
+        // Spurious DragLeave events can fire while the pointer is still over
+        // the entry, especially when crossing its child visuals.
+        var position = e.GetPosition(button);
+        if (new Rect(button.Bounds.Size).Contains(position))
+            return;
+
+        _pendingClear = entry;
+        _dropClearTimer.Stop();
+        _dropClearTimer.Start();
     }
 
     private async void OnEntryDrop(object? sender, DragEventArgs e)
@@ -150,6 +358,11 @@ public partial class SidebarView : UserControl
 
         e.Handled = true;
         ClearDropTargets(vm);
+        _dropClearTimer.Stop();
+        _pendingClear = null;
+        _dropEntry = null;
+        _dropPayload = null;
+        RestoreDragCursor();
 
         var external = FileDropHelper.GetPayload(e.DataTransfer) is null;
         try
@@ -177,6 +390,8 @@ public partial class SidebarView : UserControl
                 e.KeyModifiers.HasFlag(KeyModifiers.Control),
                 e.KeyModifiers.HasFlag(KeyModifiers.Shift),
                 same) == TransferMode.Move;
+            if (move && FileDropHelper.IsNoOpMove(sources, target.Value.FileSystem, target.Value.Path))
+                return;
             vm.EnqueueDropTransfer(sources, target.Value.FileSystem, target.Value.Path, move);
         }
         catch (Exception ex)
@@ -208,7 +423,7 @@ public partial class SidebarView : UserControl
         return (vm.Services.FileSystems.Local, entry.Path);
     }
 
-    private static void ClearDropTargets(MainViewModel vm)
+    private static void ClearDropTargets(MainViewModel vm, SidebarEntryViewModel? except = null)
     {
         var sections = vm.SidebarSections.AsEnumerable();
         if (vm.SystemSection is not null)
@@ -216,8 +431,8 @@ public partial class SidebarView : UserControl
 
         foreach (var item in sections.SelectMany(section => section.Items))
         {
-            if (item.IsDropTarget)
-                item.IsDropTarget = false;
+            if (!ReferenceEquals(item, except) && item.IsDropTarget)
+                item.SetDropTarget(false);
         }
     }
 

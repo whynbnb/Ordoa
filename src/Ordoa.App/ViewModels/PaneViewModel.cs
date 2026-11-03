@@ -1659,21 +1659,23 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public void SetDropTarget(bool value, bool move = false, string? destination = null,
         bool trash = false, bool permanent = false)
     {
-        IsDropTarget = value;
-        if (!value)
-        {
-            DropHint = string.Empty;
-            DropDestination = string.Empty;
-            DropShowsModifiers = false;
-            return;
-        }
+        var hint = !value
+            ? string.Empty
+            : permanent
+                ? L10n.T("松开以永久删除")
+                : trash ? L10n.T("松开以移到回收站")
+                : move ? L10n.T("松开以移动到") : L10n.T("松开以复制到");
+        var destinationText = value ? destination ?? string.Empty : string.Empty;
+        var showsModifiers = value && !trash && !permanent;
 
-        DropHint = permanent
-            ? L10n.T("松开以永久删除")
-            : trash ? L10n.T("松开以移到回收站")
-            : move ? L10n.T("松开以移动到") : L10n.T("松开以复制到");
-        DropDestination = destination ?? string.Empty;
-        DropShowsModifiers = !trash && !permanent;
+        if (IsDropTarget == value && DropHint == hint &&
+            DropDestination == destinationText && DropShowsModifiers == showsModifiers)
+            return;
+
+        IsDropTarget = value;
+        DropHint = hint;
+        DropDestination = destinationText;
+        DropShowsModifiers = showsModifiers;
     }
 
     public IReadOnlyList<FileItemViewModel> SelectedItems => _selected;

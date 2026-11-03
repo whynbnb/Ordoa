@@ -317,7 +317,7 @@
                  ContextRequested="OnFileContextRequested"
                  PointerPressed="OnFilePointerPressed"
                  PointerMoved="OnFilePointerMoved"
-                 DragDrop.DragOver="OnFileDragOver" DragDrop.DragLeave="OnFileDragLeave" DragDrop.Drop="OnFileDrop"
+                 DragDrop.DragEnter="OnFileDragOver" DragDrop.DragOver="OnFileDragOver" DragDrop.DragLeave="OnFileDragLeave" DragDrop.Drop="OnFileDrop"
                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
           <ListBox.ItemTemplate>
@@ -374,7 +374,7 @@
                ContextRequested="OnFileContextRequested"
                PointerPressed="OnFilePointerPressed"
                PointerMoved="OnFilePointerMoved"
-               DragDrop.DragOver="OnFileDragOver" DragDrop.DragLeave="OnFileDragLeave" DragDrop.Drop="OnFileDrop"
+               DragDrop.DragEnter="OnFileDragOver" DragDrop.DragOver="OnFileDragOver" DragDrop.DragLeave="OnFileDragLeave" DragDrop.Drop="OnFileDrop"
                ScrollViewer.VerticalScrollBarVisibility="Auto"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemsPanel>

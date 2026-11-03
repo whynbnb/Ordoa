@@ -14,11 +14,13 @@
             ContextRequested="OnEntryContextRequested"
             ToolTip.Tip="{Binding Detail}"
             DragDrop.AllowDrop="True"
+            DragDrop.DragEnter="OnEntryDragOver"
             DragDrop.DragOver="OnEntryDragOver"
             DragDrop.DragLeave="OnEntryDragLeave"
             DragDrop.Drop="OnEntryDrop">
       <Panel>
-        <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,2" VerticalAlignment="Center">
+        <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,2" VerticalAlignment="Center"
+              Opacity="{Binding IsDropTarget, Converter={StaticResource BoolToOpacityConverter}}">
           <Path Data="{Binding Icon}" Fill="{Binding IconBrush}"
                 Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"
                 Margin="0,0,9,0" />
@@ -32,6 +34,16 @@
                      VerticalAlignment="Bottom" Margin="24,0,4,0"
                      Value="{Binding UsageFraction}" Maximum="1"
                      IsVisible="{Binding ShowUsage}" />
+        <Border Classes="sidebar-drop" Classes.destructive="{Binding DropIsDestructive}"
+                IsVisible="{Binding IsDropTarget}" IsHitTestVisible="False"
+                Margin="-9,-6" Padding="8,5">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                      VerticalAlignment="Center" Spacing="7">
+            <Path Data="{Binding DropActionIcon}" Width="14" Height="14" Stretch="Uniform"
+                  VerticalAlignment="Center" />
+            <TextBlock Text="{Binding DropActionText}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
       </Panel>
     </Button>
     </DataTemplate>
@@ -77,6 +89,30 @@
     <Style Selector="Button.sidebaritem.active TextBlock.sidebarlabel">
       <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
       <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.sidebar-drop">
+      <Setter Property="Background" Value="{DynamicResource DropOverlayBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+    </Style>
+    <Style Selector="Border.sidebar-drop.destructive">
+      <Setter Property="Background" Value="{DynamicResource ErrorSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}" />
+    </Style>
+    <Style Selector="Border.sidebar-drop TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.sidebar-drop.destructive TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+    </Style>
+    <Style Selector="Border.sidebar-drop Path">
+      <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.sidebar-drop.destructive Path">
+      <Setter Property="Fill" Value="{DynamicResource ErrorBrush}" />
     </Style>
     <Style Selector="Button.sectionadd Path">
       <Setter Property="Fill" Value="{DynamicResource TextTertiaryBrush}" />

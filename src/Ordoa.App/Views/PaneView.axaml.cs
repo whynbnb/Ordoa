@@ -24,6 +24,13 @@ public partial class PaneView : UserControl
     private FileItemViewModel? _dragItem;
     private IReadOnlyList<FileItemViewModel>? _dragSelection;
     private bool _dragging;
+    private readonly DispatcherTimer _dropClearTimer;
+    private TopLevel? _dropKeyTopLevel;
+    private IReadOnlyList<OperationSource>? _dropSources;
+    private string? _dropDestination;
+    private string? _dropDestinationLabel;
+    private bool _dropExternal;
+    private bool _dropTrash;
     private bool _marqueePending;
     private bool _marqueeActive;
     private bool _marqueeAdditive;
@@ -33,6 +40,21 @@ public partial class PaneView : UserControl
     public PaneView()
     {
         InitializeComponent();
+
+        // DragLeave is occasionally raised for a frame while the pointer is
+        // still over the list. Delay clearing the overlay so crossing child
+        // visuals does not make the drop hint flash off and on.
+        _dropClearTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        _dropClearTimer.Tick += (_, _) =>
+        {
+            _dropClearTimer.Stop();
+            ClearDropContext();
+            _pane?.SetDropTarget(false);
+        };
+
+        AttachedToVisualTree += OnAttachedToVisualTree;
+        DetachedFromVisualTree += OnDetachedFromVisualTree;
+
         DataContextChanged += OnDataContextChanged;
         SizeChanged += (_, _) =>
         {
@@ -42,6 +64,78 @@ public partial class PaneView : UserControl
         AddHandler(PointerReleasedEvent, OnAnyPointerReleased, RoutingStrategies.Tunnel);
         FileList.AddHandler(PointerPressedEvent, OnListPointerPressedTunnel, RoutingStrategies.Tunnel);
         FileGrid.AddHandler(PointerPressedEvent, OnListPointerPressedTunnel, RoutingStrategies.Tunnel);
+    }
+
+    private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        _dropKeyTopLevel = TopLevel.GetTopLevel(this);
+        if (_dropKeyTopLevel is not null)
+        {
+            _dropKeyTopLevel.AddHandler(KeyDownEvent, OnDropModifierChanged,
+                RoutingStrategies.Tunnel, handledEventsToo: true);
+            _dropKeyTopLevel.AddHandler(KeyUpEvent, OnDropModifierChanged,
+                RoutingStrategies.Tunnel, handledEventsToo: true);
+        }
+    }
+
+    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (_dropKeyTopLevel is not null)
+        {
+            _dropKeyTopLevel.RemoveHandler(KeyDownEvent, OnDropModifierChanged);
+            _dropKeyTopLevel.RemoveHandler(KeyUpEvent, OnDropModifierChanged);
+            _dropKeyTopLevel = null;
+        }
+
+        _dropClearTimer.Stop();
+        ClearDropContext();
+    }
+
+    private void OnDropModifierChanged(object? sender, KeyEventArgs e)
+    {
+        if (_pane is null || _dropSources is null)
+            return;
+
+        if (_dropTrash)
+        {
+            var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+            var canTrash = _dropExternal
+                ? shift || _pane.Services.Trash.IsSupported
+                : shift
+                    ? _dropSources.Count > 0 &&
+                      _dropSources.All(s => s.FileSystem is not TrashFileSystem)
+                    : _pane.Services.Trash.IsSupported && FileDropHelper.IsTrashable(_dropSources);
+            if (!canTrash)
+            {
+                ClearDropContext();
+                _pane.SetDropTarget(false);
+                return;
+            }
+
+            _pane.SetDropTarget(true, destination: L10n.T(shift ? "永久删除" : "回收站"),
+                trash: true, permanent: shift);
+            return;
+        }
+
+        if (_dropDestination is null)
+            return;
+
+        var move = FileDropHelper.IsMove(e.KeyModifiers, _dropSources, _pane.FileSystem.Id, _dropExternal);
+        if (move && FileDropHelper.IsNoOpMove(_dropSources, _pane.FileSystem, _dropDestination))
+        {
+            _pane.SetDropTarget(false);
+            return;
+        }
+        _pane.SetDropTarget(true, move, _dropDestinationLabel ?? _dropDestination);
+    }
+
+    private void ClearDropContext()
+    {
+        _dropSources = null;
+        _dropDestination = null;
+        _dropDestinationLabel = null;
+        _dropExternal = false;
+        _dropTrash = false;
     }
 
     /// <summary>
@@ -356,6 +450,9 @@ public partial class PaneView : UserControl
             if (_pane is null)
                 return;
 
+            FileDragContext.BeginDrag();
+            CloseOpenToolTips(TopLevel.GetTopLevel(this));
+
             if (groupSelection is { Count: > 0 })
                 RestoreSelection(groupSelection);
 
@@ -401,7 +498,20 @@ public partial class PaneView : UserControl
         finally
         {
             _dragging = false;
+            FileDragContext.EndDrag();
             FileDragContext.Current = null;
+        }
+    }
+
+    private static void CloseOpenToolTips(TopLevel? topLevel)
+    {
+        if (topLevel is not Control root)
+            return;
+
+        foreach (var control in root.GetVisualDescendants().OfType<Control>())
+        {
+            if (ToolTip.GetIsOpen(control))
+                ToolTip.SetIsOpen(control, false);
         }
     }
 
@@ -434,9 +544,12 @@ public partial class PaneView : UserControl
 
     private void OnFileDragOver(object? sender, DragEventArgs e)
     {
+        _dropClearTimer.Stop();
+
         if (_pane is null)
         {
             e.DragEffects = DragDropEffects.None;
+            ClearDropContext();
             return;
         }
 
@@ -445,6 +558,7 @@ public partial class PaneView : UserControl
         if (!FileDropHelper.HasData(e.DataTransfer, payload))
         {
             e.DragEffects = DragDropEffects.None;
+            ClearDropContext();
             _pane.SetDropTarget(false);
             return;
         }
@@ -461,10 +575,16 @@ public partial class PaneView : UserControl
             if (!canTrash)
             {
                 e.DragEffects = DragDropEffects.None;
+                ClearDropContext();
                 _pane.SetDropTarget(false);
                 return;
             }
 
+            _dropSources = sources ?? [];
+            _dropExternal = payload is null;
+            _dropTrash = true;
+            _dropDestination = null;
+            _dropDestinationLabel = null;
             e.DragEffects = DragDropEffects.Move;
             _pane.SetDropTarget(true, destination: L10n.T(shift ? "永久删除" : "回收站"),
                 trash: true, permanent: shift);
@@ -479,6 +599,22 @@ public partial class PaneView : UserControl
             ? _pane.FileSystem.GetDisplayPath(destination)
             : _pane.DisplayPath;
         var move = FileDropHelper.IsMove(e.KeyModifiers, sources, _pane.FileSystem.Id, payload is null);
+
+        if (move && FileDropHelper.IsNoOpMove(sources ?? [], _pane.FileSystem, destination))
+        {
+            ClearDropContext();
+            _pane.SetDropTarget(false);
+            e.DragEffects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        _dropSources = sources ?? [];
+        _dropExternal = payload is null;
+        _dropTrash = false;
+        _dropDestination = destination;
+        _dropDestinationLabel = destinationLabel;
+
         e.DragEffects = move ? DragDropEffects.Move : DragDropEffects.Copy;
         _pane.SetDropTarget(true, move, destinationLabel);
         e.Handled = true;
@@ -486,7 +622,25 @@ public partial class PaneView : UserControl
 
     private void OnFileDragLeave(object? sender, DragEventArgs e)
     {
-        _pane?.SetDropTarget(false);
+        if (_pane is null)
+            return;
+
+        _dropClearTimer.Stop();
+
+        // Avalonia can raise DragLeave while the pointer is still inside the
+        // list (for example when crossing a child visual). Clearing the
+        // overlay here causes a very visible off/on flicker; only clear when
+        // the pointer actually leaves the list.
+        if (sender is Control control)
+        {
+            var position = e.GetPosition(control);
+            if (new Rect(control.Bounds.Size).Contains(position))
+                return;
+        }
+
+        // A short delay absorbs hit-test transitions between list rows and
+        // child visuals without leaving the overlay visible after a real exit.
+        _dropClearTimer.Start();
     }
 
     private async void OnFileDrop(object? sender, DragEventArgs e)
@@ -494,6 +648,8 @@ public partial class PaneView : UserControl
         if (_pane is null)
             return;
 
+        _dropClearTimer.Stop();
+        ClearDropContext();
         _pane.SetDropTarget(false);
         e.Handled = true;
 
@@ -517,6 +673,8 @@ public partial class PaneView : UserControl
             var destination = target is { IsDirectory: true } ? target.Path : _pane.CurrentPath;
             var move = FileDropHelper.IsMove(e.KeyModifiers, sources, _pane.FileSystem.Id,
                 FileDropHelper.GetPayload(e.DataTransfer) is not { Sources.Count: > 0 });
+            if (move && FileDropHelper.IsNoOpMove(sources, _pane.FileSystem, destination))
+                return;
             _pane.EnqueueDropTransfer(sources, destination, move);
         }
         catch (Exception ex)

@@ -1262,6 +1262,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public void RefreshSidebar() => BuildSidebar();
 
+    /// <summary>Clear the file-pane drop overlay when a drag moves to the sidebar.</summary>
+    public void ClearPaneDropTargets()
+    {
+        foreach (var pane in Tabs.SelectMany(tab => tab.Panes))
+            pane.SetDropTarget(false);
+    }
+
     private void UpdateSidebarActive()
     {
         var pane = ActivePane;

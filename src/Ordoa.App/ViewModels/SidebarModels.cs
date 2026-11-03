@@ -44,6 +44,40 @@ public sealed partial class SidebarEntryViewModel : ObservableObject
     [ObservableProperty]
     private bool _isDropTarget;
 
+    private string _dropActionText = string.Empty;
+    public string DropActionText
+    {
+        get => _dropActionText;
+        private set => SetProperty(ref _dropActionText, value);
+    }
+
+    private Geometry? _dropActionIcon;
+    public Geometry? DropActionIcon
+    {
+        get => _dropActionIcon;
+        private set => SetProperty(ref _dropActionIcon, value);
+    }
+
+    private bool _dropIsDestructive;
+    public bool DropIsDestructive
+    {
+        get => _dropIsDestructive;
+        private set => SetProperty(ref _dropIsDestructive, value);
+    }
+
+    public void SetDropTarget(bool value, string? actionText = null, string? iconKey = null,
+        bool destructive = false)
+    {
+        var text = value ? actionText ?? string.Empty : string.Empty;
+        if (IsDropTarget == value && DropActionText == text && DropIsDestructive == (value && destructive))
+            return;
+
+        IsDropTarget = value;
+        DropActionText = text;
+        DropActionIcon = value && iconKey is not null ? FileIconCatalog.Resource(iconKey) : null;
+        DropIsDestructive = value && destructive;
+    }
+
     public Task InvokeAsync() => ActivateAsync?.Invoke(this) ?? Task.CompletedTask;
 
     public static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color));

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
@@ -17,6 +18,15 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+
+        // A tooltip appearing while the pointer is captured by drag-and-drop
+        // makes the native drag cursor flicker on some platforms.
+        ToolTip.ToolTipOpeningEvent.AddClassHandler<Control>((_, e) =>
+        {
+            if (FileDragContext.IsDragging)
+                e.Handled = true;
+        });
+
         Dispatcher.UIThread.UnhandledException += (_, e) =>
         {
             Log.Error("UI 线程未处理异常", e.Exception);

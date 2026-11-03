@@ -1,5 +1,6 @@
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
+using Ordoa.Core.Abstractions;
 using Ordoa.Core.FileSystems;
 using Ordoa.Core.Services;
 
@@ -12,7 +13,7 @@ namespace Ordoa.App.Services;
 public static class FileDropHelper
 {
     public static FileDragPayload? GetPayload(IDataTransfer data)
-        => data.TryGetValue(FileDragContext.Format) ?? FileDragContext.Current;
+        => FileDragContext.Current ?? data.TryGetValue(FileDragContext.Format);
 
     public static bool HasData(IDataTransfer data, FileDragPayload? payload)
         => payload is { Sources.Count: > 0 } ||
@@ -45,6 +46,39 @@ public static class FileDropHelper
     public static bool IsMove(KeyModifiers modifiers, IReadOnlyList<OperationSource>? sources,
         string targetFileSystemId, bool external)
         => ResolveMode(modifiers, sources, targetFileSystemId, external) == TransferMode.Move;
+
+    /// <summary>
+    /// True when dropping would only try to move files back into their current
+    /// directory (or move a directory onto itself). That is always a no-op:
+    /// treating it as an operation makes the conflict resolver rename files.
+    /// </summary>
+    public static bool IsNoOpMove(IReadOnlyList<OperationSource> sources,
+        IFileSystem destinationFileSystem, string destinationDirectory)
+    {
+        if (sources.Count == 0)
+            return false;
+
+        var comparison = destinationFileSystem.IsCaseSensitive
+            ? StringComparison.Ordinal
+            : StringComparison.OrdinalIgnoreCase;
+        var destination = destinationFileSystem.NormalizePath(destinationDirectory);
+
+        foreach (var source in sources)
+        {
+            if (!string.Equals(source.FileSystem.Id, destinationFileSystem.Id, StringComparison.Ordinal))
+                return false;
+
+            var sourcePath = source.FileSystem.NormalizePath(source.Path);
+            var parent = source.FileSystem.NormalizePath(source.FileSystem.GetParent(source.Path));
+            if (string.Equals(parent, destination, comparison))
+                continue;
+            if (source.IsDirectory && string.Equals(sourcePath, destination, comparison))
+                continue;
+            return false;
+        }
+
+        return true;
+    }
 
     public static async Task<IReadOnlyList<OperationSource>> ResolveSourcesAsync(IDataTransfer data)
     {
