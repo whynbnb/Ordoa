@@ -832,7 +832,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             pane.FoldersFirst = _services.Settings.Current.FoldersFirst;
         }
 
-        RefreshSidebar();
+        await RefreshSidebarAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(ActivePane));
     }
 
@@ -1089,7 +1089,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         try
         {
             _volumes.Clear();
-            _volumes.AddRange(await VolumeService.GetVolumesAsync().ConfigureAwait(true));
+            _volumes.AddRange(await VolumeService.GetVolumesAsync(
+                _services.Settings.Current.ShowHiddenVolumes).ConfigureAwait(true));
             BuildSidebar();
         }
         finally
@@ -1121,6 +1122,31 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 ActivateAsync = ActivateSidebarEntryAsync,
             });
         }
+
+        foreach (var path in _services.Settings.Current.CustomSidebarPaths)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+                continue;
+            if (places.Items.Any(item => string.Equals(item.Path, path, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            var label = Path.GetFileName(path.TrimEnd('/', '\\'));
+            if (string.IsNullOrWhiteSpace(label))
+                label = path;
+
+            places.Items.Add(new SidebarEntryViewModel
+            {
+                Label = label,
+                Detail = KnownFolders.ShortenForDisplay(path),
+                Kind = SidebarEntryKind.Place,
+                Icon = FileIconCatalog.Resource("IconFolder"),
+                IconBrush = neutralIcon,
+                FileSystemId = "local",
+                Path = path,
+                ActivateAsync = ActivateSidebarEntryAsync,
+            });
+        }
+
         if (places.Items.Count > 0)
             SidebarSections.Add(places);
 
@@ -1148,7 +1174,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         SidebarSections.Add(bookmarks);
 
-        if (_volumes.Count > 0)
+        if (_services.Settings.Current.ShowVolumes && _volumes.Count > 0)
         {
             var volumes = new SidebarSectionViewModel { Title = L10n.T("磁盘") };
             foreach (var volume in _volumes)

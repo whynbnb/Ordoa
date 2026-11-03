@@ -41,6 +41,10 @@ public sealed class AppSettings
     public bool ConfirmPermanentDelete { get; set; } = true;
     public bool RestoreSession { get; set; } = true;
     public bool ShowSidebar { get; set; } = true;
+    public bool ShowVolumes { get; set; } = true;
+    public bool ShowHiddenVolumes { get; set; }
+    /// <summary>User-added sidebar locations (absolute paths).</summary>
+    public List<string> CustomSidebarPaths { get; set; } = [];
     /// <summary>Known-folder keys hidden from the sidebar's Places section.</summary>
     public List<string> HiddenPlaces { get; set; } = [];
     public double SidebarWidth { get; set; } = 232;
@@ -126,6 +130,10 @@ public sealed class SettingsService
             Current.WindowHeight = 760;
         Current.HiddenPlaces = (Current.HiddenPlaces ?? [])
             .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        Current.CustomSidebarPaths = (Current.CustomSidebarPaths ?? [])
+            .Where(path => !string.IsNullOrWhiteSpace(path))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         Current.SearchDepth = Math.Clamp(Current.SearchDepth, 1, 64);

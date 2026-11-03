@@ -50,6 +50,18 @@ public partial class SettingsWindow : Window
             vm.ResetPlaces();
     }
 
+    private void OnAddCustomPathClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+            vm.AddCustomPath();
+    }
+
+    private void OnRemoveCustomPathClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string path })
+            vm.RemoveCustomPath(path);
+    }
+
     private void OnResetClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm)

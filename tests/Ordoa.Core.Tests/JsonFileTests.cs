@@ -20,6 +20,9 @@ public sealed class JsonFileTests
                 WindowWidth = 1280,
                 UseSystemWindowFrame = true,
                 WindowButtonMode = WindowButtonMode.Show,
+                ShowVolumes = false,
+                ShowHiddenVolumes = true,
+                CustomSidebarPaths = ["/home/why/Projects"],
             };
 
             JsonFile.Save(path, settings);
@@ -32,6 +35,9 @@ public sealed class JsonFileTests
             Assert.Equal(1280, loaded.WindowWidth);
             Assert.True(loaded.UseSystemWindowFrame);
             Assert.Equal(WindowButtonMode.Show, loaded.WindowButtonMode);
+            Assert.False(loaded.ShowVolumes);
+            Assert.True(loaded.ShowHiddenVolumes);
+            Assert.Equal(["/home/why/Projects"], loaded.CustomSidebarPaths);
         }
         finally
         {

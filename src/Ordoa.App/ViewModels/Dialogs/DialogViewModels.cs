@@ -278,6 +278,13 @@ public sealed partial class PlaceVisibilityViewModel : ObservableObject
     private bool _isVisible;
 }
 
+public sealed class CustomPathViewModel
+{
+    public required string Path { get; init; }
+    public string Label => KnownFolders.DisplayNameForPath(Path);
+    public string Detail => KnownFolders.ShortenForDisplay(Path);
+}
+
 public sealed partial class SettingsDialogViewModel : ObservableObject
 {
     private readonly AppSettings _original;
@@ -295,6 +302,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _confirmPermanentDelete = settings.ConfirmPermanentDelete;
         _restoreSession = settings.RestoreSession;
         _showSidebar = settings.ShowSidebar;
+        _showVolumes = settings.ShowVolumes;
+        _showHiddenVolumes = settings.ShowHiddenVolumes;
         _showThumbnails = settings.ShowThumbnails;
         _showTransferPanel = settings.ShowTransferPanel;
         _searchDepth = settings.SearchDepth;
@@ -302,6 +311,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _ffmpegPath = settings.FfmpegPath;
         _useSystemWindowFrame = settings.UseSystemWindowFrame;
         _windowButtonMode = settings.WindowButtonMode;
+
+        foreach (var path in settings.CustomSidebarPaths ?? [])
+            CustomPaths.Add(new CustomPathViewModel { Path = path });
 
         var hidden = new HashSet<string>(settings.HiddenPlaces ?? [], StringComparer.OrdinalIgnoreCase);
         foreach (var place in KnownFolders.GetPlaces())
@@ -316,6 +328,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     }
 
     public System.Collections.ObjectModel.ObservableCollection<PlaceVisibilityViewModel> Places { get; } = [];
+
+    public System.Collections.ObjectModel.ObservableCollection<CustomPathViewModel> CustomPaths { get; } = [];
 
     [ObservableProperty]
     private UiLanguage _language;
@@ -348,6 +362,18 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private bool _showSidebar;
 
     [ObservableProperty]
+    private bool _showVolumes;
+
+    [ObservableProperty]
+    private bool _showHiddenVolumes;
+
+    [ObservableProperty]
+    private string _newCustomPath = string.Empty;
+
+    [ObservableProperty]
+    private string? _customPathError;
+
+    [ObservableProperty]
     private bool _showThumbnails;
 
     [ObservableProperty]
@@ -370,6 +396,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     public string SettingsPath => AppPaths.SettingsFile;
 
+    public bool IsMacOS => OperatingSystem.IsMacOS();
+
     public AppSettings ToSettings()
     {
         var settings = _original.Clone();
@@ -383,6 +411,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.ConfirmPermanentDelete = ConfirmPermanentDelete;
         settings.RestoreSession = RestoreSession;
         settings.ShowSidebar = ShowSidebar;
+        settings.ShowVolumes = ShowVolumes;
+        settings.ShowHiddenVolumes = ShowHiddenVolumes;
         settings.ShowThumbnails = ShowThumbnails;
         settings.ShowTransferPanel = ShowTransferPanel;
         settings.SearchDepth = Math.Clamp((int)SearchDepth, 1, 64);
@@ -390,6 +420,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
         settings.UseSystemWindowFrame = UseSystemWindowFrame;
         settings.WindowButtonMode = WindowButtonMode;
+        settings.CustomSidebarPaths = CustomPaths.Select(item => item.Path).ToList();
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
         return settings;
     }
@@ -407,6 +438,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         ConfirmPermanentDelete = defaults.ConfirmPermanentDelete;
         RestoreSession = defaults.RestoreSession;
         ShowSidebar = defaults.ShowSidebar;
+        ShowVolumes = defaults.ShowVolumes;
+        ShowHiddenVolumes = defaults.ShowHiddenVolumes;
         ShowThumbnails = defaults.ShowThumbnails;
         ShowTransferPanel = defaults.ShowTransferPanel;
         SearchDepth = defaults.SearchDepth;
@@ -414,6 +447,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         FfmpegPath = defaults.FfmpegPath;
         UseSystemWindowFrame = defaults.UseSystemWindowFrame;
         WindowButtonMode = defaults.WindowButtonMode;
+        CustomPaths.Clear();
+        NewCustomPath = string.Empty;
+        CustomPathError = null;
         ResetPlaces();
     }
 
@@ -451,5 +487,56 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     {
         if (Enum.TryParse<WindowButtonMode>(value, true, out var mode))
             WindowButtonMode = mode;
+    }
+
+    public bool AddCustomPath()
+    {
+        var input = (NewCustomPath ?? string.Empty).Trim().Trim('"');
+        if (input.Length == 0)
+        {
+            CustomPathError = L10n.T("请输入路径。");
+            return false;
+        }
+
+        if (input == "~")
+            input = AppPaths.Home;
+        else if (input.StartsWith("~/", StringComparison.Ordinal))
+            input = Path.Combine(AppPaths.Home, input[2..]);
+
+        string full;
+        try
+        {
+            full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(input));
+        }
+        catch
+        {
+            CustomPathError = L10n.T("路径格式无效。");
+            return false;
+        }
+
+        if (!Directory.Exists(full))
+        {
+            CustomPathError = L10n.T("路径不存在或不是文件夹。");
+            return false;
+        }
+
+        if (CustomPaths.Any(item => string.Equals(item.Path, full, StringComparison.OrdinalIgnoreCase)))
+        {
+            CustomPathError = L10n.T("该路径已添加。");
+            return false;
+        }
+
+        CustomPaths.Add(new CustomPathViewModel { Path = full });
+        NewCustomPath = string.Empty;
+        CustomPathError = null;
+        return true;
+    }
+
+    public void RemoveCustomPath(string path)
+    {
+        var item = CustomPaths.FirstOrDefault(entry => string.Equals(entry.Path, path, StringComparison.OrdinalIgnoreCase));
+        if (item is not null)
+            CustomPaths.Remove(item);
+        CustomPathError = null;
     }
 }

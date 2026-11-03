@@ -33,16 +33,17 @@ public static class VolumeService
         "nfs", "nfs4", "sshfs", "davfs", "davfs2", "afpfs", "9p", "fuse.sshfs", "fuse.rclone",
     };
 
-    public static Task<IReadOnlyList<VolumeInfo>> GetVolumesAsync(CancellationToken cancellationToken = default)
-        => Task.Run<IReadOnlyList<VolumeInfo>>(() => GetVolumes(), cancellationToken);
+    public static Task<IReadOnlyList<VolumeInfo>> GetVolumesAsync(bool includeHidden = false,
+        CancellationToken cancellationToken = default)
+        => Task.Run<IReadOnlyList<VolumeInfo>>(() => GetVolumes(includeHidden), cancellationToken);
 
-    public static IReadOnlyList<VolumeInfo> GetVolumes()
+    public static IReadOnlyList<VolumeInfo> GetVolumes(bool includeHidden = false)
     {
         try
         {
             return RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
                 ? GetLinuxVolumes()
-                : GetDriveInfoVolumes();
+                : GetDriveInfoVolumes(includeHidden);
         }
         catch
         {
@@ -54,7 +55,7 @@ public static class VolumeService
     {
         const string mountsFile = "/proc/self/mounts";
         if (!File.Exists(mountsFile))
-            return GetDriveInfoVolumes();
+            return GetDriveInfoVolumes(includeHidden: false);
 
         var volumes = new List<VolumeInfo>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -181,7 +182,7 @@ public static class VolumeService
         return builder.ToString();
     }
 
-    private static IReadOnlyList<VolumeInfo> GetDriveInfoVolumes()
+    private static IReadOnlyList<VolumeInfo> GetDriveInfoVolumes(bool includeHidden)
     {
         var result = new List<VolumeInfo>();
         foreach (var drive in DriveInfo.GetDrives())
@@ -191,15 +192,24 @@ public static class VolumeService
                 if (!drive.IsReady)
                     continue;
                 var mountPoint = drive.RootDirectory.FullName;
+
+                // macOS exposes many internal APFS volumes through DriveInfo.
+                // Only "/" and user-visible mounts under "/Volumes" belong in
+                // the sidebar unless the user explicitly asks for all volumes.
+                if (OperatingSystem.IsMacOS() && !includeHidden && !IsVisibleMacVolume(mountPoint))
+                    continue;
+
                 var isNetwork = drive.DriveType == DriveType.Network;
                 var isRemovable = drive.DriveType is DriveType.Removable or DriveType.CDRom;
                 var name = string.IsNullOrWhiteSpace(drive.VolumeLabel)
                     ? (drive.Name.TrimEnd('\\', '/') is { Length: > 0 } n ? n : drive.Name)
                     : drive.VolumeLabel;
+                var isSystem = OperatingSystem.IsMacOS()
+                    ? mountPoint == "/"
+                    : drive.DriveType == DriveType.Fixed && mountPoint.Length <= 4;
 
                 result.Add(new VolumeInfo(name, mountPoint, drive.DriveFormat, isRemovable, isNetwork,
-                    drive.DriveType == DriveType.Fixed && mountPoint.Length <= 4,
-                    drive.AvailableFreeSpace, drive.TotalSize));
+                    isSystem, drive.AvailableFreeSpace, drive.TotalSize));
             }
             catch
             {
@@ -212,5 +222,17 @@ public static class VolumeService
             .ThenBy(v => v.IsRemovable)
             .ThenBy(v => v.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
+    }
+
+    private static bool IsVisibleMacVolume(string mountPoint)
+    {
+        if (mountPoint == "/")
+            return true;
+        if (!mountPoint.StartsWith("/Volumes/", StringComparison.Ordinal))
+            return false;
+
+        // Time Machine's private snapshot volume is not a useful disk entry.
+        var name = Path.GetFileName(mountPoint.TrimEnd('/'));
+        return !name.Equals(".timemachine", StringComparison.OrdinalIgnoreCase);
     }
 }
