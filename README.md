@@ -249,6 +249,24 @@ PREFIX=/usr/local sudo -E ./scripts/install.sh
 ./scripts/uninstall.sh [--purge]
 ```
 
+### Arch Linux / Arch Linux ARM
+
+```bash
+chmod +x scripts/install-arch.sh scripts/uninstall-arch.sh
+./scripts/install-arch.sh
+./scripts/uninstall-arch.sh [--purge] [--yes]
+```
+
+`install-arch.sh` 会用 NativeAOT 发布，生成 `.pkg.tar.zst`，再通过 `pacman -U` 安装到系统。需要 `pacman`、`makepkg`、`fakeroot`、`sudo` 和 .NET 10 SDK；缺少 `clang` 时会尝试用 pacman 安装。
+
+支持：
+
+```bash
+./scripts/install-arch.sh --yes          # 不询问确认
+./scripts/install-arch.sh --build-only   # 只生成 pacman 包
+./scripts/install-arch.sh --rid linux-arm64
+```
+
 ## 快捷键
 
 | 快捷键 | 操作 |

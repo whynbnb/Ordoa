@@ -19,7 +19,7 @@ done
 rm -rf "$PREFIX/lib/ordoa"
 rm -f "$PREFIX/bin/ordoa"
 rm -f "$PREFIX/share/applications/ordoa.desktop"
-for size in 16 24 32 48 64 128 256 512; do
+for size in 16 24 32 48 64 128 256 512 1024; do
     rm -f "$PREFIX/share/icons/hicolor/${size}x${size}/apps/ordoa.png"
 done
 
