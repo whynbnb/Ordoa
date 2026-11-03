@@ -55,7 +55,7 @@ install -d "$PREFIX/lib/ordoa"
 cp -a "$OUT/." "$PREFIX/lib/ordoa/"
 ln -sfn "$PREFIX/lib/ordoa/Ordoa" "$PREFIX/bin/ordoa"
 
-for size in 16 24 32 48 64 128 256 512; do
+for size in 16 24 32 48 64 128 256 512 1024; do
     icon_dir="$PREFIX/share/icons/hicolor/${size}x${size}/apps"
     install -d "$icon_dir"
     install -m 644 "$ROOT/packaging/icons/ordoa-$size.png" "$icon_dir/ordoa.png"

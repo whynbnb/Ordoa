@@ -44,17 +44,9 @@ package_dmg() {
     fi
 
     local iconset="$TMP/Ordoa.iconset"
-    mkdir -p "$iconset"
-    cp "$ROOT/packaging/icons/ordoa-16.png" "$iconset/icon_16x16.png"
-    cp "$ROOT/packaging/icons/ordoa-32.png" "$iconset/icon_16x16@2x.png"
-    cp "$ROOT/packaging/icons/ordoa-32.png" "$iconset/icon_32x32.png"
-    cp "$ROOT/packaging/icons/ordoa-64.png" "$iconset/icon_32x32@2x.png"
-    cp "$ROOT/packaging/icons/ordoa-128.png" "$iconset/icon_128x128.png"
-    cp "$ROOT/packaging/icons/ordoa-256.png" "$iconset/icon_128x128@2x.png"
-    cp "$ROOT/packaging/icons/ordoa-256.png" "$iconset/icon_256x256.png"
-    cp "$ROOT/packaging/icons/ordoa-512.png" "$iconset/icon_256x256@2x.png"
-    cp "$ROOT/packaging/icons/ordoa-512.png" "$iconset/icon_512x512.png"
-    sips -z 1024 1024 "$ROOT/packaging/icons/ordoa-512.png" --out "$iconset/icon_512x512@2x.png" >/dev/null
+    local iconset_source="$ROOT/packaging/macos/Ordoa.iconset"
+    [[ -d "$iconset_source" ]] || fail "缺少 macOS 图标集: $iconset_source"
+    cp -R "$iconset_source" "$iconset"
     iconutil -c icns "$iconset" -o "$contents/Resources/Ordoa.icns"
 
     cat > "$contents/Info.plist" <<EOF

@@ -56,7 +56,7 @@ package_deb() {
     ln -s ../lib/ordoa/Ordoa "$stage/usr/bin/ordoa"
     install -m 644 "$ROOT/packaging/ordoa.desktop" "$stage/usr/share/applications/ordoa.desktop"
 
-    for size in 16 24 32 48 64 128 256 512; do
+    for size in 16 24 32 48 64 128 256 512 1024; do
         local icon="$ROOT/packaging/icons/ordoa-$size.png"
         [[ -f "$icon" ]] || continue
         install -Dm644 "$icon" "$stage/usr/share/icons/hicolor/${size}x${size}/apps/ordoa.png"
