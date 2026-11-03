@@ -17,6 +17,7 @@ public sealed class LocalizationTests
             Assert.True(L10n.IsEnglish);
             Assert.Equal("Settings", L10n.T("设置"));
             Assert.Equal("Open in New Tab", L10n.T("在新标签页中打开"));
+            Assert.Equal("Use system title bar (non-immersive)", L10n.T("使用系统标题栏（非沉浸式）"));
             Assert.Equal("2 items", L10n.Format("{0} 项", 2));
         }
         finally

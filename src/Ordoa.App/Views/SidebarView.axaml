@@ -98,14 +98,15 @@
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,*,Auto,Auto">
-    <Border Padding="14,12,10,8">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <Image Source="/Assets/ordoa.png" Width="28" Height="28" VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" Margin="9,0,0,0" VerticalAlignment="Center" Spacing="1">
+    <Border Padding="14,12,10,8" PointerPressed="OnSidebarHeaderPointerPressed">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+        <Border Grid.Column="0" Width="76" IsVisible="{Binding ReserveMacOSTrafficLights}" />
+        <Image Grid.Column="1" Source="/Assets/ordoa.png" Width="28" Height="28" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="2" Margin="9,0,0,0" VerticalAlignment="Center" Spacing="1">
           <TextBlock Text="Ordoa" FontSize="15" FontWeight="SemiBold" />
           <TextBlock Text="{loc:Tr 安序 · 文件管理}" Classes="tiny" />
         </StackPanel>
-        <Button Grid.Column="2" Classes="tool" Command="{Binding ToggleSidebarCommand}"
+        <Button Grid.Column="3" Classes="tool" Command="{Binding ToggleSidebarCommand}"
                 ToolTip.Tip="{loc:Tr 收起侧栏 (F9)}" VerticalAlignment="Center">
           <Path Data="{StaticResource IconPanel}" Width="16" Height="16" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />

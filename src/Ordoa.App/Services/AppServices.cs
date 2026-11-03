@@ -51,6 +51,7 @@ public sealed class AppServices : IAsyncDisposable
     {
         MainWindow = window;
         ThemeService.ApplyDensity(window, Settings.Current.CompactMode);
+        ThemeService.ApplyWindowFrame(window, Settings.Current.UseSystemWindowFrame);
     }
 
     public async ValueTask DisposeAsync()

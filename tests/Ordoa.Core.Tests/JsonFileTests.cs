@@ -18,6 +18,7 @@ public sealed class JsonFileTests
                 FfmpegPath = "/usr/bin/ffmpeg",
                 HiddenPlaces = ["music", "videos"],
                 WindowWidth = 1280,
+                UseSystemWindowFrame = true,
             };
 
             JsonFile.Save(path, settings);
@@ -28,6 +29,7 @@ public sealed class JsonFileTests
             Assert.Equal("/usr/bin/ffmpeg", loaded.FfmpegPath);
             Assert.Equal(["music", "videos"], loaded.HiddenPlaces);
             Assert.Equal(1280, loaded.WindowWidth);
+            Assert.True(loaded.UseSystemWindowFrame);
         }
         finally
         {

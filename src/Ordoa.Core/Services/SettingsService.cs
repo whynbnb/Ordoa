@@ -47,6 +47,12 @@ public sealed class AppSettings
     public double WindowHeight { get; set; } = 760;
     public bool WindowMaximized { get; set; }
 
+    /// <summary>
+    /// Keep the platform-drawn title bar / non-client area. The default is the
+    /// immersive, app-drawn title bar that blends into the tab strip.
+    /// </summary>
+    public bool UseSystemWindowFrame { get; set; }
+
     public AppSettings Clone() => (AppSettings)MemberwiseClone();
 }
 

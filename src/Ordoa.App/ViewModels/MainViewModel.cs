@@ -102,6 +102,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 return;
             _services.Settings.Current.ShowSidebar = value;
             _services.Settings.Save();
+            OnPropertyChanged(nameof(ReserveMacOSTrafficLightsInTitleBar));
         }
     }
 
@@ -122,6 +123,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         get => _windowTitle;
         private set => SetProperty(ref _windowTitle, value);
     }
+
+    public bool UseSystemWindowFrame => _services.Settings.Current.UseSystemWindowFrame;
+
+    public bool IsImmersiveWindow => !UseSystemWindowFrame;
+
+    public bool IsMacOS => OperatingSystem.IsMacOS();
+
+    public bool ShowWindowCaptionButtons => IsImmersiveWindow && !IsMacOS;
+
+    public bool ReserveMacOSTrafficLights => IsImmersiveWindow && IsMacOS;
+
+    /// <summary>Only the title bar at the far left needs the traffic-light gap.</summary>
+    public bool ReserveMacOSTrafficLightsInTitleBar
+        => ReserveMacOSTrafficLights && !IsSidebarVisible;
 
     private bool _isInitialized;
     public bool IsInitialized
@@ -1434,7 +1449,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         ThemeService.Apply(_services.Settings.Current);
         if (_services.MainWindow is { } window)
+        {
             ThemeService.ApplyDensity(window, _services.Settings.Current.CompactMode);
+            ThemeService.ApplyWindowFrame(window, _services.Settings.Current.UseSystemWindowFrame);
+        }
+
+        OnPropertyChanged(nameof(UseSystemWindowFrame));
+        OnPropertyChanged(nameof(IsImmersiveWindow));
+        OnPropertyChanged(nameof(ShowWindowCaptionButtons));
+        OnPropertyChanged(nameof(ReserveMacOSTrafficLights));
+        OnPropertyChanged(nameof(ReserveMacOSTrafficLightsInTitleBar));
     }
 
     private void OnConnectionsChanged(object? sender, EventArgs e)

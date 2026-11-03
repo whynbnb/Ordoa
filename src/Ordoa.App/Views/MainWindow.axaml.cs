@@ -83,6 +83,66 @@ public partial class MainWindow : Window
 
     private void OnPreviewCloseClick(object? sender, RoutedEventArgs e) => _viewModel?.Preview.Close();
 
+    /// <summary>
+    /// Starts a native window move from the custom title bar. Interactive
+    /// controls (tabs, buttons, text boxes) keep their normal behavior.
+    /// </summary>
+    private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
+        => HandleTitleBarPointerPressed(sender, e);
+
+    internal void HandleTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Handled || _viewModel is not { IsImmersiveWindow: true })
+            return;
+
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || IsInteractiveSource(e.Source as Visual))
+            return;
+
+        if (e.ClickCount == 2)
+        {
+            ToggleMaximizeRestore();
+            e.Handled = true;
+            return;
+        }
+
+        BeginMoveDrag(e);
+        e.Handled = true;
+    }
+
+    private static bool IsInteractiveSource(Visual? source)
+    {
+        for (var current = source; current is not null; current = current.GetVisualParent())
+        {
+            if (current is Button or TextBox or ComboBox or ScrollBar or Slider or MenuItem or TabItem)
+                return true;
+            if (current is Border border && border.Classes.Contains("tab"))
+                return true;
+        }
+
+        return false;
+    }
+
+    private void ToggleMaximizeRestore()
+        => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    private void OnMinimizeWindowClick(object? sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+        e.Handled = true;
+    }
+
+    private void OnMaximizeRestoreWindowClick(object? sender, RoutedEventArgs e)
+    {
+        ToggleMaximizeRestore();
+        e.Handled = true;
+    }
+
+    private void OnCloseWindowClick(object? sender, RoutedEventArgs e)
+    {
+        Close();
+        e.Handled = true;
+    }
+
     private void OnPreviewOpenClick(object? sender, RoutedEventArgs e)
     {
         if (_viewModel is not null)

@@ -6,13 +6,44 @@
         x:DataType="vm:MainViewModel"
         x:CompileBindings="True"
         xmlns:services="using:Ordoa.App.Services"
+        xmlns:conv="using:Avalonia.Data.Converters"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
+        xmlns:xt="using:Avalonia.Markup.Xaml.Templates"
         x:Class="Ordoa.App.Views.MainWindow"
+        x:Name="ThisWindow"
         Title="{Binding WindowTitle}"
         Icon="/Assets/ordoa.ico"
         Width="1200" Height="760"
         MinWidth="840" MinHeight="540"
         Background="{DynamicResource WindowBackgroundBrush}"
         WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <!-- Keep WindowDecorations=Full so Windows keeps native resize,
+         snapping and minimize/maximize animations, but remove the default
+         Fluent title text and caption buttons. MainWindow draws its own
+         title bar in the client area. -->
+    <ControlTheme x:Key="{x:Type chrome:WindowDrawnDecorations}"
+                  TargetType="chrome:WindowDrawnDecorations">
+      <Setter Property="DefaultTitleBarHeight" Value="0" />
+      <Setter Property="DefaultFrameThickness" Value="1" />
+      <Setter Property="DefaultShadowThickness" Value="0" />
+      <Setter Property="Template">
+        <xt:WindowDrawnDecorationsTemplate>
+          <chrome:WindowDrawnDecorationsContent>
+            <chrome:WindowDrawnDecorationsContent.Underlay>
+              <Panel x:Name="PART_UnderlayWrapper">
+                <Border x:Name="PART_WindowBorder"
+                        Background="Transparent"
+                        BorderThickness="{TemplateBinding FrameThickness}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        IsHitTestVisible="False" />
+              </Panel>
+            </chrome:WindowDrawnDecorationsContent.Underlay>
+          </chrome:WindowDrawnDecorationsContent>
+        </xt:WindowDrawnDecorationsTemplate>
+      </Setter>
+    </ControlTheme>
+  </Window.Resources>
   <Window.Styles>
     <Style Selector="Border.tab">
       <Setter Property="Background" Value="Transparent" />
@@ -75,6 +106,25 @@
       <Setter Property="CornerRadius" Value="7" />
       <Setter Property="Margin" Value="3,0,0,0" />
     </Style>
+    <Style Selector="Button.caption">
+      <Setter Property="Width" Value="46" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.caption /template/ ContentPresenter">
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.caption:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#C42B1C" />
+    </Style>
+    <Style Selector="Button.caption.close:pointerover Path">
+      <Setter Property="Fill" Value="White" />
+    </Style>
   </Window.Styles>
 
   <Grid x:Name="RootGrid" ColumnDefinitions="Auto,0,*">
@@ -86,15 +136,16 @@
 
     <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto">
       <Border Grid.Row="0" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}"
-              BorderThickness="0,0,0,1" Height="41">
-        <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,0,8,0">
-          <Button Classes="tool" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="{loc:Tr 显示/隐藏侧栏 (F9)}"
+              BorderThickness="0,0,0,1" Height="41" PointerPressed="OnTitleBarPointerPressed">
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="8,0,8,0">
+          <Border Grid.Column="0" Width="76" IsVisible="{Binding ReserveMacOSTrafficLightsInTitleBar}" />
+          <Button Grid.Column="1" Classes="tool" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="{loc:Tr 显示/隐藏侧栏 (F9)}"
                   VerticalAlignment="Center" Width="28" Height="28">
             <Path Data="{StaticResource IconPanel}" Width="15" Height="15" Stretch="Uniform"
                   Fill="{DynamicResource TextSecondaryBrush}" />
           </Button>
 
-          <ScrollViewer x:Name="TabScroller" Grid.Column="1" HorizontalScrollBarVisibility="Hidden"
+          <ScrollViewer x:Name="TabScroller" Grid.Column="2" HorizontalScrollBarVisibility="Hidden"
                         VerticalScrollBarVisibility="Disabled" PointerWheelChanged="OnTabScrollerWheel"
                         Margin="6,0,6,0">
             <ItemsControl ItemsSource="{Binding Tabs}" VerticalAlignment="Center">
@@ -127,7 +178,7 @@
             </ItemsControl>
           </ScrollViewer>
 
-          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="1">
+          <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Spacing="1">
             <Button Classes="tabadd" Command="{Binding NewTabCommand}" ToolTip.Tip="{loc:Tr 新建标签页 (Ctrl+T)}">
               <Path Data="{StaticResource IconPlus}" Width="14" Height="14" Stretch="Uniform"
                     Fill="{DynamicResource TextSecondaryBrush}" />
@@ -172,6 +223,28 @@
                   <MenuItem Header="{loc:Tr 退出 Ordoa}" Click="OnExitClick" />
                 </MenuFlyout>
               </Button.Flyout>
+            </Button>
+          </StackPanel>
+
+          <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Stretch"
+                      IsVisible="{Binding ShowWindowCaptionButtons}">
+            <Button Classes="caption" Click="OnMinimizeWindowClick" ToolTip.Tip="{loc:Tr 最小化}">
+              <Path Data="{StaticResource IconMinus}" Width="11" Height="11" Stretch="Uniform"
+                    Fill="{DynamicResource TextSecondaryBrush}" />
+            </Button>
+            <Button Classes="caption" Click="OnMaximizeRestoreWindowClick" ToolTip.Tip="{loc:Tr 最大化 / 还原}">
+              <Panel>
+                <Path Data="{StaticResource IconMaximizeWindow}" Width="10" Height="10" Stretch="Uniform"
+                      Fill="{DynamicResource TextSecondaryBrush}"
+                      IsVisible="{Binding #ThisWindow.WindowState, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static WindowState.Normal}}" />
+                <Path Data="{StaticResource IconRestoreWindow}" Width="10" Height="10" Stretch="Uniform"
+                      Fill="{DynamicResource TextSecondaryBrush}"
+                      IsVisible="{Binding #ThisWindow.WindowState, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static WindowState.Maximized}}" />
+              </Panel>
+            </Button>
+            <Button Classes="caption close" Click="OnCloseWindowClick" ToolTip.Tip="{loc:Tr 关闭}">
+              <Path Data="{StaticResource IconClose}" Width="10" Height="10" Stretch="Uniform"
+                    Fill="{DynamicResource TextSecondaryBrush}" />
             </Button>
           </StackPanel>
         </Grid>

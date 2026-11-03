@@ -577,5 +577,10 @@
  "此文档格式暂无内置预览。": "No built-in preview for this document format.",
  "路径": "Path",
  "远程 PDF 暂不支持首页预览。": "First-page preview is not available for remote PDFs.",
- "远程文档暂不支持缩略图预览。": "Thumbnail preview is not available for remote documents."
+ "远程文档暂不支持缩略图预览。": "Thumbnail preview is not available for remote documents.",
+ "窗口": "Window",
+ "使用系统标题栏（非沉浸式）": "Use system title bar (non-immersive)",
+ "关闭时使用沉浸式自绘标题栏；打开时保留系统非客户区。": "When off, use the immersive app-drawn title bar; when on, keep the system non-client area.",
+ "最小化": "Minimize",
+ "最大化 / 还原": "Maximize / Restore"
 }

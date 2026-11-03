@@ -34,6 +34,31 @@ public static class ThemeService
         ApplyAccent(settings.Accent, isDark);
     }
 
+    /// <summary>
+    /// Switches between the normal platform title bar and the immersive
+    /// title bar. On macOS the native traffic lights stay visible while the
+    /// client area is extended underneath them, matching SourceGit's approach.
+    /// </summary>
+    public static void ApplyWindowFrame(Window window, bool useSystemWindowFrame)
+    {
+        if (useSystemWindowFrame)
+        {
+            window.ExtendClientAreaToDecorationsHint = false;
+            window.ExtendClientAreaTitleBarHeightHint = -1;
+            window.WindowDecorations = WindowDecorations.Full;
+            return;
+        }
+
+        // On macOS this keeps the native traffic lights, while the client
+        // area renders underneath the transparent title bar. On Windows/Linux
+        // Full keeps native resize, snapping and animations; MainWindow's
+        // WindowDrawnDecorations theme removes the default title text and
+        // caption buttons, and the app draws its own title bar instead.
+        window.ExtendClientAreaToDecorationsHint = true;
+        window.ExtendClientAreaTitleBarHeightHint = 41;
+        window.WindowDecorations = WindowDecorations.Full;
+    }
+
     public static void ApplyAccent(AccentKind accent, bool dark)
     {
         var app = Application.Current;

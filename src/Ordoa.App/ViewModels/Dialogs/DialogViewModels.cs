@@ -300,6 +300,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _searchDepth = settings.SearchDepth;
         _maxSearchResults = settings.MaxSearchResults;
         _ffmpegPath = settings.FfmpegPath;
+        _useSystemWindowFrame = settings.UseSystemWindowFrame;
 
         var hidden = new HashSet<string>(settings.HiddenPlaces ?? [], StringComparer.OrdinalIgnoreCase);
         foreach (var place in KnownFolders.GetPlaces())
@@ -360,6 +361,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     [ObservableProperty]
     private string _ffmpegPath = string.Empty;
 
+    [ObservableProperty]
+    private bool _useSystemWindowFrame;
+
     public string SettingsPath => AppPaths.SettingsFile;
 
     public AppSettings ToSettings()
@@ -380,6 +384,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.SearchDepth = Math.Clamp((int)SearchDepth, 1, 64);
         settings.MaxSearchResults = Math.Clamp((int)MaxSearchResults, 100, 20000);
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
+        settings.UseSystemWindowFrame = UseSystemWindowFrame;
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
         return settings;
     }
@@ -402,6 +407,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         SearchDepth = defaults.SearchDepth;
         MaxSearchResults = defaults.MaxSearchResults;
         FfmpegPath = defaults.FfmpegPath;
+        UseSystemWindowFrame = defaults.UseSystemWindowFrame;
         ResetPlaces();
     }
 

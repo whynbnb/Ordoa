@@ -18,6 +18,12 @@ public partial class SidebarView : UserControl
 
     private MainViewModel? ViewModel => DataContext as MainViewModel;
 
+    private void OnSidebarHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is MainWindow window)
+            window.HandleTitleBarPointerPressed(sender, e);
+    }
+
     private async void OnSectionHeaderClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (sender is not Button { DataContext: SidebarSectionViewModel section } ||
