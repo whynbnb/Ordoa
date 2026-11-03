@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Ordoa.App.Services;
 using Avalonia.Interactivity;
 using Ordoa.App.ViewModels.Dialogs;
 
@@ -9,6 +10,7 @@ public partial class ChecksumWindow : Window
     public ChecksumWindow()
     {
         InitializeComponent();
+        WindowAppearance.Apply(this);
         Opened += async (_, _) =>
         {
             if (DataContext is ChecksumDialogViewModel vm)

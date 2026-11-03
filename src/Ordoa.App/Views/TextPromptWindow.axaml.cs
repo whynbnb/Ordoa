@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Ordoa.App.Services;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -11,6 +12,7 @@ public partial class TextPromptWindow : Window
     public TextPromptWindow()
     {
         InitializeComponent();
+        WindowAppearance.Apply(this);
         Opened += (_, _) =>
         {
             ValueBox.Focus();

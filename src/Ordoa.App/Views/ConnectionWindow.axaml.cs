@@ -13,6 +13,7 @@ public partial class ConnectionWindow : Window
     public ConnectionWindow()
     {
         InitializeComponent();
+        WindowAppearance.Apply(this);
         Opened += (_, _) =>
         {
             if (DataContext is ConnectionDialogViewModel { Host.Length: > 0 })

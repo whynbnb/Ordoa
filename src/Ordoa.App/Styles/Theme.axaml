@@ -11,6 +11,7 @@
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     <Setter Property="TransparencyLevelHint" Value="None"/>
+    <Setter Property="UseLayoutRounding" Value="True"/>
   </Style>
 
   <Style Selector="TextBlock">

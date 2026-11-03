@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Ordoa.App.Services;
 using Avalonia.Interactivity;
 using Ordoa.App.ViewModels.Dialogs;
 
@@ -9,6 +10,7 @@ public partial class PropertiesWindow : Window
     public PropertiesWindow()
     {
         InitializeComponent();
+        WindowAppearance.Apply(this);
         Closed += (_, _) => (DataContext as PropertiesDialogViewModel)?.Dispose();
     }
 

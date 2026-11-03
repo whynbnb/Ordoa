@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Ordoa.App.Services;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Ordoa.App.ViewModels.Dialogs;
@@ -10,6 +11,7 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        WindowAppearance.Apply(this);
     }
 
     private void OnLanguageClick(object? sender, RoutedEventArgs e)

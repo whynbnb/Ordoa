@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Ordoa.App.Services;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Ordoa.App.ViewModels.Dialogs;
@@ -11,6 +12,7 @@ public partial class ConflictWindow : Window
     public ConflictWindow()
     {
         InitializeComponent();
+        WindowAppearance.Apply(this);
     }
 
     private void OnReplaceClick(object? sender, RoutedEventArgs e)

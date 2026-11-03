@@ -6,7 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using Avalonia.Media;
+using Ordoa.App.Services;
 using Ordoa.App.ViewModels;
 using Ordoa.Core.Services;
 using Ordoa.Core.Localization;
@@ -23,6 +23,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        WindowAppearance.Apply(this);
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         Opened += OnOpened;
