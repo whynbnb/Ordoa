@@ -281,6 +281,26 @@
 
         <Border Classes="divider" />
 
+        <!-- Undo -->
+        <TextBlock Text="{loc:Tr 撤销与重做}" Classes="section" />
+        <StackPanel Spacing="7">
+          <Grid ColumnDefinitions="120,*" ColumnSpacing="8">
+            <TextBlock Text="{loc:Tr 撤销行为}" Classes="fieldlabel" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding UndoBehaviors}"
+                      SelectedIndex="{Binding UndoBehaviorIndex, Mode=TwoWay}"
+                      MinWidth="210" HorizontalAlignment="Left" />
+          </Grid>
+          <TextBlock Text="{loc:Tr Windows 和 macOS 默认完整撤销（包括复制）；Linux 默认只撤销重命名、移动、回收站和新建。}"
+                     Classes="fieldhint" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <Button Content="{loc:Tr 清除撤销历史}" Classes="link" Click="OnClearUndoHistoryClick" />
+            <TextBlock Grid.Column="1" Text="{Binding UndoStatus}" Classes="caption"
+                       VerticalAlignment="Center" TextWrapping="Wrap" />
+          </Grid>
+        </StackPanel>
+
+        <Border Classes="divider" />
+
         <!-- Search -->
         <TextBlock Text="{loc:Tr 搜索}" Classes="section" />
         <Grid ColumnDefinitions="120,140,*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">

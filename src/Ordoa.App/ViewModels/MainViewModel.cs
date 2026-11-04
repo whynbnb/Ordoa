@@ -335,6 +335,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return tab;
     }
 
+    public Task UndoAsync() => _services.Undo.UndoAsync();
+
+    public Task RedoAsync() => _services.Undo.RedoAsync();
+
     public async Task<TabViewModel> DuplicateTabAsync()
     {
         var pane = ActivePane;
@@ -1671,6 +1675,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             });
         }
 
+        Add(L10n.T("撤销"), L10n.T("撤销上一步文件操作"), "Ctrl+Z", "IconUndo", UndoAsync);
+        Add(L10n.T("重做"), L10n.T("重做被撤销的文件操作"), "Ctrl+Shift+Z", "IconRedo", RedoAsync);
         Add(L10n.T("新建标签页"), L10n.T("打开一个新的文件浏览标签"), "Ctrl+T", "IconPlus", NewTabAsync);
         Add(L10n.T("新建窗口"), L10n.T("在新的窗口中打开文件浏览"), "Ctrl+N", "IconPlus", NewWindowAsync);
         Add(L10n.T("复制标签页"), L10n.T("克隆当前标签页"), null, "IconCopy", DuplicateTabAsync);

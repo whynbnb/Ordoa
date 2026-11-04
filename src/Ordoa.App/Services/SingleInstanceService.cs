@@ -15,6 +15,8 @@ public sealed class ActivationRequest
     public bool NoSingleInstance { get; set; }
     public bool FileManagerService { get; set; }
     public bool RegisterFileManager { get; set; }
+    public bool Undo { get; set; }
+    public bool Redo { get; set; }
 
     public static ActivationRequest Parse(string[] args)
     {
@@ -48,6 +50,12 @@ public sealed class ActivationRequest
                         break;
                     case "--register-file-manager":
                         request.RegisterFileManager = true;
+                        break;
+                    case "--undo":
+                        request.Undo = true;
+                        break;
+                    case "--redo":
+                        request.Redo = true;
                         break;
                 }
                 continue;

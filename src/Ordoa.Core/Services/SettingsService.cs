@@ -33,6 +33,14 @@ public enum FolderOpenMode
     NewWindow,
 }
 
+public enum UndoBehavior
+{
+    System,
+    Full,
+    StructureOnly,
+    Disabled,
+}
+
 public sealed class AppSettings
 {
     public UiLanguage Language { get; set; } = UiLanguage.System;
@@ -87,6 +95,9 @@ public sealed class AppSettings
 
     /// <summary>Remembered application choice per lowercase extension (empty key for no extension).</summary>
     public Dictionary<string, string> OpenWithDefaults { get; set; } = [];
+
+    /// <summary>Session undo scope. System follows the platform file manager behavior.</summary>
+    public UndoBehavior UndoBehavior { get; set; } = UndoBehavior.System;
 
     public AppSettings Clone()
     {
@@ -151,6 +162,8 @@ public sealed class SettingsService
             Current.WindowButtonMode = WindowButtonMode.Auto;
         if (!Enum.IsDefined(Current.FolderOpenMode))
             Current.FolderOpenMode = FolderOpenMode.CurrentWindow;
+        if (!Enum.IsDefined(Current.UndoBehavior))
+            Current.UndoBehavior = UndoBehavior.System;
         Current.OpenWithDefaults = (Current.OpenWithDefaults ?? [])
             .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
             .GroupBy(pair => pair.Key.Trim().TrimStart('.').ToLowerInvariant(), StringComparer.Ordinal)

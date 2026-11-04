@@ -303,6 +303,7 @@ public sealed class BatchRenameExecutorTests : IDisposable
             (b, "a.txt")));
 
         Assert.Equal(2, result.Renamed);
+        Assert.Equal(2, result.Completed.Count);
         Assert.Empty(result.Errors);
         Assert.Equal("B", await File.ReadAllTextAsync(Path.Combine(_root, "a.txt")));
         Assert.Equal("A", await File.ReadAllTextAsync(Path.Combine(_root, "b.txt")));

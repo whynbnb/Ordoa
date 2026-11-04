@@ -34,6 +34,15 @@ public sealed record OperationSource(IFileSystem FileSystem, FileEntry Entry)
     public bool IsDirectory => Entry.IsDirectory;
 }
 
+/// <summary>A successfully completed file operation, used by session undo history.</summary>
+public sealed record FileOperationResult(
+    OperationSource Source,
+    IFileSystem? DestinationFileSystem,
+    string? Destination,
+    FileEntry? DestinationEntry,
+    TrashEntry? TrashEntry,
+    bool ReplacedExisting = false);
+
 public sealed record ConflictInfo(
     string Name,
     string SourcePath,
@@ -114,6 +123,8 @@ public sealed partial class FileOperationItem : ObservableObject
 
     [ObservableProperty]
     private bool _hasWarnings;
+
+    public List<FileOperationResult> Results { get; } = [];
 
     public bool CanCancel => State is OperationState.Queued or OperationState.Scanning or OperationState.Running;
     public bool IsCompleted => State == OperationState.Completed;
@@ -362,6 +373,12 @@ public sealed class FileOperationService : IDisposable
                         if (plan.DeleteExisting)
                             await destinationFileSystem.DeleteAsync(plan.Destination, true, cancellationToken).ConfigureAwait(false);
                         await source.FileSystem.MoveAsync(source.Path, plan.Destination, cancellationToken).ConfigureAwait(false);
+                        var movedEntry = source.IsDirectory
+                            ? await TryGetEntryAsync(destinationFileSystem, plan.Destination, cancellationToken)
+                                .ConfigureAwait(false)
+                            : source.Entry;
+                        item.Results.Add(new FileOperationResult(
+                            source, destinationFileSystem, plan.Destination, movedEntry, null, plan.DeleteExisting));
                         tracker.SkipSource(source.Entry.Size, source.IsDirectory ? 0 : 1);
                         succeeded++;
                         continue;
@@ -394,9 +411,19 @@ public sealed class FileOperationService : IDisposable
                 }
 
                 if (sourceHadError)
+                {
                     errors.Add(L10n.Format("{0}: 部分项目未能复制", source.Name));
+                }
                 else
+                {
                     succeeded++;
+                    var copiedEntry = source.IsDirectory
+                        ? await TryGetEntryAsync(destinationFileSystem, plan.Destination, cancellationToken)
+                            .ConfigureAwait(false)
+                        : source.Entry;
+                    item.Results.Add(new FileOperationResult(
+                        source, destinationFileSystem, plan.Destination, copiedEntry, null, plan.DeleteExisting));
+                }
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
@@ -643,6 +670,19 @@ public sealed class FileOperationService : IDisposable
         return await completion.Task.ConfigureAwait(false);
     }
 
+    private static async Task<FileEntry?> TryGetEntryAsync(IFileSystem fileSystem, string path,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await fileSystem.GetEntryAsync(path, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static bool IsInside(string destination, string source, IFileSystem fileSystem)
     {
         var current = fileSystem.NormalizePath(destination);
@@ -698,7 +738,9 @@ public sealed class FileOperationService : IDisposable
                 }
                 else if (!permanent && source.FileSystem.IsLocal && _trash.IsSupported)
                 {
-                    await _trash.MoveToTrashAsync(source.Path, cancellationToken).ConfigureAwait(false);
+                    var trashEntry = await _trash.MoveToTrashAsync(source.Path, cancellationToken).ConfigureAwait(false);
+                    item.Results.Add(new FileOperationResult(
+                        source, null, null, trashEntry.Entry, trashEntry));
                 }
                 else
                 {

@@ -1033,6 +1033,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         try
         {
             await FileSystem.MoveAsync(item.Path, target).ConfigureAwait(true);
+            var renamedEntry = await FileSystem.GetEntryAsync(target).ConfigureAwait(true) ?? item.Entry;
+            _services.Undo.RecordRename(FileSystem, item.Path, target, renamedEntry,
+                L10n.Format("重命名 {0}", item.Name));
             await RefreshAsync().ConfigureAwait(true);
             Toast(L10n.T("已重命名"), $"{item.Name} → {name}", false);
         }
@@ -1097,6 +1100,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             try
             {
                 var result = await BatchRenameExecutor.ExecuteAsync(FileSystem, plan).ConfigureAwait(true);
+                if (result.Completed.Count > 0)
+                {
+                    _services.Undo.RecordBatchRename(FileSystem, result.Completed,
+                        L10n.Format("批量重命名 {0} 个项目", result.Completed.Count));
+                }
+
                 await RefreshAsync().ConfigureAwait(true);
 
                 if (result.Errors.Count == 0)
@@ -1145,6 +1154,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 return;
             }
             await FileSystem.CreateDirectoryAsync(target).ConfigureAwait(true);
+            var created = await FileSystem.GetEntryAsync(target).ConfigureAwait(true);
+            if (created is not null)
+                _services.Undo.RecordNew(FileSystem, target, created, L10n.Format("新建文件夹 {0}", name.Trim()));
             await RefreshAsync().ConfigureAwait(true);
             Toast(L10n.T("已创建文件夹"), name.Trim(), false);
         }
@@ -1173,6 +1185,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 return;
             }
             await using (await FileSystem.OpenWriteAsync(target, false).ConfigureAwait(true)) { }
+            var created = await FileSystem.GetEntryAsync(target).ConfigureAwait(true);
+            if (created is not null)
+                _services.Undo.RecordNew(FileSystem, target, created, L10n.Format("新建文件 {0}", name.Trim()));
             await RefreshAsync().ConfigureAwait(true);
             Toast(L10n.T("已创建文件"), name.Trim(), false);
         }
@@ -1716,12 +1731,13 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         _watchDebounce?.Dispose();
         var cts = new CancellationTokenSource();
         _watchDebounce = cts;
+        var token = cts.Token;
 
         _ = Task.Run(async () =>
         {
             try
             {
-                await Task.Delay(320, cts.Token).ConfigureAwait(false);
+                await Task.Delay(320, token).ConfigureAwait(false);
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (!_disposed && !IsLoading && !IsSearchActive)
@@ -1729,7 +1745,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 });
             }
             catch (OperationCanceledException) { /* superseded */ }
-        }, cts.Token);
+            catch (ObjectDisposedException) { /* superseded */ }
+        }, token);
     }
 
     private void OnSettingsChanged(object? sender, EventArgs e)

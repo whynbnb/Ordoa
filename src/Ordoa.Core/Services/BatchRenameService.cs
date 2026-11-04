@@ -79,7 +79,12 @@ public sealed record BatchRenameRequest(
     bool CaseSensitive,
     FileNameRuleSet NameRules);
 
-public sealed record BatchRenameExecutionResult(int Renamed, int Failed, IReadOnlyList<string> Errors);
+public sealed record BatchRenameOperation(FileEntry Entry, string NewName);
+
+public sealed record BatchRenameExecutionResult(int Renamed, int Failed, IReadOnlyList<string> Errors)
+{
+    public IReadOnlyList<BatchRenameOperation> Completed { get; init; } = [];
+}
 
 public static class BatchRenamePlanner
 {
@@ -434,6 +439,7 @@ public static class BatchRenameExecutor
         }
 
         var renamed = 0;
+        var completed = new List<BatchRenameOperation>();
 
         foreach (var operation in operations.Where(o => !o.Stage))
         {
@@ -441,6 +447,7 @@ public static class BatchRenameExecutor
             {
                 await fileSystem.MoveAsync(operation.Source, operation.Target, cancellationToken).ConfigureAwait(false);
                 renamed++;
+                completed.Add(new BatchRenameOperation(operation.Row.Entry, operation.Row.NewName));
             }
             catch (Exception ex)
             {
@@ -483,6 +490,7 @@ public static class BatchRenameExecutor
             {
                 await fileSystem.MoveAsync(operation.Temp, operation.Target, cancellationToken).ConfigureAwait(false);
                 renamed++;
+                completed.Add(new BatchRenameOperation(operation.Row.Entry, operation.Row.NewName));
             }
             catch (Exception ex)
             {
@@ -500,7 +508,10 @@ public static class BatchRenameExecutor
             }
         }
 
-        return new BatchRenameExecutionResult(renamed, operations.Count - renamed, errors);
+        return new BatchRenameExecutionResult(renamed, operations.Count - renamed, errors)
+        {
+            Completed = completed,
+        };
     }
 
     private static string FormatError(BatchRenameRow row, Exception exception)

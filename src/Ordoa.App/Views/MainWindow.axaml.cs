@@ -386,6 +386,7 @@ public partial class MainWindow : Window
         var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
         var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         var alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        var meta = e.KeyModifiers.HasFlag(KeyModifiers.Meta);
 
         if (_viewModel.IsCommandPaletteOpen)
         {
@@ -462,6 +463,21 @@ public partial class MainWindow : Window
         }
 
         var active = _viewModel.ActivePane;
+        var commandModifier = OperatingSystem.IsMacOS() ? (meta || ctrl) : ctrl;
+
+        if (commandModifier && e.Key == Key.Z && !shift)
+        {
+            Run(_viewModel.UndoAsync);
+            e.Handled = true;
+            return;
+        }
+
+        if (commandModifier && (e.Key == Key.Y || (shift && e.Key == Key.Z)))
+        {
+            Run(_viewModel.RedoAsync);
+            e.Handled = true;
+            return;
+        }
 
         if (ctrl && shift && e.Key == Key.O)
         {

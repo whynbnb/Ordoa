@@ -173,6 +173,9 @@ public sealed class FileOperationTests : IDisposable
         Assert.Equal(OperationState.Completed, item.State);
         Assert.True(File.Exists(Path.Combine(dest, "src", "a.txt")));
         Assert.Equal("bb", await File.ReadAllTextAsync(Path.Combine(dest, "src", "nested", "b.txt")));
+        var result = Assert.Single(item.Results);
+        Assert.Equal(Path.Combine(dest, "src"), result.Destination);
+        Assert.True(result.DestinationEntry?.IsDirectory);
     }
 
     [Fact]
@@ -190,6 +193,7 @@ public sealed class FileOperationTests : IDisposable
         Assert.Equal(OperationState.Completed, item.State);
         Assert.Equal("existing", await File.ReadAllTextAsync(Path.Combine(dest, "a.txt")));
         Assert.Equal("source", await File.ReadAllTextAsync(Path.Combine(dest, "a (1).txt")));
+        Assert.Equal(Path.Combine(dest, "a (1).txt"), Assert.Single(item.Results).Destination);
     }
 
     [Fact]
@@ -207,6 +211,7 @@ public sealed class FileOperationTests : IDisposable
         Assert.Equal(OperationState.Completed, item.State);
         Assert.False(Directory.Exists(source));
         Assert.True(File.Exists(Path.Combine(dest, "move-src", "x.txt")));
+        Assert.Single(item.Results);
     }
 
     [Fact]

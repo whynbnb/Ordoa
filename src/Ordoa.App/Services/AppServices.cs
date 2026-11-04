@@ -33,6 +33,7 @@ public sealed class AppServices : IAsyncDisposable
         FileManager1 = new FileManager1Service((uris, action) => Windows.HandleFileManagerRequestAsync(uris, action));
         Operations = new FileOperationService(Trash, action => Dispatcher.UIThread.Post(action));
         Operations.ConflictResolver = new DialogConflictResolver(Dialogs);
+        Undo = new UndoService(this);
     }
 
     public SettingsService Settings { get; }
@@ -52,6 +53,7 @@ public sealed class AppServices : IAsyncDisposable
     public WindowManager Windows { get; }
     public SystemIntegrationService Integration { get; }
     public FileManager1Service FileManager1 { get; }
+    public UndoService Undo { get; }
     public DialogService Dialogs { get; }
     public Window? MainWindow => Windows.ActiveWindow;
 

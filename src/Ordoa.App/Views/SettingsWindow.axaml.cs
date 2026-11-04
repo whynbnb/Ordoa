@@ -15,11 +15,14 @@ public partial class SettingsWindow : Window
         WindowAppearance.Apply(this);
         Opened += async (_, _) =>
         {
-            if (DataContext is SettingsDialogViewModel { IsLinux: true } vm &&
-                App.Services is { } services)
-            {
+            if (DataContext is not SettingsDialogViewModel vm || App.Services is not { } services)
+                return;
+
+            vm.SetUndoStatus(L10n.Format("撤销历史 {0} 条 · 可重做 {1} 条",
+                services.Undo.Count, services.Undo.RedoCount));
+
+            if (vm.IsLinux)
                 vm.SetIntegrationStatus(await services.Integration.GetStatusAsync());
-            }
         };
     }
 
@@ -95,6 +98,15 @@ public partial class SettingsWindow : Window
         {
             vm.IsRegisteringFileManager = false;
         }
+    }
+
+    private void OnClearUndoHistoryClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsDialogViewModel vm || App.Services is not { } services)
+            return;
+
+        services.Undo.Clear();
+        vm.SetUndoStatus(L10n.T("撤销历史已清除"));
     }
 
     private void OnClearOpenWithClick(object? sender, RoutedEventArgs e)

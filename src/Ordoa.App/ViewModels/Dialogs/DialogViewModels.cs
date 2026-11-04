@@ -317,10 +317,18 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _singleInstance = settings.SingleInstance;
         _allowMultipleWindows = settings.AllowMultipleWindows;
         _folderOpenIndex = settings.FolderOpenMode == FolderOpenMode.NewWindow ? 1 : 0;
+        _undoBehaviorIndex = (int)settings.UndoBehavior;
         FolderOpenModes =
         [
             L10n.T("当前窗口"),
             L10n.T("新窗口"),
+        ];
+        UndoBehaviors =
+        [
+            L10n.T("跟随系统"),
+            L10n.T("完整（包括复制）"),
+            L10n.T("仅结构操作"),
+            L10n.T("关闭"),
         ];
 
         foreach (var path in settings.CustomSidebarPaths ?? [])
@@ -415,12 +423,19 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private int _folderOpenIndex;
 
     [ObservableProperty]
+    private int _undoBehaviorIndex;
+
+    [ObservableProperty]
+    private string _undoStatus = string.Empty;
+
+    [ObservableProperty]
     private bool _isRegisteringFileManager;
 
     [ObservableProperty]
     private string _integrationStatus = string.Empty;
 
     public IReadOnlyList<string> FolderOpenModes { get; }
+    public IReadOnlyList<string> UndoBehaviors { get; }
 
     public string SettingsPath => AppPaths.SettingsFile;
 
@@ -435,6 +450,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         : L10n.Format("已记住 {0} 个扩展名", _openWithDefaults.Count);
 
     public void SetIntegrationStatus(string message) => IntegrationStatus = message;
+
+    public void SetUndoStatus(string message) => UndoStatus = message;
 
     public void ClearOpenWithDefaults()
     {
@@ -473,6 +490,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.FolderOpenMode = AllowMultipleWindows && FolderOpenIndex == 1
             ? FolderOpenMode.NewWindow
             : FolderOpenMode.CurrentWindow;
+        settings.UndoBehavior = (UndoBehavior)Math.Clamp(UndoBehaviorIndex, 0, 3);
         settings.OpenWithDefaults = new Dictionary<string, string>(_openWithDefaults, StringComparer.Ordinal);
         settings.CustomSidebarPaths = CustomPaths.Select(item => item.Path).ToList();
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
@@ -504,6 +522,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         SingleInstance = defaults.SingleInstance;
         AllowMultipleWindows = defaults.AllowMultipleWindows;
         FolderOpenIndex = defaults.FolderOpenMode == FolderOpenMode.NewWindow ? 1 : 0;
+        UndoBehaviorIndex = (int)defaults.UndoBehavior;
         _openWithDefaults.Clear();
         OnPropertyChanged(nameof(HasOpenWithDefaults));
         OnPropertyChanged(nameof(OpenWithSummary));

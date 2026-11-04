@@ -121,6 +121,20 @@ public sealed class WindowManager
 
     private async Task HandleActivationCoreAsync(ActivationRequest request)
     {
+        if (request.Undo)
+        {
+            Activate(ActiveWindow);
+            await _services.Undo.UndoAsync().ConfigureAwait(true);
+            return;
+        }
+
+        if (request.Redo)
+        {
+            Activate(ActiveWindow);
+            await _services.Undo.RedoAsync().ConfigureAwait(true);
+            return;
+        }
+
         var paths = request.Paths
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .Distinct(StringComparer.Ordinal)
