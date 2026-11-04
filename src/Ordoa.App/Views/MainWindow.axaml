@@ -267,7 +267,7 @@
     <Grid Grid.ColumnSpan="3" Background="{DynamicResource WindowBackgroundBrush}"
           IsVisible="{Binding IsInitialized, Converter={StaticResource InverseBoolConverter}}">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" Width="320">
-        <Image Source="/Assets/ordoa.png" Width="96" Height="96" HorizontalAlignment="Center" />
+        <Image Source="/Assets/ordoa-mark.png" Width="96" Height="96" HorizontalAlignment="Center" />
         <TextBlock Text="{loc:Tr Ordoa 安序}" Classes="h1" HorizontalAlignment="Center" />
         <TextBlock Text="{loc:Tr 有秩序的文件管理}" Classes="muted" HorizontalAlignment="Center" />
         <ProgressBar IsIndeterminate="True" Width="160" Height="3" Margin="0,8,0,0" />

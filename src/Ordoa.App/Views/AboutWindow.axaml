@@ -23,7 +23,7 @@
     <ScrollViewer Grid.Row="0" Padding="28,24,28,10" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="16">
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
-          <Image Source="/Assets/ordoa.png" Width="72" Height="72" VerticalAlignment="Top" />
+          <Image Source="/Assets/ordoa-mark.png" Width="72" Height="72" VerticalAlignment="Top" />
           <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
             <TextBlock Text="{loc:Tr Ordoa 安序}" Classes="h1" />
             <TextBlock Text="{loc:Tr 有秩序的文件管理 · Linux 优先，同时兼容 macOS 与 Windows}" Classes="muted" />

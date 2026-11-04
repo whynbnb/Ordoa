@@ -137,7 +137,7 @@
     <Border Padding="14,12,10,8" PointerPressed="OnSidebarHeaderPointerPressed">
       <Grid ColumnDefinitions="Auto,Auto,*">
         <Border Grid.Column="0" Width="76" IsVisible="{Binding ReserveMacOSTrafficLights}" />
-        <Image Grid.Column="1" Source="/Assets/ordoa.png" Width="28" Height="28" VerticalAlignment="Center" />
+        <Image Grid.Column="1" Source="/Assets/ordoa-mark.png" Width="28" Height="28" VerticalAlignment="Center" />
         <StackPanel Grid.Column="2" Margin="9,0,0,0" VerticalAlignment="Center" Spacing="1">
           <TextBlock Text="Ordoa" FontSize="15" FontWeight="SemiBold" />
           <TextBlock Text="{loc:Tr 安序 · 文件管理}" Classes="tiny" />
