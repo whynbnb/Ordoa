@@ -463,6 +463,14 @@ public partial class MainWindow : Window
 
         var active = _viewModel.ActivePane;
 
+        if (ctrl && shift && e.Key == Key.R)
+        {
+            if (active is { CanBatchRename: true })
+                Run(active.BatchRenameAsync);
+            e.Handled = true;
+            return;
+        }
+
         if (ctrl && shift && e.Key == Key.P)
         {
             _viewModel.ShowCommandPaletteCommand.Execute(null);

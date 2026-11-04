@@ -20,6 +20,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private readonly AppServices _services;
     private readonly List<FileItemViewModel> _entries = [];
     private readonly List<FileItemViewModel> _selected = [];
+    private bool _isBatchRenaming;
     private readonly ObservableCollection<FileItemViewModel> _searchResults = [];
     private readonly List<HistoryEntry> _back = [];
     private readonly List<HistoryEntry> _forward = [];
@@ -326,6 +327,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanPaste => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Write);
     public bool CanDelete => HasSelection && FileSystem.Capabilities.Has(FileSystemCapabilities.Delete);
     public bool CanRename => HasSelection && SelectedCount == 1 && !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Rename);
+    public bool CanBatchRename => !_isBatchRenaming && HasSelection && !IsTrash && !IsSearchActive &&
+                                  FileSystem.Capabilities.Has(FileSystemCapabilities.Rename);
     public bool CanCopy => HasSelection;
     public bool CanCompress => HasSelection && FileSystem.IsLocal && !IsTrash;
     public bool CanExtract => HasSelection && SelectedCount == 1 && FileSystem.IsLocal && !IsTrash &&
@@ -547,6 +550,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanPaste));
         OnPropertyChanged(nameof(CanDelete));
         OnPropertyChanged(nameof(CanRename));
+        OnPropertyChanged(nameof(CanBatchRename));
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
@@ -775,6 +779,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(CanDelete));
         OnPropertyChanged(nameof(CanRename));
+        OnPropertyChanged(nameof(CanBatchRename));
         OnPropertyChanged(nameof(CanCopy));
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
@@ -933,6 +938,80 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             Toast(L10n.T("重命名失败"), ex.Message, true);
+        }
+    }
+
+    public async Task BatchRenameAsync()
+    {
+        if (!CanBatchRename)
+            return;
+
+        var selected = _selected.ToHashSet();
+        var entries = _entries.Where(i => selected.Contains(i)).Select(i => i.Entry).ToList();
+        if (entries.Count != _selected.Count)
+            entries = _selected.Select(i => i.Entry).ToList();
+        if (entries.Count == 0)
+            return;
+
+        var parent = FileSystem.NormalizePath(CurrentPath);
+        var pathComparison = FileSystem.IsCaseSensitive
+            ? StringComparison.Ordinal
+            : StringComparison.OrdinalIgnoreCase;
+        if (entries.Any(entry => !string.Equals(
+                FileSystem.NormalizePath(FileSystem.GetParent(entry.Path)),
+                parent,
+                pathComparison)))
+        {
+            Toast(L10n.T("无法批量重命名"), L10n.T("批量重命名只支持同一文件夹中的项目"), true);
+            return;
+        }
+
+        IReadOnlyList<string> existingNames;
+        try
+        {
+            var listing = await FileSystem.ListAsync(CurrentPath).ConfigureAwait(true);
+            existingNames = listing.Select(e => e.Name).ToList();
+        }
+        catch
+        {
+            existingNames = _entries.Select(i => i.Entry.Name).ToList();
+        }
+
+        var request = new BatchRenameRequest(
+            entries,
+            existingNames,
+            FileSystem.IsCaseSensitive,
+            FileNameRules.Detect(FileSystem));
+
+        var plan = await _services.Dialogs.ShowBatchRenameAsync(request).ConfigureAwait(true);
+        if (plan is null)
+            return;
+
+        _isBatchRenaming = true;
+        OnPropertyChanged(nameof(CanBatchRename));
+        try
+        {
+            var result = await BatchRenameExecutor.ExecuteAsync(FileSystem, plan).ConfigureAwait(true);
+            await RefreshAsync().ConfigureAwait(true);
+
+            if (result.Errors.Count == 0)
+            {
+                Toast(L10n.T("已重命名"), L10n.Format("{0} 个项目", result.Renamed), false);
+                return;
+            }
+
+            Toast(L10n.T("批量重命名未完成"),
+                L10n.Format("{0} 个成功，{1} 个失败", result.Renamed, result.Failed), true);
+
+            var details = string.Join(Environment.NewLine, result.Errors.Take(8));
+            if (result.Errors.Count > 8)
+                details += Environment.NewLine + L10n.Format("还有 {0} 个错误", result.Errors.Count - 8);
+            await _services.Dialogs.ShowErrorAsync(L10n.T("批量重命名错误"), details).ConfigureAwait(true);
+        }
+        finally
+        {
+            _isBatchRenaming = false;
+            OnPropertyChanged(nameof(CanBatchRename));
         }
     }
 
@@ -1109,6 +1188,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     {
         CancelSearch();
         IsSearchActive = false;
+        OnPropertyChanged(nameof(CanBatchRename));
         IsSearching = false;
         SearchStatus = string.Empty;
         FilterText = string.Empty;
@@ -1145,6 +1225,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         var cancellationToken = _searchCts.Token;
 
         IsSearchActive = true;
+        OnPropertyChanged(nameof(CanBatchRename));
         IsSearching = true;
         HasError = false;
         Title = L10n.T("搜索结果");
@@ -1367,6 +1448,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanPaste));
         OnPropertyChanged(nameof(CanDelete));
         OnPropertyChanged(nameof(CanRename));
+        OnPropertyChanged(nameof(CanBatchRename));
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));

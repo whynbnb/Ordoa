@@ -823,6 +823,7 @@ public partial class PaneView : UserControl
         menu.Items.Add(MenuItem(L10n.T("粘贴"), pane.PasteAsync, pane.CanPaste));
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem(L10n.T("重命名"), pane.RenameAsync, pane.CanRename));
+        menu.Items.Add(MenuItem(L10n.T("批量重命名"), pane.BatchRenameAsync, pane.CanBatchRename));
 
         if (pane.IsTrash)
         {

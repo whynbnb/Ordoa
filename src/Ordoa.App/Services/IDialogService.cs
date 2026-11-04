@@ -13,6 +13,7 @@ public interface IDialogService
     Task<string?> PromptAsync(string title, string label, string initial = "", Func<string, string?>? validate = null);
     Task ShowPropertiesAsync(FileEntry entry, IFileSystem fileSystem);
     Task ShowChecksumAsync(IReadOnlyList<OperationSource> sources);
+    Task<BatchRenamePlan?> ShowBatchRenameAsync(BatchRenameRequest request);
     Task<AppSettings?> ShowSettingsAsync(AppSettings current);
     Task ShowAboutAsync();
     Task<ConflictChoice> ResolveConflictAsync(ConflictInfo info, CancellationToken cancellationToken = default);

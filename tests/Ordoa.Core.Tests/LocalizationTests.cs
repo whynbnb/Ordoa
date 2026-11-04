@@ -18,6 +18,8 @@ public sealed class LocalizationTests
             Assert.Equal("Settings", L10n.T("设置"));
             Assert.Equal("Open in New Tab", L10n.T("在新标签页中打开"));
             Assert.Equal("Use system title bar (non-immersive)", L10n.T("使用系统标题栏（非沉浸式）"));
+            Assert.Equal("Batch Rename", L10n.T("批量重命名"));
+            Assert.Equal("Find", L10n.T("查找"));
             Assert.Equal("2 items", L10n.Format("{0} 项", 2));
         }
         finally

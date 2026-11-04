@@ -94,6 +94,17 @@ public sealed class DialogService : IDialogService
         await window.ShowDialog(owner);
     }
 
+    public async Task<BatchRenamePlan?> ShowBatchRenameAsync(BatchRenameRequest request)
+    {
+        var owner = _ownerProvider();
+        if (owner is null)
+            return null;
+
+        var viewModel = new BatchRenameDialogViewModel(request);
+        var window = new BatchRenameWindow { DataContext = viewModel };
+        return await window.ShowDialog<BatchRenamePlan?>(owner);
+    }
+
     public async Task<AppSettings?> ShowSettingsAsync(AppSettings current)
     {
         var owner = _ownerProvider();

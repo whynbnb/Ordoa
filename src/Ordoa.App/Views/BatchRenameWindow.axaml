@@ -1,0 +1,197 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:BatchRenameDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.BatchRenameWindow"
+        Title="{loc:Tr 批量重命名}"
+        Width="860" Height="720" MinWidth="680" MinHeight="540" CanResize="True"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+  <Window.Styles>
+    <Style Selector="TextBlock.fieldlabel">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.fieldhint">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="ListBox.renamepreview ListBoxItem">
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,1" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="TextBlock.oldname">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.newname">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.newname.issue">
+      <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+    </Style>
+    <Style Selector="TextBlock.newname.unchanged">
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.status">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.status.issue">
+      <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,16,22,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="2">
+        <TextBlock Text="{loc:Tr 批量重命名}" Classes="h2" />
+        <TextBlock Text="{loc:Tr 使用查找替换、序号、大小写、扩展名和日期变量批量修改名称}"
+                   Classes="caption" />
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="1" RowDefinitions="Auto,*" RowSpacing="12" Margin="18,12,18,10">
+      <Border Grid.Row="0" Classes="card" Padding="14,12">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="Auto,*,Auto,*,Auto" ColumnSpacing="8">
+            <TextBlock Text="{loc:Tr 查找}" Classes="fieldlabel" />
+            <TextBox x:Name="FindBox" Grid.Column="1" Text="{Binding FindText, Mode=TwoWay}"
+                     PlaceholderText="{loc:Tr 主文件名中的文本}" />
+            <TextBlock Grid.Column="2" Text="{loc:Tr 替换为}" Classes="fieldlabel" />
+            <TextBox Grid.Column="3" Text="{Binding ReplaceText, Mode=TwoWay}"
+                     PlaceholderText="{loc:Tr 留空表示删除}" />
+            <CheckBox Grid.Column="4" Content="{loc:Tr 区分大小写}"
+                      IsChecked="{Binding MatchCase, Mode=TwoWay}" />
+          </Grid>
+
+          <Grid ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="8">
+            <TextBlock Text="{loc:Tr 前缀}" Classes="fieldlabel" />
+            <TextBox Grid.Column="1" Text="{Binding Prefix, Mode=TwoWay}"
+                     PlaceholderText="{}{date}_" />
+            <TextBlock Grid.Column="2" Text="{loc:Tr 后缀}" Classes="fieldlabel" />
+            <TextBox Grid.Column="3" Text="{Binding Suffix, Mode=TwoWay}"
+                     PlaceholderText="_{mtime:yyyyMMdd}" />
+          </Grid>
+
+          <TextBlock Text="{Binding DateHint}" Classes="fieldhint" />
+
+          <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+            <CheckBox Content="{loc:Tr 添加序号}" IsChecked="{Binding Numbering, Mode=TwoWay}"
+                      VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="5" IsEnabled="{Binding Numbering}">
+              <TextBlock Text="{loc:Tr 起始}" Classes="fieldlabel" />
+              <NumericUpDown Value="{Binding NumberStart, Mode=TwoWay}" Minimum="0" Maximum="999999"
+                             Increment="1" FormatString="0" Width="116" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5" IsEnabled="{Binding Numbering}">
+              <TextBlock Text="{loc:Tr 步长}" Classes="fieldlabel" />
+              <NumericUpDown Value="{Binding NumberStep, Mode=TwoWay}" Minimum="1" Maximum="999999"
+                             Increment="1" FormatString="0" Width="108" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5" IsEnabled="{Binding Numbering}">
+              <TextBlock Text="{loc:Tr 位数}" Classes="fieldlabel" />
+              <NumericUpDown Value="{Binding NumberPadding, Mode=TwoWay}" Minimum="1" Maximum="9"
+                             Increment="1" FormatString="0" Width="96" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5" IsEnabled="{Binding Numbering}">
+              <TextBlock Text="{loc:Tr 序号位置}" Classes="fieldlabel" />
+              <ComboBox ItemsSource="{Binding NumberPositions}"
+                        SelectedIndex="{Binding NumberPositionIndex, Mode=TwoWay}" Width="108" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5" IsEnabled="{Binding Numbering}">
+              <TextBlock Text="{loc:Tr 分隔符}" Classes="fieldlabel" />
+              <TextBox Text="{Binding NumberSeparator, Mode=TwoWay}" Width="64" />
+            </StackPanel>
+          </WrapPanel>
+
+          <Grid ColumnDefinitions="Auto,150,Auto,150,*" ColumnSpacing="8">
+            <TextBlock Text="{loc:Tr 大小写}" Classes="fieldlabel" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding CaseModes}"
+                      SelectedIndex="{Binding CaseIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            <TextBlock Grid.Column="2" Text="{loc:Tr 扩展名}" Classes="fieldlabel" />
+            <ComboBox Grid.Column="3" ItemsSource="{Binding ExtensionModes}"
+                      SelectedIndex="{Binding ExtensionIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6"
+                        IsVisible="{Binding ShowCustomExtension}">
+              <TextBlock Text="{loc:Tr 新扩展名}" Classes="fieldlabel" />
+              <TextBox Text="{Binding CustomExtension, Mode=TwoWay}" PlaceholderText="jpg" Width="120" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Grid Grid.Row="1" RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="*,Auto" Margin="2,0,2,6">
+          <TextBlock Text="{loc:Tr 预览}" Classes="section" />
+          <TextBlock Grid.Column="1" Text="{Binding PreviewTitle}" Classes="tiny" />
+        </Grid>
+
+        <Border Grid.Row="1" Classes="card" ClipToBounds="True">
+          <Grid RowDefinitions="Auto,*">
+            <Border Padding="12,7" Background="{DynamicResource SurfaceAltBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+              <Grid ColumnDefinitions="*,18,*,90">
+                <TextBlock Text="{loc:Tr 原名称}" Classes="tiny" />
+                <TextBlock Grid.Column="2" Text="{loc:Tr 新名称}" Classes="tiny" />
+                <TextBlock Grid.Column="3" Text="{loc:Tr 状态}" Classes="tiny"
+                           HorizontalAlignment="Right" Margin="8,0,0,0" />
+              </Grid>
+            </Border>
+
+            <ListBox Grid.Row="1" Classes="renamepreview" ItemsSource="{Binding Rows}"
+                     SelectionMode="Single" Background="Transparent"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:BatchRenameRowViewModel">
+                  <Border Padding="12,0" ToolTip.Tip="{Binding ToolTipText}">
+                    <Grid ColumnDefinitions="*,18,*,90">
+                      <TextBlock Text="{Binding OriginalName}" Classes="oldname" />
+                      <TextBlock Grid.Column="1" Text="→" Classes="tiny"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="2" Text="{Binding NewName}" Classes="newname"
+                                 Classes.issue="{Binding HasIssue}"
+                                 Classes.unchanged="{Binding IsUnchanged}" />
+                      <TextBlock Grid.Column="3" Text="{Binding StatusText}" Classes="status"
+                                 Classes.issue="{Binding HasIssue}" Margin="8,0,0,0" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <Border Grid.Row="2" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="{Binding Summary}" Classes="caption" />
+          <TextBlock Text="{loc:Tr 存在冲突或非法名称时无法应用}" Classes="tiny"
+                     IsVisible="{Binding HasIssues}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Content="{loc:Tr 取消}" Click="OnCancelClick" />
+          <Button Content="{loc:Tr 重命名}" Classes="accent" Click="OnApplyClick"
+                  IsEnabled="{Binding CanApply}" IsDefault="True" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

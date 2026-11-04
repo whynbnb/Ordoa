@@ -1642,6 +1642,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Add(L10n.T("新建文件夹"), L10n.T("在当前位置创建文件夹"), "Ctrl+Shift+N", "IconPlusCircle", () => PaneAction(p => p.NewFolderAsync()));
         Add(L10n.T("新建空文件"), L10n.T("在当前位置创建空文件"), null, "IconFile", () => PaneAction(p => p.NewFileAsync()));
         Add(L10n.T("重命名"), L10n.T("重命名选中的项目"), "F2", "IconRename", () => PaneAction(p => p.RenameAsync()));
+        Add(L10n.T("批量重命名"), L10n.T("使用查找替换、序号和日期变量批量修改名称"), "Ctrl+Shift+R", "IconRename", () => PaneAction(p => p.BatchRenameAsync()));
         Add(L10n.T("移到回收站"), L10n.T("删除选中的项目到回收站"), "Delete", "IconTrash", () => PaneAction(p => p.DeleteSelectionAsync(false)));
         Add(L10n.T("永久删除"), L10n.T("永久删除选中的项目"), "Shift+Delete", "IconDelete", () => PaneAction(p => p.DeleteSelectionAsync(true)));
         Add(L10n.T("复制"), L10n.T("复制选中的项目"), "Ctrl+C", "IconCopy", () => PaneAction(p => p.CopySelectionAsync(false)));
