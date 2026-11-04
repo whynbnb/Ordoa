@@ -3,6 +3,7 @@ using Ordoa.App.Services;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Ordoa.App.ViewModels.Dialogs;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.Views;
 
@@ -12,6 +13,14 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         WindowAppearance.Apply(this);
+        Opened += async (_, _) =>
+        {
+            if (DataContext is SettingsDialogViewModel { IsLinux: true } vm &&
+                App.Services is { } services)
+            {
+                vm.SetIntegrationStatus(await services.Integration.GetStatusAsync());
+            }
+        };
     }
 
     private void OnLanguageClick(object? sender, RoutedEventArgs e)
@@ -60,6 +69,38 @@ public partial class SettingsWindow : Window
     {
         if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string path })
             vm.RemoveCustomPath(path);
+    }
+
+    private async void OnRegisterFileManagerClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsDialogViewModel vm || App.Services is not { } services)
+            return;
+
+        vm.IsRegisteringFileManager = true;
+        vm.SetIntegrationStatus(L10n.T("正在注册…"));
+        try
+        {
+            var result = await services.Integration.RegisterAsDefaultFileManagerAsync();
+            vm.SetIntegrationStatus(result.Message);
+            if (result.Success && !await services.StartFileManagerServiceAsync(force: true))
+            {
+                vm.SetIntegrationStatus(L10n.T("已写入注册文件，但 D-Bus 名称被其他文件管理器占用。"));
+            }
+        }
+        catch (Exception ex)
+        {
+            vm.SetIntegrationStatus(ex.Message);
+        }
+        finally
+        {
+            vm.IsRegisteringFileManager = false;
+        }
+    }
+
+    private void OnClearOpenWithClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+            vm.ClearOpenWithDefaults();
     }
 
     private void OnResetClick(object? sender, RoutedEventArgs e)

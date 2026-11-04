@@ -811,12 +811,14 @@ public partial class PaneView : UserControl
         var menu = new ContextMenu();
 
         menu.Items.Add(MenuItem(L10n.T("打开"), () => pane.OpenAsync(), pane.HasSelection));
+        menu.Items.Add(MenuItem(L10n.T("打开方式"), pane.OpenWithAsync, pane.CanOpenWith));
         menu.Items.Add(MenuItem(L10n.T("快速预览"), () =>
         {
             pane.RequestPreview();
             return Task.CompletedTask;
         }, pane.HasSelection));
         menu.Items.Add(MenuItem(L10n.T("在新标签页中打开"), () => pane.OpenSelectionInNewTabAsync(), pane.HasSelection));
+        menu.Items.Add(MenuItem(L10n.T("在新窗口打开"), pane.OpenInNewWindowAsync, pane.CanOpenInNewWindow));
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem(L10n.T("剪切"), () => pane.CopySelectionAsync(true), pane.CanCopy));
         menu.Items.Add(MenuItem(L10n.T("复制"), () => pane.CopySelectionAsync(false), pane.CanCopy));

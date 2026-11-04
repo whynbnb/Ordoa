@@ -54,7 +54,7 @@
         <Border Classes="divider" />
 
         <TextBlock Text="{loc:Tr 快捷键}" Classes="section" />
-        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
               ColumnSpacing="18" RowSpacing="6">
           <TextBlock Text="Ctrl+T" Classes="shortcut" /><TextBlock Grid.Column="1" Text="{loc:Tr 新建标签页}" Classes="shortcutdesc" />
           <TextBlock Grid.Column="2" Text="Ctrl+W" Classes="shortcut" /><TextBlock Grid.Column="3" Text="{loc:Tr 关闭标签页}" Classes="shortcutdesc" />
@@ -97,12 +97,15 @@
 
           <TextBlock Grid.Row="13" Text="Ctrl+Shift+R" Classes="shortcut" /><TextBlock Grid.Row="13" Grid.Column="1" Text="{loc:Tr 批量重命名}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="13" Grid.Column="2" Text="Alt+Home" Classes="shortcut" /><TextBlock Grid.Row="13" Grid.Column="3" Text="{loc:Tr 主目录}" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="14" Text="Ctrl+N" Classes="shortcut" /><TextBlock Grid.Row="14" Grid.Column="1" Text="{loc:Tr 新建窗口}" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="14" Grid.Column="2" Text="Ctrl+Shift+O" Classes="shortcut" /><TextBlock Grid.Row="14" Grid.Column="3" Text="{loc:Tr 打开方式}" Classes="shortcutdesc" />
         </Grid>
 
         <Border Classes="divider" />
 
         <TextBlock Text="{loc:Tr 技术}" Classes="section" />
-        <TextBlock Text="Avalonia 12 · C# 14 / .NET 10 · CommunityToolkit.Mvvm · FluentFTP · SSH.NET · SMBLibrary · SkiaSharp · SimdCodecs" Classes="tiny" TextWrapping="Wrap" />
+        <TextBlock Text="Avalonia 12 · C# 14 / .NET 10 · CommunityToolkit.Mvvm · FluentFTP · SSH.NET · SMBLibrary · SkiaSharp · SimdCodecs · Tmds.DBus.Protocol" Classes="tiny" TextWrapping="Wrap" />
         <TextBlock Text="{Binding Platform}" Classes="tiny" />
 
         <TextBlock Text="{loc:Tr Ordoa 是一个开源项目。图标、界面与代码均可自由修改。远程连接密码优先保存在系统密钥环（libsecret / Keychain）；不可用时回退到仅当前用户可读的配置文件。}" Classes="tiny" TextWrapping="Wrap" />

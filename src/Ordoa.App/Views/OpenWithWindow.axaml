@@ -1,0 +1,119 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:OpenWithDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.OpenWithWindow"
+        Title="{loc:Tr 打开方式}"
+        Width="640" Height="600" MinWidth="480" MinHeight="420" CanResize="True"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+  <Window.Styles>
+    <Style Selector="TextBlock.fieldhint">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    </Style>
+    <Style Selector="ListBox.applist ListBoxItem">
+      <Setter Property="MinHeight" Value="52" />
+      <Setter Property="Padding" Value="8,4" />
+      <Setter Property="Margin" Value="0,1" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="Border.appicon">
+      <Setter Property="Width" Value="34" />
+      <Setter Property="Height" Value="34" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    </Style>
+    <Style Selector="TextBlock.appname">
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.appcomment">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="Border.defaultchip">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.defaultchip">
+      <Setter Property="FontSize" Value="9.5" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,16,22,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="2">
+        <TextBlock Text="{loc:Tr 打开方式}" Classes="h2" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="{Binding FileName}" Classes="caption" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding ExtensionText}" Classes="tiny" VerticalAlignment="Center" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="1" RowDefinitions="Auto,*" RowSpacing="10" Margin="18,12,18,8">
+      <TextBox x:Name="SearchBox" Grid.Row="0" Text="{Binding FilterText, Mode=TwoWay}"
+               PlaceholderText="{loc:Tr 搜索应用}" />
+      <Border Grid.Row="1" Classes="card" ClipToBounds="True">
+        <Grid RowDefinitions="*,Auto">
+          <ListBox x:Name="AppList" Classes="applist" ItemsSource="{Binding Apps}"
+                   SelectedItem="{Binding SelectedApp, Mode=TwoWay}"
+                   SelectionMode="Single" Background="Transparent"
+                   DoubleTapped="OnAppDoubleTapped"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:OpenWithAppViewModel">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <Border Classes="appicon">
+                    <Path Data="{StaticResource IconApps}" Width="18" Height="18" Stretch="Uniform"
+                          Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center"
+                          VerticalAlignment="Center" />
+                  </Border>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                    <TextBlock Text="{Binding Name}" Classes="appname" />
+                    <TextBlock Text="{Binding Comment}" Classes="appcomment" IsVisible="{Binding HasComment}" />
+                  </StackPanel>
+                  <Border Grid.Column="2" Classes="defaultchip" IsVisible="{Binding IsDefault}">
+                    <TextBlock Text="{loc:Tr 默认}" Classes="defaultchip" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <TextBlock Grid.Row="1" Text="{loc:Tr 没有找到可用应用}" Classes="tiny"
+                     HorizontalAlignment="Center" Margin="0,16"
+                     IsVisible="{Binding !HasApps}" />
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="2" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="2">
+          <CheckBox Content="{Binding RememberText}" IsChecked="{Binding RememberChoice, Mode=TwoWay}" />
+          <TextBlock Text="{Binding DefaultText}" Classes="fieldhint"
+                     IsVisible="{Binding HasDefaultText}" />
+        </StackPanel>
+
+        <Button Grid.Row="1" Content="{loc:Tr 使用系统默认应用}" Classes="link"
+                Click="OnSystemDefaultClick" />
+        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Content="{loc:Tr 取消}" Click="OnCancelClick" />
+          <Button Content="{loc:Tr 打开}" Classes="accent" Click="OnOpenClick"
+                  IsEnabled="{Binding CanOpen}" IsDefault="True" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

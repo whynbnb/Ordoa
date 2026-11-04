@@ -18,14 +18,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly AppServices _services;
     private readonly HashSet<PaneViewModel> _subscribedPanes = [];
+    private readonly bool _restoreSession;
+    private readonly string? _startupLocation;
+    private readonly IReadOnlyList<string>? _startupSelection;
+    private readonly TaskCompletionSource<bool> _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly List<VolumeInfo> _volumes = [];
     private bool _initialized;
     private bool _disposed;
     private bool _refreshingSidebar;
 
-    public MainViewModel(AppServices services)
+    public MainViewModel(AppServices services, bool restoreSession = true,
+        string? startupLocation = null, IReadOnlyList<string>? startupSelection = null)
     {
         _services = services;
+        _restoreSession = restoreSession;
+        _startupLocation = startupLocation;
+        _startupSelection = startupSelection;
         Preview = new FilePreviewViewModel(services);
         _sidebarVisible = services.Settings.Current.ShowSidebar;
         _sidebarWidth = services.Settings.Current.SidebarWidth;
@@ -234,15 +242,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public async Task InitializeAsync()
     {
         if (_initialized)
+        {
+            _ready.TrySetResult(true);
             return;
+        }
 
         IsInitialized = false;
         StartupStatus = L10n.T("正在准备…");
 
-        var startupLocation = GetStartupLocation();
+        var startupLocation = _startupLocation ?? (_restoreSession ? GetStartupLocation() : null);
         var restored = false;
 
-        if (_services.Settings.Current.RestoreSession)
+        if (_restoreSession && _services.Settings.Current.RestoreSession)
         {
             StartupStatus = L10n.T("正在恢复上次会话…");
             restored = await RestoreSessionAsync().ConfigureAwait(true);
@@ -254,7 +265,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             {
                 try
                 {
-                    await CreateTabForLocationAsync(startupLocation, true).ConfigureAwait(true);
+                    await CreateTabForLocationAsync(startupLocation, true, _startupSelection).ConfigureAwait(true);
                 }
                 catch
                 {
@@ -270,7 +281,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             try
             {
-                await CreateTabForLocationAsync(startupLocation, true).ConfigureAwait(true);
+                await CreateTabForLocationAsync(startupLocation, true, _startupSelection).ConfigureAwait(true);
             }
             catch { /* ignore invalid startup path */ }
         }
@@ -283,6 +294,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         StartupStatus = string.Empty;
         OnPropertyChanged(nameof(HasTabs));
         await RefreshSidebarAsync().ConfigureAwait(true);
+        _ready.TrySetResult(true);
     }
 
     public void EnsureInitialized()
@@ -292,6 +304,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         StartupStatus = string.Empty;
         if (Tabs.Count == 0)
             _ = CreateTabAsync(_services.FileSystems.Local, KnownFolders.DefaultStartupPath, true);
+        _ready.TrySetResult(true);
+    }
+
+    public Task WaitForReadyAsync() => _ready.Task;
+
+    public async Task<TabViewModel> OpenLocationAsync(string location, IReadOnlyList<string>? selection = null)
+    {
+        await WaitForReadyAsync().ConfigureAwait(true);
+        var tab = await CreateTabForLocationAsync(location, true, selection).ConfigureAwait(true);
+        UpdateWindowTitle();
+        UpdateSidebarActive();
+        return tab;
     }
 
     public async Task<TabViewModel> CreateTabAsync(IFileSystem fileSystem, string path, bool activate = true)
@@ -328,6 +352,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task NewTabAsync()
         => await CreateTabAsync(_services.FileSystems.Local, KnownFolders.DefaultStartupPath, true).ConfigureAwait(true);
+
+    [RelayCommand]
+    private async Task NewWindowAsync()
+    {
+        if (!_services.Settings.Current.AllowMultipleWindows)
+        {
+            AddToast(L10n.T("无法新建窗口"), L10n.T("设置中已关闭多窗口模式"), ToastKind.Info);
+            return;
+        }
+
+        var pane = ActivePane;
+        var location = pane is { FileSystem.IsLocal: true, IsTrash: false } ? pane.CurrentPath : null;
+        await _services.Windows.CreateWindowAsync(location, restoreSession: false).ConfigureAwait(true);
+    }
 
     [RelayCommand]
     private async Task DuplicateActiveTabAsync()
@@ -820,7 +858,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _services.Settings.Replace(result);
         L10n.SetLanguage(result.Language);
         ThemeService.Apply(_services.Settings.Current);
-        if (_services.MainWindow is { } window)
+        foreach (var window in _services.Windows.Windows)
             ThemeService.ApplyDensity(window, _services.Settings.Current.CompactMode);
 
         SidebarWidth = _services.Settings.Current.SidebarWidth;
@@ -912,6 +950,31 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Dispatcher.UIThread.Post(() => Toasts.Remove(toast));
     }
 
+    public SessionState CreateSessionState()
+    {
+        var state = new SessionState
+        {
+            ActiveTab = ActiveTab is null ? 0 : Tabs.IndexOf(ActiveTab),
+        };
+
+        foreach (var tab in Tabs)
+        {
+            var panes = tab.Panes.ToList();
+            state.Tabs.Add(new SessionTab
+            {
+                IsSplit = tab.IsSplit,
+                ActivePane = Math.Max(0, panes.IndexOf(tab.ActivePane)),
+                Panes = panes.Select(p => new SessionPane
+                {
+                    FileSystemId = p.FileSystem.Id,
+                    Path = p.CurrentPath,
+                }).ToList(),
+            });
+        }
+
+        return state;
+    }
+
     public void SaveSession()
     {
         try
@@ -922,27 +985,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            var state = new SessionState
-            {
-                ActiveTab = ActiveTab is null ? 0 : Tabs.IndexOf(ActiveTab),
-            };
-
-            foreach (var tab in Tabs)
-            {
-                var panes = tab.Panes.ToList();
-                state.Tabs.Add(new SessionTab
-                {
-                    IsSplit = tab.IsSplit,
-                    ActivePane = Math.Max(0, panes.IndexOf(tab.ActivePane)),
-                    Panes = panes.Select(p => new SessionPane
-                    {
-                        FileSystemId = p.FileSystem.Id,
-                        Path = p.CurrentPath,
-                    }).ToList(),
-                });
-            }
-
-            _services.Session.Save(state);
+            _services.Session.Save(CreateSessionState());
             _services.Recent.Flush();
         }
         catch (Exception ex)
@@ -1058,7 +1101,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return null;
     }
 
-    private async Task CreateTabForLocationAsync(string location, bool activate)
+    private async Task<TabViewModel> CreateTabForLocationAsync(string location, bool activate,
+        IReadOnlyList<string>? selection = null)
     {
         if (location.Contains("://", StringComparison.Ordinal))
         {
@@ -1066,19 +1110,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 .ConfigureAwait(true);
             if (tab.ActivePane is { } pane)
                 await pane.ResolveLocationAsync(location).ConfigureAwait(true);
-            return;
+            return tab;
         }
 
         var full = Path.GetFullPath(location);
         if (File.Exists(full))
         {
             var parent = Path.GetDirectoryName(full) ?? KnownFolders.Home;
-            await CreateTabAsync(_services.FileSystems.Local, parent, activate).ConfigureAwait(true);
+            var tab = await CreateTabAsync(_services.FileSystems.Local, parent, activate).ConfigureAwait(true);
+            if (tab.ActivePane is { } pane)
+                pane.SelectPaths(selection is { Count: > 0 } ? selection : [full]);
+            return tab;
         }
-        else
-        {
-            await CreateTabAsync(_services.FileSystems.Local, full, activate).ConfigureAwait(true);
-        }
+
+        var directoryTab = await CreateTabAsync(_services.FileSystems.Local, full, activate).ConfigureAwait(true);
+        if (selection is { Count: > 0 } && directoryTab.ActivePane is { } directoryPane)
+            directoryPane.SelectPaths(selection);
+        return directoryTab;
     }
 
     private async Task RefreshSidebarAsync()
@@ -1487,7 +1535,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
         ThemeService.Apply(_services.Settings.Current);
-        if (_services.MainWindow is { } window)
+        foreach (var window in _services.Windows.Windows)
         {
             ThemeService.ApplyDensity(window, _services.Settings.Current.CompactMode);
             ThemeService.ApplyWindowFrame(window, _services.Settings.Current.UseSystemWindowFrame);
@@ -1624,6 +1672,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         Add(L10n.T("新建标签页"), L10n.T("打开一个新的文件浏览标签"), "Ctrl+T", "IconPlus", NewTabAsync);
+        Add(L10n.T("新建窗口"), L10n.T("在新的窗口中打开文件浏览"), "Ctrl+N", "IconPlus", NewWindowAsync);
         Add(L10n.T("复制标签页"), L10n.T("克隆当前标签页"), null, "IconCopy", DuplicateTabAsync);
         Add(L10n.T("关闭标签页"), L10n.T("关闭当前标签页"), "Ctrl+W", "IconClose", () =>
         {
@@ -1641,6 +1690,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Add(L10n.T("回收站"), L10n.T("查看已删除的项目"), null, "IconTrash", OpenTrashAsync);
         Add(L10n.T("新建文件夹"), L10n.T("在当前位置创建文件夹"), "Ctrl+Shift+N", "IconPlusCircle", () => PaneAction(p => p.NewFolderAsync()));
         Add(L10n.T("新建空文件"), L10n.T("在当前位置创建空文件"), null, "IconFile", () => PaneAction(p => p.NewFileAsync()));
+        Add(L10n.T("打开方式"), L10n.T("选择其他应用打开选中的文件"), "Ctrl+Shift+O", "IconApps", () => PaneAction(p => p.OpenWithAsync()));
         Add(L10n.T("重命名"), L10n.T("重命名选中的项目"), "F2", "IconRename", () => PaneAction(p => p.RenameAsync()));
         Add(L10n.T("批量重命名"), L10n.T("使用查找替换、序号和日期变量批量修改名称"), "Ctrl+Shift+R", "IconRename", () => PaneAction(p => p.BatchRenameAsync()));
         Add(L10n.T("移到回收站"), L10n.T("删除选中的项目到回收站"), "Delete", "IconTrash", () => PaneAction(p => p.DeleteSelectionAsync(false)));
@@ -1715,6 +1765,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (_disposed)
             return;
         _disposed = true;
+        _ready.TrySetResult(false);
         _services.Settings.Changed -= OnSettingsChanged;
         L10n.LanguageChanged -= OnLanguageChanged;
         _services.Operations.Finished -= OnOperationFinished;

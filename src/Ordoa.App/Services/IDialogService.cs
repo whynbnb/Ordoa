@@ -1,3 +1,4 @@
+using Ordoa.App.ViewModels.Dialogs;
 using Ordoa.Core.Abstractions;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
@@ -14,6 +15,8 @@ public interface IDialogService
     Task ShowPropertiesAsync(FileEntry entry, IFileSystem fileSystem);
     Task ShowChecksumAsync(IReadOnlyList<OperationSource> sources);
     Task<BatchRenamePlan?> ShowBatchRenameAsync(BatchRenameRequest request);
+    Task<OpenWithChoice?> ShowOpenWithAsync(FileEntry entry, IReadOnlyList<DesktopApplication> applications,
+        string? currentDefaultId);
     Task<AppSettings?> ShowSettingsAsync(AppSettings current);
     Task ShowAboutAsync();
     Task<ConflictChoice> ResolveConflictAsync(ConflictInfo info, CancellationToken cancellationToken = default);

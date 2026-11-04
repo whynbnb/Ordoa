@@ -46,13 +46,11 @@ public partial class App : Application
             Services = services;
             L10n.SetLanguage(services.Settings.Current.Language);
 
-            var viewModel = new MainViewModel(services);
-            var window = new MainWindow
-            {
-                DataContext = viewModel,
-            };
-            services.AttachWindow(window);
+            desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
+            services.Windows.AttachLifetime(desktop);
+            var window = services.Windows.CreateWindow(restoreSession: true);
             desktop.MainWindow = window;
+            _ = services.StartIntegrationAsync();
 
             desktop.Exit += async (_, _) =>
             {

@@ -36,6 +36,7 @@
 ### 浏览与组织
 
 - 多标签页：新建、复制、关闭、关闭其他、中键关闭、标签切换。
+- 多窗口与单实例：`Ctrl+N` 新建窗口；再次启动默认复用当前进程。可在设置中选择外部文件夹请求在当前窗口还是新窗口打开，也可以关闭多窗口模式。
 - 分屏：同一标签内双面板，可拖拽分隔条；窄面板自动精简工具栏。
 - 列表 / 网格视图，网格支持本地图片缩略图。
 - 面包屑导航、可编辑路径栏（`Ctrl+L`）、历史后退/前进/上一级。
@@ -49,6 +50,8 @@
 - 拖放修饰键：`Ctrl` 复制、`Shift` 移动；默认同一文件系统内移动，跨文件系统复制。
 - 选择修饰键：`Ctrl+单击` 加选/取消，`Shift+单击` 连选；在空白处拖动可框选，按住 `Ctrl` / `Shift` 框选为追加。
 - 系统剪贴板：复制/剪切本地文件会同时写入文件列表与文本路径，可与其他文件管理器互操作。
+- 打开方式：Linux 下可从已安装应用中选择，并记住某个扩展名的默认应用；其他平台回退到系统默认应用。
+- 系统文件管理器集成：可注册为默认文件管理器，并提供 `org.freedesktop.FileManager1` D-Bus 接口，供浏览器、IDE 等“在文件夹中显示”调用。
 
 ### 快速预览
 
@@ -140,6 +143,15 @@ dotnet run --project src/Ordoa.App/Ordoa.App.csproj
 ```bash
 dotnet run --project src/Ordoa.App/Ordoa.App.csproj -- /home/user/Downloads
 dotnet run --project src/Ordoa.App/Ordoa.App.csproj -- sftp://user@example.com/
+```
+
+Linux 集成相关参数：
+
+```bash
+ordoa --new-window /path/to/folder   # 强制新窗口
+ordoa --new-tab /path/to/folder      # 强制当前窗口新标签
+ordoa --register-file-manager        # 注册桌面项、D-Bus 服务和默认文件管理器
+ordoa --no-single-instance           # 本次启动不使用单实例
 ```
 
 ### 发布脚本
@@ -292,6 +304,8 @@ chmod +x scripts/install-arch.sh scripts/uninstall-arch.sh
 | `F1` | 关于与全部快捷键 |
 | `F2` | 重命名 |
 | `Ctrl+Shift+R` | 批量重命名 |
+| `Ctrl+Shift+O` | 打开方式 |
+| `Ctrl+N` | 新建窗口 |
 | `F5` | 刷新 |
 | `F9` | 显示/隐藏侧栏 |
 | `F11` | 全屏 |
@@ -317,6 +331,8 @@ chmod +x scripts/install-arch.sh scripts/uninstall-arch.sh
 | 发布/打包产物 | `artifacts/`（gitignored） |
 
 macOS 使用 `~/Library/Application Support/Ordoa` 与 `~/Library/Caches/Ordoa`；Windows 使用 `%APPDATA%\Ordoa` 与 `%LOCALAPPDATA%\Ordoa`。
+
+在 Linux 设置中注册为默认文件管理器时，会写入用户级 `~/.local/share/applications/ordoa.desktop` 和 `~/.local/share/dbus-1/services/org.freedesktop.FileManager1.service`，并执行 `xdg-mime default ordoa.desktop inode/directory`。
 
 ### 凭据安全
 
@@ -368,8 +384,9 @@ tests/Ordoa.Core.Tests
 - SFTP 暂只支持密码认证，尚未提供私钥/Agent 认证。
 - WebDAV 目前只支持 Basic 认证；未实现 Digest、OAuth、分块上传。
 - 网格视图使用 `WrapPanel`，超大目录（数万项）建议使用虚拟化的列表视图。
-- 不提供内置预览器、媒体播放器或“打开方式”应用选择器；文件交给系统默认应用。
-- 未实现单实例、D-Bus `org.freedesktop.FileManager1` 集成和系统级挂载。
+- 不提供内置预览器或媒体播放器；普通打开仍交给系统默认应用，除非在“打开方式”中记住了应用。
+- 默认文件管理器注册和 `org.freedesktop.FileManager1` 目前仅支持 Linux；其他平台仍使用系统默认应用和窗口行为。
+- 未实现系统级挂载。
 - Linux 优先使用原生 Wayland 后端（Avalonia 12.1，实验性）；没有可用合成器时自动回退 X11/XWayland。可设置 `ORDOA_NO_WAYLAND=1` 强制使用 X11。Wayland 下 KDE 全局菜单、窗口图标、背景模糊等能力暂不可用。
 
 ## 路线图
@@ -379,7 +396,6 @@ tests/Ordoa.Core.Tests
 - 网格视图虚拟化
 - 文件比较、常驻预览面板
 - Wayland 下的 CSD 细节与 KDE 全局菜单
-- 单实例与 D-Bus 文件管理器接口
 
 ## 致谢
 
@@ -390,6 +406,7 @@ Ordoa 建立在许多优秀开源项目之上：
 - [FluentFTP](https://github.com/robinrodricks/FluentFTP) — FTP/FTPS
 - [SSH.NET](https://github.com/sshnet/SSH.NET) — SFTP
 - [SMBLibrary](https://github.com/TalAloni/SMBLibrary) — SMB 2/3
+- [Tmds.DBus.Protocol](https://github.com/tmds/Tmds.DBus) — Linux D-Bus / FileManager1 集成
 - [Material Design Icons](https://pictogrammers.com/library/mdi/) — 图标路径（Apache-2.0）
 - [Inter](https://rsms.me/inter/) — 西文字体
 

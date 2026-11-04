@@ -21,6 +21,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private readonly List<FileItemViewModel> _entries = [];
     private readonly List<FileItemViewModel> _selected = [];
     private bool _isBatchRenaming;
+    private bool _isBatchRenameDialogOpen;
+    private bool _isOpenWithDialogOpen;
     private readonly ObservableCollection<FileItemViewModel> _searchResults = [];
     private readonly List<HistoryEntry> _back = [];
     private readonly List<HistoryEntry> _forward = [];
@@ -327,13 +329,19 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanPaste => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Write);
     public bool CanDelete => HasSelection && FileSystem.Capabilities.Has(FileSystemCapabilities.Delete);
     public bool CanRename => HasSelection && SelectedCount == 1 && !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Rename);
-    public bool CanBatchRename => !_isBatchRenaming && HasSelection && !IsTrash && !IsSearchActive &&
+    public bool CanBatchRename => !_isBatchRenaming && !_isBatchRenameDialogOpen && HasSelection &&
+                                  !IsTrash && !IsSearchActive &&
                                   FileSystem.Capabilities.Has(FileSystemCapabilities.Rename);
     public bool CanCopy => HasSelection;
     public bool CanCompress => HasSelection && FileSystem.IsLocal && !IsTrash;
     public bool CanExtract => HasSelection && SelectedCount == 1 && FileSystem.IsLocal && !IsTrash &&
                               PrimarySelection is { IsDirectory: false } p && ArchiveService.IsSupportedArchive(p.Name);
     public bool CanChecksum => HasSelection && _selected.Any(i => !i.IsDirectory);
+    public bool CanOpenWith => !_isOpenWithDialogOpen && HasSelection && SelectedCount == 1 && !IsTrash &&
+                               PrimarySelection is { IsDirectory: false } && FileSystem.IsLocal &&
+                               _services.OpenWith.IsSupported;
+    public bool CanOpenInNewWindow => HasSelection && SelectedCount == 1 && !IsTrash &&
+                                      FileSystem.IsLocal && _services.Settings.Current.AllowMultipleWindows;
     public bool CanOpenTerminal => FileSystem.IsLocal && !IsTrash;
     public bool CanRestore => IsTrash && HasSelection;
     public bool CanEmptyTrash => IsTrash;
@@ -554,6 +562,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanOpenWith));
+        OnPropertyChanged(nameof(CanOpenInNewWindow));
         OnPropertyChanged(nameof(CanOpenTerminal));
         OnPropertyChanged(nameof(CanRestore));
         OnPropertyChanged(nameof(CanEmptyTrash));
@@ -594,7 +604,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             try
             {
-                await _services.Shell.OpenAsync(item.Path).ConfigureAwait(true);
+                if (!_services.OpenWith.TryOpenDefault(item.Path))
+                    await _services.Shell.OpenAsync(item.Path).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -604,6 +615,66 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         }
 
         await OpenRemoteFileAsync(item).ConfigureAwait(true);
+    }
+
+    public async Task OpenWithAsync()
+    {
+        if (!CanOpenWith || PrimarySelection is not { } item)
+            return;
+
+        _isOpenWithDialogOpen = true;
+        OnPropertyChanged(nameof(CanOpenWith));
+        try
+        {
+            var applications = _services.OpenWith.GetApplications(item.Entry);
+            if (applications.Count == 0)
+            {
+                await OpenAsync(item).ConfigureAwait(true);
+                return;
+            }
+
+            var choice = await _services.Dialogs
+                .ShowOpenWithAsync(item.Entry, applications, _services.OpenWith.GetDefault(item.Extension))
+                .ConfigureAwait(true);
+            if (choice is null)
+                return;
+
+            if (choice.DesktopId is null)
+            {
+                if (choice.Remember)
+                    _services.OpenWith.ClearDefault(item.Extension);
+                await OpenSystemDefaultAsync(item).ConfigureAwait(true);
+                return;
+            }
+
+            if (choice.Remember)
+                _services.OpenWith.Remember(item.Extension, choice.DesktopId);
+
+            var application = _services.OpenWith.Find(choice.DesktopId);
+            if (application is null || !_services.OpenWith.Open(item.Path, application))
+            {
+                Toast(L10n.T("无法打开文件"),
+                    L10n.T("所选应用不可用，已回退到系统默认应用"), true);
+                await OpenSystemDefaultAsync(item).ConfigureAwait(true);
+            }
+        }
+        finally
+        {
+            _isOpenWithDialogOpen = false;
+            OnPropertyChanged(nameof(CanOpenWith));
+        }
+    }
+
+    private async Task OpenSystemDefaultAsync(FileItemViewModel item)
+    {
+        try
+        {
+            await _services.Shell.OpenAsync(item.Path).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("无法打开文件"), ex.Message, true);
+        }
     }
 
     public async Task OpenSelectionInNewTabAsync(FileItemViewModel? item = null)
@@ -622,6 +693,16 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             OpenInNewTabRequested?.Invoke(this, FileSystem, item.Path);
         else
             OpenInNewTabRequested?.Invoke(this, FileSystem, FileSystem.GetParent(item.Path));
+    }
+
+    public async Task OpenInNewWindowAsync()
+    {
+        if (!CanOpenInNewWindow || PrimarySelection is not { } item)
+            return;
+
+        var path = item.IsDirectory ? item.Path : FileSystem.GetParent(item.Path);
+        IReadOnlyList<string>? selection = item.IsDirectory ? null : [item.Path];
+        await _services.Windows.CreateWindowAsync(path, restoreSession: false, selection).ConfigureAwait(true);
     }
 
     public void RequestSearchFocus() => FocusSearchRequested?.Invoke(this);
@@ -773,6 +854,24 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         UpdateSelectionDependentProperties();
     }
 
+    /// <summary>Selects items by absolute path, used when another app asks Ordoa to reveal files.</summary>
+    public void SelectPaths(IReadOnlyList<string> paths)
+    {
+        if (paths.Count == 0)
+            return;
+
+        var comparer = FileSystem.IsCaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        var wanted = paths
+            .Select(path => FileSystem.NormalizePath(path))
+            .ToHashSet(comparer);
+        var items = VisibleItems
+            .Where(item => wanted.Contains(FileSystem.NormalizePath(item.Path)))
+            .ToList();
+
+        if (items.Count > 0)
+            UpdateSelection(items);
+    }
+
     private void UpdateSelectionDependentProperties()
     {
         OnPropertyChanged(nameof(HasSelection));
@@ -784,6 +883,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanOpenWith));
+        OnPropertyChanged(nameof(CanOpenInNewWindow));
         OnPropertyChanged(nameof(CanRestore));
         UpdateSelectionText();
         SelectionChanged?.Invoke(this);
@@ -946,71 +1047,81 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (!CanBatchRename)
             return;
 
-        var selected = _selected.ToHashSet();
-        var entries = _entries.Where(i => selected.Contains(i)).Select(i => i.Entry).ToList();
-        if (entries.Count != _selected.Count)
-            entries = _selected.Select(i => i.Entry).ToList();
-        if (entries.Count == 0)
-            return;
-
-        var parent = FileSystem.NormalizePath(CurrentPath);
-        var pathComparison = FileSystem.IsCaseSensitive
-            ? StringComparison.Ordinal
-            : StringComparison.OrdinalIgnoreCase;
-        if (entries.Any(entry => !string.Equals(
-                FileSystem.NormalizePath(FileSystem.GetParent(entry.Path)),
-                parent,
-                pathComparison)))
-        {
-            Toast(L10n.T("无法批量重命名"), L10n.T("批量重命名只支持同一文件夹中的项目"), true);
-            return;
-        }
-
-        IReadOnlyList<string> existingNames;
-        try
-        {
-            var listing = await FileSystem.ListAsync(CurrentPath).ConfigureAwait(true);
-            existingNames = listing.Select(e => e.Name).ToList();
-        }
-        catch
-        {
-            existingNames = _entries.Select(i => i.Entry.Name).ToList();
-        }
-
-        var request = new BatchRenameRequest(
-            entries,
-            existingNames,
-            FileSystem.IsCaseSensitive,
-            FileNameRules.Detect(FileSystem));
-
-        var plan = await _services.Dialogs.ShowBatchRenameAsync(request).ConfigureAwait(true);
-        if (plan is null)
-            return;
-
-        _isBatchRenaming = true;
+        _isBatchRenameDialogOpen = true;
         OnPropertyChanged(nameof(CanBatchRename));
         try
         {
-            var result = await BatchRenameExecutor.ExecuteAsync(FileSystem, plan).ConfigureAwait(true);
-            await RefreshAsync().ConfigureAwait(true);
+            var selected = _selected.ToHashSet();
+            var entries = _entries.Where(i => selected.Contains(i)).Select(i => i.Entry).ToList();
+            if (entries.Count != _selected.Count)
+                entries = _selected.Select(i => i.Entry).ToList();
+            if (entries.Count == 0)
+                return;
 
-            if (result.Errors.Count == 0)
+            var parent = FileSystem.NormalizePath(CurrentPath);
+            var pathComparison = FileSystem.IsCaseSensitive
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase;
+            if (entries.Any(entry => !string.Equals(
+                    FileSystem.NormalizePath(FileSystem.GetParent(entry.Path)),
+                    parent,
+                    pathComparison)))
             {
-                Toast(L10n.T("已重命名"), L10n.Format("{0} 个项目", result.Renamed), false);
+                Toast(L10n.T("无法批量重命名"), L10n.T("批量重命名只支持同一文件夹中的项目"), true);
                 return;
             }
 
-            Toast(L10n.T("批量重命名未完成"),
-                L10n.Format("{0} 个成功，{1} 个失败", result.Renamed, result.Failed), true);
+            IReadOnlyList<string> existingNames;
+            try
+            {
+                var listing = await FileSystem.ListAsync(CurrentPath).ConfigureAwait(true);
+                existingNames = listing.Select(e => e.Name).ToList();
+            }
+            catch
+            {
+                existingNames = _entries.Select(i => i.Entry.Name).ToList();
+            }
 
-            var details = string.Join(Environment.NewLine, result.Errors.Take(8));
-            if (result.Errors.Count > 8)
-                details += Environment.NewLine + L10n.Format("还有 {0} 个错误", result.Errors.Count - 8);
-            await _services.Dialogs.ShowErrorAsync(L10n.T("批量重命名错误"), details).ConfigureAwait(true);
+            var request = new BatchRenameRequest(
+                entries,
+                existingNames,
+                FileSystem.IsCaseSensitive,
+                FileNameRules.Detect(FileSystem));
+
+            var plan = await _services.Dialogs.ShowBatchRenameAsync(request).ConfigureAwait(true);
+            if (plan is null)
+                return;
+
+            _isBatchRenaming = true;
+            OnPropertyChanged(nameof(CanBatchRename));
+            try
+            {
+                var result = await BatchRenameExecutor.ExecuteAsync(FileSystem, plan).ConfigureAwait(true);
+                await RefreshAsync().ConfigureAwait(true);
+
+                if (result.Errors.Count == 0)
+                {
+                    Toast(L10n.T("已重命名"), L10n.Format("{0} 个项目", result.Renamed), false);
+                    return;
+                }
+
+                Toast(L10n.T("批量重命名未完成"),
+                    L10n.Format("{0} 个成功，{1} 个失败", result.Renamed, result.Failed), true);
+
+                var details = string.Join(Environment.NewLine, result.Errors.Take(8));
+                if (result.Errors.Count > 8)
+                    details += Environment.NewLine + L10n.Format("还有 {0} 个错误", result.Errors.Count - 8);
+                await _services.Dialogs.ShowErrorAsync(L10n.T("批量重命名错误"), details).ConfigureAwait(true);
+            }
+            finally
+            {
+                _isBatchRenaming = false;
+                OnPropertyChanged(nameof(CanBatchRename));
+            }
         }
         finally
         {
-            _isBatchRenaming = false;
+            _isBatchRenameDialogOpen = false;
             OnPropertyChanged(nameof(CanBatchRename));
         }
     }
@@ -1452,6 +1563,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanOpenWith));
+        OnPropertyChanged(nameof(CanOpenInNewWindow));
         OnPropertyChanged(nameof(CanOpenTerminal));
         OnPropertyChanged(nameof(CanRestore));
         OnPropertyChanged(nameof(CanEmptyTrash));
@@ -1503,7 +1616,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 catch { /* best effort */ }
             }
 
-            await _services.Shell.OpenAsync(localPath).ConfigureAwait(true);
+            if (!_services.OpenWith.TryOpenDefault(localPath))
+                await _services.Shell.OpenAsync(localPath).ConfigureAwait(true);
             Toast(L10n.T("已下载并打开"), localPath, false);
         }
         catch (Exception ex)

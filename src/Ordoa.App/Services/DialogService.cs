@@ -94,6 +94,18 @@ public sealed class DialogService : IDialogService
         await window.ShowDialog(owner);
     }
 
+    public async Task<OpenWithChoice?> ShowOpenWithAsync(FileEntry entry,
+        IReadOnlyList<DesktopApplication> applications, string? currentDefaultId)
+    {
+        var owner = _ownerProvider();
+        if (owner is null)
+            return null;
+
+        var viewModel = new OpenWithDialogViewModel(entry, applications, currentDefaultId);
+        var window = new OpenWithWindow { DataContext = viewModel };
+        return await window.ShowDialog<OpenWithChoice?>(owner);
+    }
+
     public async Task<BatchRenamePlan?> ShowBatchRenameAsync(BatchRenameRequest request)
     {
         var owner = _ownerProvider();

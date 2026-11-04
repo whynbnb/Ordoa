@@ -288,10 +288,13 @@ public sealed class CustomPathViewModel
 public sealed partial class SettingsDialogViewModel : ObservableObject
 {
     private readonly AppSettings _original;
+    private readonly Dictionary<string, string> _openWithDefaults;
 
     public SettingsDialogViewModel(AppSettings settings)
     {
         _original = settings;
+        _openWithDefaults = new Dictionary<string, string>(
+            settings.OpenWithDefaults ?? [], StringComparer.Ordinal);
         _language = settings.Language;
         _theme = settings.Theme;
         _accent = settings.Accent;
@@ -311,6 +314,14 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _ffmpegPath = settings.FfmpegPath;
         _useSystemWindowFrame = settings.UseSystemWindowFrame;
         _windowButtonMode = settings.WindowButtonMode;
+        _singleInstance = settings.SingleInstance;
+        _allowMultipleWindows = settings.AllowMultipleWindows;
+        _folderOpenIndex = settings.FolderOpenMode == FolderOpenMode.NewWindow ? 1 : 0;
+        FolderOpenModes =
+        [
+            L10n.T("当前窗口"),
+            L10n.T("新窗口"),
+        ];
 
         foreach (var path in settings.CustomSidebarPaths ?? [])
             CustomPaths.Add(new CustomPathViewModel { Path = path });
@@ -394,9 +405,46 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     [ObservableProperty]
     private WindowButtonMode _windowButtonMode;
 
+    [ObservableProperty]
+    private bool _singleInstance;
+
+    [ObservableProperty]
+    private bool _allowMultipleWindows;
+
+    [ObservableProperty]
+    private int _folderOpenIndex;
+
+    [ObservableProperty]
+    private bool _isRegisteringFileManager;
+
+    [ObservableProperty]
+    private string _integrationStatus = string.Empty;
+
+    public IReadOnlyList<string> FolderOpenModes { get; }
+
     public string SettingsPath => AppPaths.SettingsFile;
 
     public bool IsMacOS => OperatingSystem.IsMacOS();
+
+    public bool IsLinux => OperatingSystem.IsLinux();
+
+    public bool HasOpenWithDefaults => _openWithDefaults.Count > 0;
+
+    public string OpenWithSummary => _openWithDefaults.Count == 0
+        ? L10n.T("没有已记住的打开方式")
+        : L10n.Format("已记住 {0} 个扩展名", _openWithDefaults.Count);
+
+    public void SetIntegrationStatus(string message) => IntegrationStatus = message;
+
+    public void ClearOpenWithDefaults()
+    {
+        if (_openWithDefaults.Count == 0)
+            return;
+
+        _openWithDefaults.Clear();
+        OnPropertyChanged(nameof(HasOpenWithDefaults));
+        OnPropertyChanged(nameof(OpenWithSummary));
+    }
 
     public AppSettings ToSettings()
     {
@@ -420,6 +468,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
         settings.UseSystemWindowFrame = UseSystemWindowFrame;
         settings.WindowButtonMode = WindowButtonMode;
+        settings.SingleInstance = SingleInstance;
+        settings.AllowMultipleWindows = AllowMultipleWindows;
+        settings.FolderOpenMode = AllowMultipleWindows && FolderOpenIndex == 1
+            ? FolderOpenMode.NewWindow
+            : FolderOpenMode.CurrentWindow;
+        settings.OpenWithDefaults = new Dictionary<string, string>(_openWithDefaults, StringComparer.Ordinal);
         settings.CustomSidebarPaths = CustomPaths.Select(item => item.Path).ToList();
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
         return settings;
@@ -447,6 +501,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         FfmpegPath = defaults.FfmpegPath;
         UseSystemWindowFrame = defaults.UseSystemWindowFrame;
         WindowButtonMode = defaults.WindowButtonMode;
+        SingleInstance = defaults.SingleInstance;
+        AllowMultipleWindows = defaults.AllowMultipleWindows;
+        FolderOpenIndex = defaults.FolderOpenMode == FolderOpenMode.NewWindow ? 1 : 0;
+        _openWithDefaults.Clear();
+        OnPropertyChanged(nameof(HasOpenWithDefaults));
+        OnPropertyChanged(nameof(OpenWithSummary));
         CustomPaths.Clear();
         NewCustomPath = string.Empty;
         CustomPathError = null;

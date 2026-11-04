@@ -25,8 +25,12 @@ public sealed class AppServices : IAsyncDisposable
         Thumbnails = new ThumbnailService();
         Previews = new PreviewService();
         Shell = new ShellLauncher();
-        Clipboard = new ClipboardService(() => MainWindow);
-        Dialogs = new DialogService(() => MainWindow);
+        OpenWith = new OpenWithService(this);
+        Windows = new WindowManager(this);
+        Clipboard = new ClipboardService(() => Windows.ActiveWindow);
+        Dialogs = new DialogService(() => Windows.ActiveWindow);
+        Integration = new SystemIntegrationService();
+        FileManager1 = new FileManager1Service((uris, action) => Windows.HandleFileManagerRequestAsync(uris, action));
         Operations = new FileOperationService(Trash, action => Dispatcher.UIThread.Post(action));
         Operations.ConflictResolver = new DialogConflictResolver(Dialogs);
     }
@@ -44,20 +48,58 @@ public sealed class AppServices : IAsyncDisposable
     public PreviewService Previews { get; }
     public ClipboardService Clipboard { get; }
     public ShellLauncher Shell { get; }
+    public OpenWithService OpenWith { get; }
+    public WindowManager Windows { get; }
+    public SystemIntegrationService Integration { get; }
+    public FileManager1Service FileManager1 { get; }
     public DialogService Dialogs { get; }
-    public Window? MainWindow { get; private set; }
+    public Window? MainWindow => Windows.ActiveWindow;
 
-    public void AttachWindow(Window window)
+    public async Task StartIntegrationAsync()
     {
-        MainWindow = window;
-        ThemeService.ApplyDensity(window, Settings.Current.CompactMode);
-        ThemeService.ApplyWindowFrame(window, Settings.Current.UseSystemWindowFrame);
+        if (Settings.Current.SingleInstance)
+        {
+            try
+            {
+                SingleInstanceService.StartServer(Windows.HandleActivationAsync);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("启动单实例服务失败", ex);
+            }
+        }
+
+        if (!AppPaths.IsLinux)
+            return;
+
+        try
+        {
+            if (Program.IsFileManagerService || await Integration.IsDefaultFileManagerAsync().ConfigureAwait(false))
+                await FileManager1.StartAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("启动系统文件管理器集成失败", ex);
+        }
+    }
+
+    public async Task<bool> StartFileManagerServiceAsync(bool force = false)
+    {
+        if (!AppPaths.IsLinux)
+            return false;
+
+        if (!force && !await Integration.IsDefaultFileManagerAsync().ConfigureAwait(false))
+            return false;
+
+        return await FileManager1.StartAsync().ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
     {
         try { Operations.Dispose(); } catch { /* ignore */ }
         try { Thumbnails.Clear(); } catch { /* ignore */ }
+        try { await SingleInstanceService.StopAsync().ConfigureAwait(false); } catch { /* ignore */ }
+        try { await FileManager1.DisposeAsync().ConfigureAwait(false); } catch { /* ignore */ }
         await FileSystems.DisposeAsync().ConfigureAwait(false);
     }
 

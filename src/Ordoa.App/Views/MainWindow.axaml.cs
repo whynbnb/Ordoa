@@ -246,7 +246,7 @@ public partial class MainWindow : Window
         var width = maximized ? _lastNormalWidth : Width;
         var height = maximized ? _lastNormalHeight : Height;
         _viewModel.SaveWindowState(width, height, maximized);
-        _viewModel.SaveSession();
+        _viewModel.Services.Windows.SaveSession();
     }
 
     private void OnResized(object? sender, WindowResizedEventArgs e)
@@ -463,6 +463,14 @@ public partial class MainWindow : Window
 
         var active = _viewModel.ActivePane;
 
+        if (ctrl && shift && e.Key == Key.O)
+        {
+            if (active is { CanOpenWith: true })
+                Run(active.OpenWithAsync);
+            e.Handled = true;
+            return;
+        }
+
         if (ctrl && shift && e.Key == Key.R)
         {
             if (active is { CanBatchRename: true })
@@ -482,6 +490,10 @@ public partial class MainWindow : Window
         {
             switch (e.Key)
             {
+                case Key.N when !shift:
+                    _viewModel.NewWindowCommand.Execute(null);
+                    e.Handled = true;
+                    return;
                 case Key.T:
                     _viewModel.NewTabCommand.Execute(null);
                     e.Handled = true;

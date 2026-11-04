@@ -158,6 +158,48 @@
 
         <Border Classes="divider" />
 
+        <!-- Windows and integration -->
+        <TextBlock Text="{loc:Tr 窗口与多实例}" Classes="section" />
+        <StackPanel Spacing="8">
+          <CheckBox Content="{loc:Tr 单实例模式（再次启动时复用当前进程）}"
+                    IsChecked="{Binding SingleInstance, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 允许同时打开多个窗口}"
+                    IsChecked="{Binding AllowMultipleWindows, Mode=TwoWay}" />
+          <Grid ColumnDefinitions="120,*" ColumnSpacing="8">
+            <TextBlock Text="{loc:Tr 打开文件夹时}" Classes="fieldlabel" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding FolderOpenModes}"
+                      SelectedIndex="{Binding FolderOpenIndex, Mode=TwoWay}"
+                      IsEnabled="{Binding AllowMultipleWindows}" MinWidth="160"
+                      HorizontalAlignment="Left" />
+          </Grid>
+          <TextBlock Text="{loc:Tr 来自浏览器、IDE、命令行或其他应用的文件夹请求会按此设置打开。}"
+                     Classes="fieldhint" TextWrapping="Wrap" />
+          <TextBlock Text="{loc:Tr 单实例设置会在下次启动 Ordoa 时生效。}"
+                     Classes="fieldhint" />
+        </StackPanel>
+
+        <TextBlock Text="{loc:Tr 系统集成}" Classes="section" IsVisible="{Binding IsLinux}" />
+        <StackPanel Spacing="6" IsVisible="{Binding IsLinux}">
+          <TextBlock Text="{loc:Tr 将 Ordoa 注册为默认文件管理器，并安装 org.freedesktop.FileManager1 D-Bus 服务。}"
+                     Classes="fieldhint" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <Button Content="{loc:Tr 设为默认文件管理器}" Classes="subtle"
+                    Click="OnRegisterFileManagerClick" IsEnabled="{Binding !IsRegisteringFileManager}" />
+            <TextBlock Grid.Column="1" Text="{Binding IntegrationStatus}" Classes="caption"
+                       VerticalAlignment="Center" TextWrapping="Wrap" />
+          </Grid>
+        </StackPanel>
+
+        <TextBlock Text="{loc:Tr 打开方式}" Classes="section" IsVisible="{Binding IsLinux}" />
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding IsLinux}">
+          <TextBlock Text="{Binding OpenWithSummary}" Classes="caption" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="{loc:Tr 清除已记住的选择}" Classes="link"
+                  HorizontalAlignment="Left" Click="OnClearOpenWithClick"
+                  IsEnabled="{Binding HasOpenWithDefaults}" />
+        </Grid>
+
+        <Border Classes="divider" />
+
         <!-- Browsing -->
         <TextBlock Text="{loc:Tr 浏览}" Classes="section" />
         <StackPanel Spacing="7">

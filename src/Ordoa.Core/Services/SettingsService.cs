@@ -27,6 +27,12 @@ public enum WindowButtonMode
     Hide,
 }
 
+public enum FolderOpenMode
+{
+    CurrentWindow,
+    NewWindow,
+}
+
 public sealed class AppSettings
 {
     public UiLanguage Language { get; set; } = UiLanguage.System;
@@ -70,7 +76,26 @@ public sealed class AppSettings
     /// </summary>
     public WindowButtonMode WindowButtonMode { get; set; } = WindowButtonMode.Auto;
 
-    public AppSettings Clone() => (AppSettings)MemberwiseClone();
+    /// <summary>Reuse the running process when Ordoa is launched again.</summary>
+    public bool SingleInstance { get; set; } = true;
+
+    /// <summary>Allow more than one Ordoa window in the same process.</summary>
+    public bool AllowMultipleWindows { get; set; } = true;
+
+    /// <summary>Where folders opened from the shell or other apps should go.</summary>
+    public FolderOpenMode FolderOpenMode { get; set; } = FolderOpenMode.CurrentWindow;
+
+    /// <summary>Remembered application choice per lowercase extension (empty key for no extension).</summary>
+    public Dictionary<string, string> OpenWithDefaults { get; set; } = [];
+
+    public AppSettings Clone()
+    {
+        var clone = (AppSettings)MemberwiseClone();
+        clone.CustomSidebarPaths = [.. CustomSidebarPaths];
+        clone.HiddenPlaces = [.. HiddenPlaces];
+        clone.OpenWithDefaults = new Dictionary<string, string>(OpenWithDefaults, StringComparer.Ordinal);
+        return clone;
+    }
 }
 
 public sealed class SettingsService
@@ -124,6 +149,12 @@ public sealed class SettingsService
             Current.Language = UiLanguage.System;
         if (!Enum.IsDefined(Current.WindowButtonMode))
             Current.WindowButtonMode = WindowButtonMode.Auto;
+        if (!Enum.IsDefined(Current.FolderOpenMode))
+            Current.FolderOpenMode = FolderOpenMode.CurrentWindow;
+        Current.OpenWithDefaults = (Current.OpenWithDefaults ?? [])
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
+            .GroupBy(pair => pair.Key.Trim().TrimStart('.').ToLowerInvariant(), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Last().Value, StringComparer.Ordinal);
         if (Current.WindowWidth < 720)
             Current.WindowWidth = 1200;
         if (Current.WindowHeight < 480)
