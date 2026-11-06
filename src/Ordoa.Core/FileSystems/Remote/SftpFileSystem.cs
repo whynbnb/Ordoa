@@ -1,10 +1,14 @@
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
+using System.Text;
 using Ordoa.Core.Abstractions;
 using Ordoa.Core.Models;
+using Ordoa.Core.Services;
 using Ordoa.Core.Util;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 using Renci.SshNet.Sftp;
+using SshNet.Agent;
 using Ordoa.Core.Localization;
 
 namespace Ordoa.Core.FileSystems.Remote;
@@ -38,19 +42,8 @@ public sealed class SftpFileSystem : FileSystemBase
     {
         return Task.Run(() =>
         {
-            var methods = new List<AuthenticationMethod>();
-            if (!string.IsNullOrEmpty(password))
-                methods.Add(new PasswordAuthenticationMethod(profile.Username, password));
-
-            var keyboard = new KeyboardInteractiveAuthenticationMethod(profile.Username);
-            keyboard.AuthenticationPrompt += (_, e) =>
-            {
-                foreach (var prompt in e.Prompts)
-                    prompt.Response = password;
-            };
-            methods.Add(keyboard);
-
-            var connectionInfo = new ConnectionInfo(profile.Host, profile.EffectivePort, profile.Username, methods.ToArray())
+            var methods = BuildAuthenticationMethods(profile, password);
+            var connectionInfo = new ConnectionInfo(profile.Host, profile.EffectivePort, profile.Username, methods)
             {
                 Timeout = TimeSpan.FromSeconds(25),
                 ChannelCloseTimeout = TimeSpan.FromSeconds(15),
@@ -66,18 +59,45 @@ public sealed class SftpFileSystem : FileSystemBase
             SftpFileSystem? result = null;
             var fingerprint = string.Empty;
             string? hostKeyError = null;
+            var knownHostsStatus = KnownHostsStatus.Unknown;
             client.HostKeyReceived += (_, e) =>
             {
                 fingerprint = e.FingerPrintSHA256;
-                if (string.IsNullOrWhiteSpace(profile.HostKeyFingerprint))
+                var hostKey = e.HostKey ?? [];
+                var keyType = GetHostKeyType(hostKey) ?? e.HostKeyName ?? string.Empty;
+                var knownHosts = KnownHostsStore.Default.Check(
+                    profile.Host, profile.EffectivePort, keyType, hostKey);
+                knownHostsStatus = knownHosts.Status;
+
+                if (knownHosts.Status == KnownHostsStatus.Revoked)
                 {
-                    e.CanTrust = true;
+                    e.CanTrust = false;
+                    hostKeyError = L10n.T("服务器主机密钥已被 known_hosts 标记为吊销，连接已中止。");
+                    return;
                 }
-                else
+
+                if (!string.IsNullOrWhiteSpace(profile.HostKeyFingerprint))
                 {
                     e.CanTrust = string.Equals(profile.HostKeyFingerprint, e.FingerPrintSHA256, StringComparison.Ordinal);
                     if (!e.CanTrust)
                         hostKeyError = L10n.T("服务器主机密钥与之前保存的指纹不一致，连接已中止。");
+                    return;
+                }
+
+                switch (knownHosts.Status)
+                {
+                    case KnownHostsStatus.Match:
+                        e.CanTrust = true;
+                        break;
+                    case KnownHostsStatus.Mismatch:
+                        e.CanTrust = false;
+                        hostKeyError = L10n.T("服务器主机密钥与 known_hosts 中的记录不一致，连接已中止。");
+                        break;
+                    default:
+                        // Trust on first use; the fingerprint is pinned in the
+                        // connection profile after a successful connection.
+                        e.CanTrust = true;
+                        break;
                 }
             };
 
@@ -87,7 +107,8 @@ public sealed class SftpFileSystem : FileSystemBase
                 result = new SftpFileSystem(profile, client)
                 {
                     HostKeyFingerprint = string.IsNullOrWhiteSpace(profile.HostKeyFingerprint) ? fingerprint : profile.HostKeyFingerprint,
-                    HostKeyAccepted = string.IsNullOrWhiteSpace(profile.HostKeyFingerprint),
+                    HostKeyAccepted = string.IsNullOrWhiteSpace(profile.HostKeyFingerprint) &&
+                                      knownHostsStatus == KnownHostsStatus.Unknown,
                 };
                 return result;
             }
@@ -102,6 +123,109 @@ public sealed class SftpFileSystem : FileSystemBase
                 throw;
             }
         }, cancellationToken);
+    }
+
+    private static AuthenticationMethod[] BuildAuthenticationMethods(ConnectionProfile profile, string secret)
+    {
+        var methods = new List<AuthenticationMethod>();
+        switch (profile.SshAuth)
+        {
+            case SshAuthMethod.Agent:
+                var identities = RequestAgentIdentities();
+                if (identities.Length == 0)
+                {
+                    throw new InvalidOperationException(
+                        L10n.T("SSH Agent 中没有可用身份，请先使用 ssh-add 添加密钥。"));
+                }
+
+                methods.Add(new PrivateKeyAuthenticationMethod(profile.Username, identities));
+                break;
+
+            case SshAuthMethod.PrivateKey:
+                var keyPath = ExpandPath(profile.PrivateKeyPath);
+                if (string.IsNullOrWhiteSpace(keyPath) || !File.Exists(keyPath))
+                    throw new FileNotFoundException(L10n.T("找不到私钥文件，请检查路径。"), profile.PrivateKeyPath);
+
+                try
+                {
+                    var keyFile = new PrivateKeyFile(keyPath, string.IsNullOrEmpty(secret) ? null : secret);
+                    methods.Add(new PrivateKeyAuthenticationMethod(profile.Username, keyFile));
+                }
+                catch (SshPassPhraseNullOrEmptyException ex)
+                {
+                    throw new IOException(L10n.T("私钥已加密，请输入私钥密码。"), ex);
+                }
+                catch (SshException ex)
+                {
+                    throw new IOException(L10n.T("无法读取私钥文件，请检查文件格式和私钥密码。"), ex);
+                }
+                break;
+
+            default:
+                if (!string.IsNullOrEmpty(secret))
+                    methods.Add(new PasswordAuthenticationMethod(profile.Username, secret));
+
+                var keyboard = new KeyboardInteractiveAuthenticationMethod(profile.Username);
+                keyboard.AuthenticationPrompt += (_, e) =>
+                {
+                    foreach (var prompt in e.Prompts)
+                        prompt.Response = secret;
+                };
+                methods.Add(keyboard);
+                break;
+        }
+
+        if (methods.Count == 0)
+            throw new InvalidOperationException(L10n.T("没有可用的 SFTP 认证方式。"));
+
+        return methods.ToArray();
+    }
+
+    private static SshAgentPrivateKey[] RequestAgentIdentities()
+    {
+        try
+        {
+            return new SshAgent().RequestIdentities();
+        }
+        catch (Exception ex)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    return new Pageant().RequestIdentities();
+                }
+                catch
+                {
+                    // Fall through to the clearer error below.
+                }
+            }
+
+            throw new IOException(
+                L10n.T("无法连接 SSH Agent，请确认 SSH_AUTH_SOCK 或 ssh-agent 正在运行。"), ex);
+        }
+    }
+
+    private static string? GetHostKeyType(byte[] key)
+    {
+        if (key.Length < 4)
+            return null;
+
+        var length = BinaryPrimitives.ReadUInt32BigEndian(key);
+        if (length == 0 || length > key.Length - 4)
+            return null;
+
+        return Encoding.ASCII.GetString(key, 4, (int)length);
+    }
+
+    private static string ExpandPath(string path)
+    {
+        path = (path ?? string.Empty).Trim();
+        if (path == "~")
+            return AppPaths.Home;
+        if (path.StartsWith("~/", StringComparison.Ordinal))
+            return Path.Combine(AppPaths.Home, path[2..]);
+        return path;
     }
 
     public override string GetDisplayPath(string path)

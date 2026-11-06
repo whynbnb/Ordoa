@@ -1206,6 +1206,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private async Task RefreshSidebarAsync()
     {
+        // ConnectionStore.Changed can fire on an SSH worker thread after host
+        // key pinning. Icon brushes are thread-affine, so build on the UI thread.
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => RefreshSidebarAsync()).ConfigureAwait(true);
+            return;
+        }
+
         if (_refreshingSidebar)
             return;
         _refreshingSidebar = true;
@@ -1224,6 +1232,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void BuildSidebar()
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(BuildSidebar);
+            return;
+        }
+
         SidebarSections.Clear();
 
         var accentIcon = ThemeService.Brush("AccentBrush", "#17937F");
@@ -1613,6 +1627,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => OnSettingsChanged(sender, e));
+            return;
+        }
+
         var showPreviewPanel = _services.Settings.Current.ShowPreviewPanel;
         if (_isPreviewPanelOpen != showPreviewPanel)
         {

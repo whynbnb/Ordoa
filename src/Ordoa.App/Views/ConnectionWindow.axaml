@@ -98,11 +98,29 @@
           <TextBox Grid.Column="1" Text="{Binding Username, Mode=TwoWay}" PlaceholderText="{loc:Tr 登录用户名}" />
         </Grid>
 
-        <Grid ColumnDefinitions="100,*" IsVisible="{Binding ShowAuthFields}">
-          <TextBlock Text="{loc:Tr 密码}" Classes="fieldlabel" />
+        <StackPanel Spacing="6" IsVisible="{Binding ShowSshAuth}">
+          <TextBlock Text="{loc:Tr 认证方式}" Classes="section" />
+          <WrapPanel ItemWidth="110" ItemHeight="34">
+            <Button Classes="chip" Tag="Password" Click="OnSshAuthClick"
+                    Classes.active="{Binding SshAuth, Converter={StaticResource EqualsConverter}, ConverterParameter=Password}">
+              <TextBlock Text="{loc:Tr 密码}" />
+            </Button>
+            <Button Classes="chip" Tag="PrivateKey" Click="OnSshAuthClick"
+                    Classes.active="{Binding SshAuth, Converter={StaticResource EqualsConverter}, ConverterParameter=PrivateKey}">
+              <TextBlock Text="{loc:Tr 私钥}" />
+            </Button>
+            <Button Classes="chip" Tag="Agent" Click="OnSshAuthClick"
+                    Classes.active="{Binding SshAuth, Converter={StaticResource EqualsConverter}, ConverterParameter=Agent}">
+              <TextBlock Text="{loc:Tr SSH Agent}" />
+            </Button>
+          </WrapPanel>
+        </StackPanel>
+
+        <Grid ColumnDefinitions="100,*" IsVisible="{Binding ShowSecretField}">
+          <TextBlock Text="{Binding SecretLabel}" Classes="fieldlabel" />
           <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
             <TextBox x:Name="PasswordBox" Text="{Binding Password, Mode=TwoWay}" PasswordChar="●"
-                     PlaceholderText="{loc:Tr 登录密码}" />
+                     PlaceholderText="{Binding SecretPlaceholder}" />
             <Button Grid.Column="1" Classes="tool" Width="30" Height="30" Click="OnTogglePasswordClick"
                     ToolTip.Tip="{loc:Tr 显示/隐藏密码}">
               <Path Data="{StaticResource IconEye}" Width="15" Height="15" Stretch="Uniform"
@@ -110,6 +128,17 @@
             </Button>
           </Grid>
         </Grid>
+
+        <Grid ColumnDefinitions="100,*" IsVisible="{Binding ShowPrivateKeyField}">
+          <TextBlock Text="{loc:Tr 私钥文件}" Classes="fieldlabel" />
+          <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
+            <TextBox Text="{Binding PrivateKeyPath, Mode=TwoWay}" PlaceholderText="~/.ssh/id_ed25519" />
+            <Button Grid.Column="1" Content="{loc:Tr 浏览…}" Click="OnBrowsePrivateKeyClick" />
+          </Grid>
+        </Grid>
+
+        <TextBlock Text="{loc:Tr 使用 SSH_AUTH_SOCK 中的身份。请先用 ssh-add 添加密钥；Ordoa 不会读取或保存私钥本身。}"
+                   Classes="tiny" TextWrapping="Wrap" IsVisible="{Binding ShowAgentHint}" />
 
         <Grid ColumnDefinitions="100,*" IsVisible="{Binding IsSmb}">
           <TextBlock Text="{loc:Tr 域}" Classes="fieldlabel" />
@@ -122,6 +151,8 @@
                    PlaceholderText="{loc:Tr / 或 share/folder（SMB）}" />
         </Grid>
 
+        <TextBlock Text="{loc:Tr 主机密钥会与 ~/.ssh/known_hosts 校验；未知主机首次连接后会记录到连接配置。}"
+                   Classes="tiny" TextWrapping="Wrap" IsVisible="{Binding ShowKnownHostsHint}" />
         <TextBlock Text="{loc:Tr SMB 使用 TCP 445 端口；端口设置不会改变实际连接端口。}" Classes="tiny"
                    IsVisible="{Binding IsSmb}" TextWrapping="Wrap" />
         <CheckBox Content="{loc:Tr 匿名登录（仅 FTP）}" IsChecked="{Binding Anonymous, Mode=TwoWay}"
@@ -130,8 +161,8 @@
                   IsVisible="{Binding IsWebDav}" />
         <CheckBox Content="{loc:Tr 允许无效或自签名证书（不安全）}" IsChecked="{Binding AllowInvalidCertificate, Mode=TwoWay}"
                   IsVisible="{Binding ShowTlsOptions}" />
-        <CheckBox Content="{loc:Tr 保存密码到系统密钥环}" IsChecked="{Binding SavePassword, Mode=TwoWay}"
-                  IsVisible="{Binding ShowAuthFields}" />
+        <CheckBox Content="{Binding SaveSecretLabel}" IsChecked="{Binding SavePassword, Mode=TwoWay}"
+                  IsVisible="{Binding ShowSaveSecret}" />
         <CheckBox Content="{loc:Tr 在侧栏中保存此连接}" IsChecked="{Binding SaveProfile, Mode=TwoWay}" />
 
         <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="8" Padding="10,8"

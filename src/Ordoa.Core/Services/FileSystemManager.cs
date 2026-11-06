@@ -139,10 +139,17 @@ public sealed class FileSystemManager : IAsyncDisposable
         await _manageGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (deletePassword || !profile.SavePassword || profile.Anonymous)
+            if (deletePassword || !profile.SavePassword || profile.Anonymous || UsesSshAgent(profile))
+            {
                 await Credentials.DeletePasswordAsync(profile.Id, cancellationToken).ConfigureAwait(false);
+            }
             else if (password is not null)
-                await Credentials.SetPasswordAsync(profile.Id, password, cancellationToken).ConfigureAwait(false);
+            {
+                if (password.Length == 0)
+                    await Credentials.DeletePasswordAsync(profile.Id, cancellationToken).ConfigureAwait(false);
+                else
+                    await Credentials.SetPasswordAsync(profile.Id, password, cancellationToken).ConfigureAwait(false);
+            }
 
             Connections.Save(profile);
         }
@@ -180,7 +187,7 @@ public sealed class FileSystemManager : IAsyncDisposable
         bool savePassword, CancellationToken cancellationToken)
     {
         var password = passwordOverride;
-        if (password is null && !profile.Anonymous)
+        if (password is null && !profile.Anonymous && !UsesSshAgent(profile))
         {
             password = await Credentials.GetPasswordAsync(profile.Id, cancellationToken).ConfigureAwait(false);
         }
@@ -201,9 +208,12 @@ public sealed class FileSystemManager : IAsyncDisposable
 
             try
             {
-                if (profile.SavePassword && savePassword && !profile.Anonymous && effectivePassword.Length > 0)
+                if (profile.SavePassword && savePassword && !profile.Anonymous && !UsesSshAgent(profile) &&
+                    effectivePassword.Length > 0)
+                {
                     await Credentials.SetPasswordAsync(profile.Id, effectivePassword, cancellationToken).ConfigureAwait(false);
-                else if (!profile.SavePassword)
+                }
+                else if (!profile.SavePassword || string.IsNullOrEmpty(effectivePassword))
                     await Credentials.DeletePasswordAsync(profile.Id, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -220,6 +230,9 @@ public sealed class FileSystemManager : IAsyncDisposable
             throw;
         }
     }
+
+    private static bool UsesSshAgent(ConnectionProfile profile)
+        => profile.Protocol == RemoteProtocol.Sftp && profile.SshAuth == SshAuthMethod.Agent;
 
     private static async Task<IFileSystem> OpenAsync(ConnectionProfile profile, string password,
         CancellationToken cancellationToken)

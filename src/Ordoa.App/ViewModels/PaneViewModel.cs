@@ -1751,6 +1751,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => OnSettingsChanged(sender, e));
+            return;
+        }
+
         var settings = _services.Settings.Current;
         if (settings.ShowHidden != _lastShowHidden)
         {

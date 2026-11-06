@@ -1,8 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Ordoa.App.Services;
 using Ordoa.App.ViewModels.Dialogs;
+using Ordoa.Core.Localization;
 
 namespace Ordoa.App.Views;
 
@@ -31,6 +33,31 @@ public partial class ConnectionWindow : Window
     {
         if (DataContext is ConnectionDialogViewModel vm && sender is Button { Tag: string protocol })
             vm.SetProtocol(protocol);
+    }
+
+    private void OnSshAuthClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is ConnectionDialogViewModel vm && sender is Button { Tag: string method })
+            vm.SetSshAuth(method);
+    }
+
+    private async void OnBrowsePrivateKeyClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ConnectionDialogViewModel vm)
+            return;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = L10n.T("选择私钥文件"),
+            AllowMultiple = false,
+            FileTypeFilter = [FilePickerFileTypes.All],
+        });
+        if (files.Count == 0)
+            return;
+
+        var path = files[0].TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(path))
+            vm.PrivateKeyPath = path;
     }
 
     private void OnTogglePasswordClick(object? sender, RoutedEventArgs e)

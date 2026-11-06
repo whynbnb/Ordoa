@@ -87,11 +87,11 @@
 | 协议 | 实现 | 说明 |
 | --- | --- | --- |
 | FTP / FTPS | FluentFTP | 主动/被动、显式 FTPS；可选手动信任自签名证书 |
-| SFTP | SSH.NET | 密码认证、主机密钥 TOFU（首次连接记录指纹） |
+| SFTP | SSH.NET | 密码、私钥（含口令）、SSH Agent 认证；known_hosts 校验与 TOFU |
 | SMB 2/3 | SMBLibrary | 列出共享、浏览、读写、重命名、删除；固定 TCP 445 |
 | WebDAV | HttpClient | PROPFIND / GET / PUT / MKCOL / DELETE / MOVE / COPY，Basic 认证 |
 
-- 连接管理器：保存连接、初始路径、密码保存策略；侧栏一键进入。
+- 连接管理器：保存连接、初始路径、密码/私钥口令保存策略；支持密码、私钥和 SSH Agent 认证。
 - 远程会话复用；地址栏支持 `sftp://`、`ftp://`、`ftps://`、`smb://`、`webdav://`、`https://` 等 URL。
 - 远程↔本地、远程↔远程复制/移动通过统一的流式引擎完成。
 - 连接测试（对话框内）与友好的错误提示。
@@ -346,7 +346,7 @@ macOS 使用 `~/Library/Application Support/Ordoa` 与 `~/Library/Caches/Ordoa`�
 - Linux 优先使用 `secret-tool`（Secret Service / libsecret）保存密码。
 - macOS 优先使用 `security`（Keychain）。
 - 不可用时回退到仅当前用户可读（0600）的 JSON 文件；这是有意的兼容路径，不是加密存储。
-- SFTP 首次连接采用 TOFU：记录 SHA-256 主机密钥指纹，后续不匹配即拒绝连接。
+- SFTP 优先读取 `~/.ssh/known_hosts` 校验主机密钥（支持 hashed 主机名、通配符和非默认端口）；known_hosts 中不存在的首次连接采用 TOFU，并将 SHA-256 指纹记录到连接配置，后续不匹配即拒绝连接。可通过 `ORDOA_KNOWN_HOSTS` 指定自定义 known_hosts 文件。
 - FTPS / WebDAV 默认校验证书；只有在连接设置中显式勾选后才接受自签名或无效证书。
 - 明文 FTP 与 HTTP WebDAV 不提供传输加密，请优先使用 SFTP/FTPS/HTTPS。
 
@@ -388,7 +388,7 @@ tests/Ordoa.Core.Tests
 
 - 回收站目前只在 Linux 上完整实现。macOS/Windows 上删除会走永久删除并请求确认。
 - SMB 使用 445 端口，暂不支持 SMB over QUIC、强制加密共享或 DFS 重定向。
-- SFTP 暂只支持密码认证，尚未提供私钥/Agent 认证。
+- SFTP 的 known_hosts 只用于读取校验，不会自动写回 `~/.ssh/known_hosts`；未记录的主机会把指纹保存在 Ordoa 的连接配置中。
 - WebDAV 目前只支持 Basic 认证；未实现 Digest、OAuth、分块上传。
 - 网格视图使用 `WrapPanel`，超大目录（数万项）建议使用虚拟化的列表视图。
 - 不提供内置预览器或媒体播放器；普通打开仍交给系统默认应用，除非在“打开方式”中记住了应用。
@@ -399,7 +399,6 @@ tests/Ordoa.Core.Tests
 
 ## 路线图
 
-- SSH 私钥 / Agent 认证与 known_hosts 集成
 - SMB 加密共享、DFS 与端口配置
 - 网格视图虚拟化
 - 文件比较
@@ -413,6 +412,7 @@ Ordoa 建立在许多优秀开源项目之上：
 - [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) — MVVM 源生成器
 - [FluentFTP](https://github.com/robinrodricks/FluentFTP) — FTP/FTPS
 - [SSH.NET](https://github.com/sshnet/SSH.NET) — SFTP
+- [SshNet.Agent](https://github.com/darinkes/SshNet.Agent) — SSH Agent 认证
 - [SMBLibrary](https://github.com/TalAloni/SMBLibrary) — SMB 2/3
 - [Tmds.DBus.Protocol](https://github.com/tmds/Tmds.DBus) — Linux D-Bus / FileManager1 集成
 - [Material Design Icons](https://pictogrammers.com/library/mdi/) — 图标路径（Apache-2.0）

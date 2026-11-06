@@ -10,6 +10,13 @@ public enum RemoteProtocol
     WebDav,
 }
 
+public enum SshAuthMethod
+{
+    Password,
+    PrivateKey,
+    Agent,
+}
+
 public sealed class ConnectionProfile
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
@@ -22,6 +29,10 @@ public sealed class ConnectionProfile
     public string InitialPath { get; set; } = "/";
     public bool Anonymous { get; set; }
     public bool SavePassword { get; set; } = true;
+    /// <summary>Authentication used by SFTP connections.</summary>
+    public SshAuthMethod SshAuth { get; set; } = SshAuthMethod.Password;
+    /// <summary>Path to an OpenSSH/PEM private key for SFTP private-key auth.</summary>
+    public string PrivateKeyPath { get; set; } = string.Empty;
     public bool Secure { get; set; } = true;
     public string? HostKeyFingerprint { get; set; }
     public bool AllowInvalidCertificate { get; set; }

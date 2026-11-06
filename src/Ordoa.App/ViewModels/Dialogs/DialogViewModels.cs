@@ -78,6 +78,8 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         _initialPath = _source.NormalizeInitialPath(_source.InitialPath);
         _anonymous = _source.Anonymous;
         _savePassword = _source.SavePassword;
+        _sshAuth = _source.SshAuth;
+        _privateKeyPath = _source.PrivateKeyPath;
         _secure = _source.Secure;
         _allowInvalidCertificate = _source.AllowInvalidCertificate;
         _saveProfile = true;
@@ -106,6 +108,16 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DefaultPortText))]
     [NotifyPropertyChangedFor(nameof(ShowAnonymous))]
     [NotifyPropertyChangedFor(nameof(ShowTlsOptions))]
+    [NotifyPropertyChangedFor(nameof(IsSftp))]
+    [NotifyPropertyChangedFor(nameof(ShowSshAuth))]
+    [NotifyPropertyChangedFor(nameof(ShowSecretField))]
+    [NotifyPropertyChangedFor(nameof(ShowPrivateKeyField))]
+    [NotifyPropertyChangedFor(nameof(ShowAgentHint))]
+    [NotifyPropertyChangedFor(nameof(ShowSaveSecret))]
+    [NotifyPropertyChangedFor(nameof(ShowKnownHostsHint))]
+    [NotifyPropertyChangedFor(nameof(SecretLabel))]
+    [NotifyPropertyChangedFor(nameof(SecretPlaceholder))]
+    [NotifyPropertyChangedFor(nameof(SaveSecretLabel))]
     [NotifyPropertyChangedFor(nameof(CanTest))]
     private RemoteProtocol _protocol;
 
@@ -130,7 +142,25 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowAuthFields))]
+    [NotifyPropertyChangedFor(nameof(ShowSshAuth))]
+    [NotifyPropertyChangedFor(nameof(ShowSecretField))]
+    [NotifyPropertyChangedFor(nameof(ShowPrivateKeyField))]
+    [NotifyPropertyChangedFor(nameof(ShowAgentHint))]
+    [NotifyPropertyChangedFor(nameof(ShowSaveSecret))]
     private bool _anonymous;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSecretField))]
+    [NotifyPropertyChangedFor(nameof(ShowPrivateKeyField))]
+    [NotifyPropertyChangedFor(nameof(ShowAgentHint))]
+    [NotifyPropertyChangedFor(nameof(ShowSaveSecret))]
+    [NotifyPropertyChangedFor(nameof(SecretLabel))]
+    [NotifyPropertyChangedFor(nameof(SecretPlaceholder))]
+    [NotifyPropertyChangedFor(nameof(SaveSecretLabel))]
+    private SshAuthMethod _sshAuth;
+
+    [ObservableProperty]
+    private string _privateKeyPath;
 
     [ObservableProperty]
     private bool _savePassword;
@@ -161,9 +191,25 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     public bool IsFtp => Protocol is RemoteProtocol.Ftp or RemoteProtocol.Ftps;
     public bool IsSmb => Protocol == RemoteProtocol.Smb;
     public bool IsWebDav => Protocol == RemoteProtocol.WebDav;
+    public bool IsSftp => Protocol == RemoteProtocol.Sftp;
     public bool ShowAnonymous => IsFtp;
     public bool ShowAuthFields => !Anonymous;
     public bool ShowTlsOptions => Protocol is RemoteProtocol.Ftps or RemoteProtocol.WebDav;
+    public bool ShowSshAuth => IsSftp && !Anonymous;
+    public bool ShowSecretField => ShowAuthFields && (!IsSftp || SshAuth != SshAuthMethod.Agent);
+    public bool ShowPrivateKeyField => IsSftp && SshAuth == SshAuthMethod.PrivateKey;
+    public bool ShowAgentHint => IsSftp && SshAuth == SshAuthMethod.Agent;
+    public bool ShowSaveSecret => ShowSecretField;
+    public bool ShowKnownHostsHint => IsSftp;
+    public string SecretLabel => IsSftp && SshAuth == SshAuthMethod.PrivateKey
+        ? L10n.T("私钥密码（可选）")
+        : L10n.T("密码");
+    public string SecretPlaceholder => IsSftp && SshAuth == SshAuthMethod.PrivateKey
+        ? L10n.T("私钥未加密时留空")
+        : L10n.T("登录密码");
+    public string SaveSecretLabel => IsSftp && SshAuth == SshAuthMethod.PrivateKey
+        ? L10n.T("保存私钥密码到系统密钥环")
+        : L10n.T("保存密码到系统密钥环");
     public bool CanTest => !IsTesting && !string.IsNullOrWhiteSpace(Host);
     public string DefaultPortText => new ConnectionProfile { Protocol = Protocol, Secure = Secure }.EffectivePort.ToString();
 
@@ -180,6 +226,12 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
             if (value == RemoteProtocol.Ftps)
                 Secure = true;
         }
+    }
+
+    public void SetSshAuth(string method)
+    {
+        if (Enum.TryParse<SshAuthMethod>(method, true, out var value))
+            SshAuth = value;
     }
 
     public async Task TestAsync(CancellationToken cancellationToken = default)
@@ -239,6 +291,13 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
             return null;
         }
 
+        if (Protocol == RemoteProtocol.Sftp && SshAuth == SshAuthMethod.PrivateKey &&
+            string.IsNullOrWhiteSpace(PrivateKeyPath))
+        {
+            ValidationMessage = L10n.T("请选择私钥文件");
+            return null;
+        }
+
         var path = string.IsNullOrWhiteSpace(InitialPath) ? "/" : InitialPath.Trim();
         if (path.StartsWith("~/", StringComparison.Ordinal) || path == "~")
             path = path[1..];
@@ -254,7 +313,10 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         profile.Domain = Domain.Trim();
         profile.InitialPath = path;
         profile.Anonymous = Anonymous;
-        profile.SavePassword = SavePassword && !Anonymous;
+        profile.SavePassword = SavePassword && !Anonymous &&
+                               !(Protocol == RemoteProtocol.Sftp && SshAuth == SshAuthMethod.Agent);
+        profile.SshAuth = SshAuth;
+        profile.PrivateKeyPath = (PrivateKeyPath ?? string.Empty).Trim();
         profile.Secure = Secure;
         profile.AllowInvalidCertificate = AllowInvalidCertificate;
         if (string.IsNullOrWhiteSpace(profile.Name))
