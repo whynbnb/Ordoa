@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using Avalonia.Platform.Storage;
 using Ordoa.App.Services;
 using Ordoa.App.ViewModels;
 using Avalonia.Input;
@@ -161,6 +162,66 @@ public partial class SettingsWindow : Window
         vm.SetUndoStatus(L10n.T("撤销历史已清除"));
     }
 
+    private void OnTerminalModeClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string mode })
+            vm.SetTerminalMode(mode);
+    }
+
+    private void OnTerminalDefaultClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is RadioButton { Tag: string id })
+            vm.SetDefaultTerminal(id);
+    }
+
+    private void OnRescanTerminalsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+            vm.ReloadTerminals();
+    }
+
+    private async void OnBrowseTerminalClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsDialogViewModel vm)
+            return;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = L10n.T("选择终端可执行文件"),
+            AllowMultiple = false,
+            FileTypeFilter = [FilePickerFileTypes.All],
+        });
+        if (files.Count == 0)
+            return;
+
+        var path = files[0].TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        vm.ManualTerminalPath = path;
+        if (string.IsNullOrWhiteSpace(vm.ManualTerminalName))
+            vm.ManualTerminalName = Path.GetFileNameWithoutExtension(path);
+    }
+
+    private void OnAddCustomCommandClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+        {
+            vm.AddCustomCommand();
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (SettingsScroll is not null)
+                    SettingsScroll.Offset = new Vector(0, SettingsScroll.Extent.Height);
+            });
+        }
+    }
+
+    private void OnRemoveCustomCommandClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string id })
+            vm.RemoveCustomCommand(id);
+    }
+
     private void OnClearOpenWithClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm)
@@ -176,7 +237,14 @@ public partial class SettingsWindow : Window
     private void OnSaveClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm)
+        {
+            if (!vm.ValidateTerminalSettings())
+            {
+                vm.SelectedCategoryIndex = 4;
+                return;
+            }
             Close(vm.ToSettings());
+        }
     }
 
     private void OnCancelClick(object? sender, RoutedEventArgs e) => Close(null);

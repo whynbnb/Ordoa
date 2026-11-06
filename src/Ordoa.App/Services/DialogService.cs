@@ -135,7 +135,7 @@ public sealed class DialogService : IDialogService
         if (!TryPrepareDialog("settings", out var owner))
             return null;
 
-        var viewModel = new SettingsDialogViewModel(current, App.Services?.FileSystems);
+        var viewModel = new SettingsDialogViewModel(current, App.Services?.FileSystems, App.Services?.Terminals);
         var window = new SettingsWindow { DataContext = viewModel };
         return await ShowDialogAsync<AppSettings>("settings", window, owner).ConfigureAwait(true);
     }

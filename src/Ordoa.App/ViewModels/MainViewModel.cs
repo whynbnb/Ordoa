@@ -925,14 +925,42 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    public async Task OpenTerminalForSidebarEntryAsync(SidebarEntryViewModel entry)
+    public Task OpenTerminalForSidebarEntryAsync(SidebarEntryViewModel entry, string? terminalId = null)
     {
         var path = entry.VolumeMountPoint ?? entry.Path;
         if (string.IsNullOrEmpty(path))
-            return;
-        var ok = await _services.Shell.OpenTerminalAsync(path).ConfigureAwait(true);
+            return Task.CompletedTask;
+
+        var ok = string.IsNullOrWhiteSpace(terminalId)
+            ? _services.Terminals.OpenDefault(path)
+            : _services.Terminals.OpenById(terminalId, path);
         if (!ok)
             AddToast(L10n.T("无法打开终端"), L10n.T("未找到可用的终端程序"), ToastKind.Error);
+        return Task.CompletedTask;
+    }
+
+    public Task OpenHerdrForSidebarEntryAsync(SidebarEntryViewModel entry)
+    {
+        var path = entry.VolumeMountPoint ?? entry.Path;
+        if (string.IsNullOrEmpty(path))
+            return Task.CompletedTask;
+
+        var ok = _services.Terminals.OpenInHerdr(path);
+        if (!ok)
+            AddToast(L10n.T("无法打开 Herdr"), L10n.T("请确认已安装 herdr，并且当前终端支持运行命令"), ToastKind.Error);
+        return Task.CompletedTask;
+    }
+
+    public Task RunCustomCommandForSidebarEntryAsync(SidebarEntryViewModel entry, string commandId)
+    {
+        var path = entry.VolumeMountPoint ?? entry.Path;
+        var command = _services.CustomCommands.Find(commandId);
+        if (string.IsNullOrEmpty(path) || command is null)
+            return Task.CompletedTask;
+
+        if (!_services.CustomCommands.Run(command, path, []))
+            AddToast(L10n.T("无法运行命令"), command.Name, ToastKind.Error);
+        return Task.CompletedTask;
     }
 
     private async Task<IFileSystem?> ResolveSidebarFileSystemAsync(SidebarEntryViewModel entry)
@@ -1755,6 +1783,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ShowWindowCaptionButtons));
         OnPropertyChanged(nameof(ReserveMacOSTrafficLights));
         OnPropertyChanged(nameof(ReserveMacOSTrafficLightsInTitleBar));
+        BuildPaletteCommands();
     }
 
     private void OnConnectionsChanged(object? sender, EventArgs e)
@@ -1942,7 +1971,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Add(L10n.T("压缩为 ZIP"), L10n.T("将选中的项目压缩为 zip"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(false)));
         Add(L10n.T("压缩为 tar.gz"), L10n.T("将选中的项目压缩为 tar.gz"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(true)));
         Add(L10n.T("解压到此处"), L10n.T("解压选中的压缩包"), null, "IconDownload", () => PaneAction(p => p.ExtractAsync()));
-        Add(L10n.T("在终端中打开"), L10n.T("在当前位置启动终端"), null, "IconTerminal", () => PaneAction(p => p.OpenTerminalAsync()));
+        Add(L10n.T("在终端中打开"), L10n.T("在当前位置或选中的文件夹中启动终端"), null, "IconTerminal", () => PaneAction(p => p.OpenTerminalAsync()));
+        if (_services.Terminals.GetEnabledHerdr() is not null)
+        {
+            Add(L10n.T("在 Herdr 中打开"), L10n.T("在当前文件夹中启动 Herdr 工作区"), null, "IconTerminal",
+                () => PaneAction(p => p.OpenInHerdrAsync()));
+        }
+        foreach (var command in _services.CustomCommands.GetAll())
+        {
+            if (string.IsNullOrWhiteSpace(command.Command))
+                continue;
+            var id = command.Id;
+            var name = string.IsNullOrWhiteSpace(command.Name) ? command.Command : command.Name;
+            Add(name, L10n.T("自定义命令"), null,
+                command.RunInTerminal ? "IconTerminal" : "IconCommand",
+                () => PaneAction(p => p.RunCustomCommandAsync(id)));
+        }
         Add(L10n.T("复制路径"), L10n.T("复制选中项目的完整路径"), null, "IconLink", () => PaneAction(p => p.CopyPathAsync()));
         Add(L10n.T("添加书签"), L10n.T("将当前文件夹加入侧栏"), "Ctrl+D", "IconBookmark", AddBookmarkAsync);
         Add(L10n.T("新建远程连接"), L10n.T("连接到 FTP、SFTP、SMB 或 WebDAV"), null, "IconCloudAdd", () => ShowConnectionDialogAsync(null));

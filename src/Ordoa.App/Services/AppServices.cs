@@ -26,6 +26,8 @@ public sealed class AppServices : IAsyncDisposable
         Previews = new PreviewService();
         Shell = new ShellLauncher();
         OpenWith = new OpenWithService(this);
+        Terminals = new TerminalService(this);
+        CustomCommands = new CustomCommandService(this);
         Windows = new WindowManager(this);
         Clipboard = new ClipboardService(() => Windows.ActiveWindow);
         Dialogs = new DialogService(() => Windows.ActiveWindow);
@@ -50,6 +52,8 @@ public sealed class AppServices : IAsyncDisposable
     public ClipboardService Clipboard { get; }
     public ShellLauncher Shell { get; }
     public OpenWithService OpenWith { get; }
+    public TerminalService Terminals { get; }
+    public CustomCommandService CustomCommands { get; }
     public WindowManager Windows { get; }
     public SystemIntegrationService Integration { get; }
     public FileManager1Service FileManager1 { get; }

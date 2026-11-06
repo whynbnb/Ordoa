@@ -111,6 +111,22 @@ public sealed class AppSettings
     /// <summary>Session undo scope. System follows the platform file manager behavior.</summary>
     public UndoBehavior UndoBehavior { get; set; } = UndoBehavior.System;
 
+    /// <summary>Whether terminals are discovered from PATH or supplied manually.</summary>
+    public TerminalDetectionMode TerminalMode { get; set; } = TerminalDetectionMode.Auto;
+
+    public string ManualTerminalName { get; set; } = string.Empty;
+    public string ManualTerminalPath { get; set; } = string.Empty;
+    /// <summary>Arguments used when opening a folder. Supports %d.</summary>
+    public string ManualTerminalArguments { get; set; } = string.Empty;
+    /// <summary>Arguments used when running a command. Supports %d and %c.</summary>
+    public string ManualTerminalCommandArguments { get; set; } = string.Empty;
+
+    /// <summary>Default terminal and context-menu visibility, keyed by discovered terminal id.</summary>
+    public List<TerminalPreference> TerminalPreferences { get; set; } = [];
+
+    /// <summary>User-defined quick actions run from the context menu or command palette.</summary>
+    public List<CustomCommand> CustomCommands { get; set; } = [];
+
     public AppSettings Clone()
     {
         var clone = (AppSettings)MemberwiseClone();
@@ -118,6 +134,14 @@ public sealed class AppSettings
         clone.HiddenPlaces = [.. HiddenPlaces];
         clone.HiddenConnections = [.. HiddenConnections];
         clone.OpenWithDefaults = new Dictionary<string, string>(OpenWithDefaults, StringComparer.Ordinal);
+        clone.TerminalPreferences = (TerminalPreferences ?? [])
+            .Where(preference => preference is not null)
+            .Select(preference => preference.Clone())
+            .ToList();
+        clone.CustomCommands = (CustomCommands ?? [])
+            .Where(command => command is not null)
+            .Select(command => command.Clone())
+            .ToList();
         return clone;
     }
 }
@@ -179,6 +203,43 @@ public sealed class SettingsService
             Current.UndoBehavior = UndoBehavior.System;
         if (!Enum.IsDefined(Current.PreviewPanelPlacement))
             Current.PreviewPanelPlacement = PreviewPanelPlacement.Right;
+        if (!Enum.IsDefined(Current.TerminalMode))
+            Current.TerminalMode = TerminalDetectionMode.Auto;
+        Current.ManualTerminalName = (Current.ManualTerminalName ?? string.Empty).Trim();
+        Current.ManualTerminalPath = (Current.ManualTerminalPath ?? string.Empty).Trim();
+        Current.ManualTerminalArguments = (Current.ManualTerminalArguments ?? string.Empty).Trim();
+        Current.ManualTerminalCommandArguments = (Current.ManualTerminalCommandArguments ?? string.Empty).Trim();
+        Current.TerminalPreferences = (Current.TerminalPreferences ?? [])
+            .Where(preference => preference is not null && !string.IsNullOrWhiteSpace(preference.Id))
+            .GroupBy(preference => preference.Id.Trim(), StringComparer.Ordinal)
+            .Select(group => group.Last())
+            .ToList();
+        var defaultTerminal = Current.TerminalPreferences.LastOrDefault(preference => preference.IsDefault);
+        foreach (var preference in Current.TerminalPreferences)
+            preference.IsDefault = ReferenceEquals(preference, defaultTerminal);
+
+        var seenCommandIds = new HashSet<string>(StringComparer.Ordinal);
+        Current.CustomCommands = (Current.CustomCommands ?? [])
+            .Where(command => command is not null && !string.IsNullOrWhiteSpace(command.Command))
+            .Select(command =>
+            {
+                command.Id = string.IsNullOrWhiteSpace(command.Id)
+                    ? Guid.NewGuid().ToString("N")
+                    : command.Id.Trim();
+                command.Name = (command.Name ?? string.Empty).Trim();
+                command.Command = (command.Command ?? string.Empty).Trim();
+                if (command.Name.Length == 0)
+                {
+                    var end = command.Command.IndexOfAny([' ', '\t', '\r', '\n']);
+                    command.Name = end > 0 ? command.Command[..end] : command.Command;
+                }
+                command.WorkingDirectory = string.IsNullOrWhiteSpace(command.WorkingDirectory)
+                    ? "%d"
+                    : command.WorkingDirectory.Trim();
+                return command;
+            })
+            .Where(command => seenCommandIds.Add(command.Id))
+            .ToList();
         Current.OpenWithDefaults = (Current.OpenWithDefaults ?? [])
             .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
             .GroupBy(pair => pair.Key.Trim().TrimStart('.').ToLowerInvariant(), StringComparer.Ordinal)

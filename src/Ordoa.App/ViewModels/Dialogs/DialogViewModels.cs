@@ -367,16 +367,57 @@ public sealed partial class ConnectionSettingViewModel : ObservableObject
     private bool _isVisible;
 }
 
+public sealed partial class TerminalSettingViewModel : ObservableObject
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public required string Detail { get; init; }
+    public bool IsHerdr { get; init; }
+    public bool CanBeDefault => !IsHerdr;
+
+    [ObservableProperty]
+    private bool _isDefault;
+
+    [ObservableProperty]
+    private bool _showInContextMenu;
+}
+
+public sealed partial class CustomCommandViewModel : ObservableObject
+{
+    public required string Id { get; init; }
+
+    [ObservableProperty]
+    private string _name = string.Empty;
+
+    [ObservableProperty]
+    private string _command = string.Empty;
+
+    [ObservableProperty]
+    private string _workingDirectory = "%d";
+
+    [ObservableProperty]
+    private bool _showInContextMenu = true;
+
+    [ObservableProperty]
+    private bool _runInTerminal;
+
+    [ObservableProperty]
+    private bool _requiresSelection;
+}
+
 public sealed partial class SettingsDialogViewModel : ObservableObject
 {
     private readonly AppSettings _original;
     private readonly Dictionary<string, string> _openWithDefaults;
     private readonly FileSystemManager? _fileSystems;
+    private readonly TerminalService? _terminals;
 
-    public SettingsDialogViewModel(AppSettings settings, FileSystemManager? fileSystems = null)
+    public SettingsDialogViewModel(AppSettings settings, FileSystemManager? fileSystems = null,
+        TerminalService? terminals = null)
     {
         _original = settings;
         _fileSystems = fileSystems;
+        _terminals = terminals;
         _openWithDefaults = new Dictionary<string, string>(
             settings.OpenWithDefaults ?? [], StringComparer.Ordinal);
         _language = settings.Language;
@@ -404,6 +445,11 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _allowMultipleWindows = settings.AllowMultipleWindows;
         _folderOpenIndex = settings.FolderOpenMode == FolderOpenMode.NewWindow ? 1 : 0;
         _undoBehaviorIndex = (int)settings.UndoBehavior;
+        _terminalMode = settings.TerminalMode;
+        _manualTerminalName = settings.ManualTerminalName;
+        _manualTerminalPath = settings.ManualTerminalPath;
+        _manualTerminalArguments = settings.ManualTerminalArguments;
+        _manualTerminalCommandArguments = settings.ManualTerminalCommandArguments;
         FolderOpenModes =
         [
             L10n.T("当前窗口"),
@@ -428,15 +474,32 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             new SettingsCategoryViewModel { Title = L10n.T("浏览"), Icon = FileIconCatalog.Resource("IconFolder") },
             new SettingsCategoryViewModel { Title = L10n.T("侧栏"), Icon = FileIconCatalog.Resource("IconPanel") },
             new SettingsCategoryViewModel { Title = L10n.T("预览"), Icon = FileIconCatalog.Resource("IconEye") },
+            new SettingsCategoryViewModel { Title = L10n.T("终端"), Icon = FileIconCatalog.Resource("IconTerminal") },
+            new SettingsCategoryViewModel { Title = L10n.T("命令"), Icon = FileIconCatalog.Resource("IconCommand") },
             new SettingsCategoryViewModel { Title = L10n.T("网络"), Icon = FileIconCatalog.Resource("IconCloud") },
             new SettingsCategoryViewModel { Title = L10n.T("行为与撤销"), Icon = FileIconCatalog.Resource("IconUndo") },
             new SettingsCategoryViewModel { Title = L10n.T("系统与集成"), Icon = FileIconCatalog.Resource("IconSettings") },
         ];
 
         ReloadConnections();
+        ReloadTerminals();
 
         foreach (var path in settings.CustomSidebarPaths ?? [])
             CustomPaths.Add(new CustomPathViewModel { Path = path });
+
+        foreach (var command in settings.CustomCommands ?? [])
+        {
+            CustomCommands.Add(new CustomCommandViewModel
+            {
+                Id = command.Id,
+                Name = command.Name,
+                Command = command.Command,
+                WorkingDirectory = string.IsNullOrWhiteSpace(command.WorkingDirectory) ? "%d" : command.WorkingDirectory,
+                ShowInContextMenu = command.ShowInContextMenu,
+                RunInTerminal = command.RunInTerminal,
+                RequiresSelection = command.RequiresSelection,
+            });
+        }
 
         var hidden = new HashSet<string>(settings.HiddenPlaces ?? [], StringComparer.OrdinalIgnoreCase);
         foreach (var place in KnownFolders.GetPlaces())
@@ -456,7 +519,26 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     public System.Collections.ObjectModel.ObservableCollection<ConnectionSettingViewModel> Connections { get; } = [];
 
+    public System.Collections.ObjectModel.ObservableCollection<TerminalSettingViewModel> Terminals { get; } = [];
+
+    public System.Collections.ObjectModel.ObservableCollection<CustomCommandViewModel> CustomCommands { get; } = [];
+
     public bool HasConnections => Connections.Count > 0;
+
+    public bool HasTerminals => Terminals.Count > 0;
+
+    public bool HasCustomCommands => CustomCommands.Count > 0;
+
+    public string TerminalScanSummary
+    {
+        get
+        {
+            var detected = Terminals.Count(item => !item.IsHerdr);
+            return detected == 0
+                ? L10n.T("未检测到终端")
+                : L10n.Format("已检测到 {0} 个终端", detected);
+        }
+    }
 
     public IReadOnlyList<SettingsCategoryViewModel> Categories { get; }
 
@@ -467,9 +549,11 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public bool ShowBrowsing => SelectedCategoryIndex == 1;
     public bool ShowSidebarCategory => SelectedCategoryIndex == 2;
     public bool ShowPreview => SelectedCategoryIndex == 3;
-    public bool ShowNetwork => SelectedCategoryIndex == 4;
-    public bool ShowBehavior => SelectedCategoryIndex == 5;
-    public bool ShowSystem => SelectedCategoryIndex == 6;
+    public bool ShowTerminal => SelectedCategoryIndex == 4;
+    public bool ShowCommands => SelectedCategoryIndex == 5;
+    public bool ShowNetwork => SelectedCategoryIndex == 6;
+    public bool ShowBehavior => SelectedCategoryIndex == 7;
+    public bool ShowSystem => SelectedCategoryIndex == 8;
 
     partial void OnSelectedCategoryIndexChanged(int value)
     {
@@ -483,6 +567,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowBrowsing));
         OnPropertyChanged(nameof(ShowSidebarCategory));
         OnPropertyChanged(nameof(ShowPreview));
+        OnPropertyChanged(nameof(ShowTerminal));
+        OnPropertyChanged(nameof(ShowCommands));
         OnPropertyChanged(nameof(ShowNetwork));
         OnPropertyChanged(nameof(ShowBehavior));
         OnPropertyChanged(nameof(ShowSystem));
@@ -570,6 +656,65 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private int _undoBehaviorIndex;
 
     [ObservableProperty]
+    private TerminalDetectionMode _terminalMode;
+
+    partial void OnTerminalModeChanged(TerminalDetectionMode value)
+    {
+        OnPropertyChanged(nameof(ShowTerminalAuto));
+        OnPropertyChanged(nameof(ShowTerminalManual));
+        if (value == TerminalDetectionMode.Auto)
+            TerminalError = null;
+    }
+
+    public bool ShowTerminalAuto => TerminalMode == TerminalDetectionMode.Auto;
+    public bool ShowTerminalManual => !ShowTerminalAuto;
+
+    [ObservableProperty]
+    private string _manualTerminalName = string.Empty;
+
+    [ObservableProperty]
+    private string _manualTerminalPath = string.Empty;
+
+    partial void OnManualTerminalPathChanged(string value) => TerminalError = null;
+
+    [ObservableProperty]
+    private string _manualTerminalArguments = string.Empty;
+
+    [ObservableProperty]
+    private string _manualTerminalCommandArguments = string.Empty;
+
+    [ObservableProperty]
+    private string? _terminalError;
+
+    public bool ValidateTerminalSettings()
+    {
+        if (TerminalMode == TerminalDetectionMode.Manual)
+        {
+            var path = (ManualTerminalPath ?? string.Empty).Trim();
+            if (path.Length == 0)
+            {
+                TerminalError = L10n.T("手动模式需要指定终端可执行文件。");
+                return false;
+            }
+
+            if (path == "~")
+                path = AppPaths.Home;
+            else if (path.StartsWith("~/", StringComparison.Ordinal))
+                path = Path.Combine(AppPaths.Home, path[2..]);
+
+            var resolved = TerminalCatalog.FindExecutable(path);
+            if (resolved is null && !File.Exists(path))
+            {
+                TerminalError = L10n.T("找不到指定的终端可执行文件。");
+                return false;
+            }
+        }
+
+        TerminalError = null;
+        return true;
+    }
+
+    [ObservableProperty]
     private string _undoStatus = string.Empty;
 
     [ObservableProperty]
@@ -624,6 +769,102 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         OnPropertyChanged(nameof(HasConnections));
     }
 
+    public void ReloadTerminals(bool resetToDefaults = false)
+    {
+        var previous = new Dictionary<string, TerminalSettingViewModel>(StringComparer.Ordinal);
+        foreach (var terminal in Terminals)
+            previous[terminal.Id] = terminal;
+
+        var preferences = new Dictionary<string, TerminalPreference>(StringComparer.Ordinal);
+        foreach (var preference in resetToDefaults ? new AppSettings().TerminalPreferences
+                     : _original.TerminalPreferences ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(preference.Id))
+                preferences[preference.Id] = preference;
+        }
+
+        Terminals.Clear();
+        if (_terminals is not null)
+        {
+            foreach (var profile in _terminals.Discover())
+            {
+                preferences.TryGetValue(profile.Id, out var preference);
+                previous.TryGetValue(profile.Id, out var existing);
+                Terminals.Add(new TerminalSettingViewModel
+                {
+                    Id = profile.Id,
+                    Name = profile.Name,
+                    Detail = profile.Executable,
+                    IsHerdr = false,
+                    IsDefault = existing?.IsDefault ?? preference?.IsDefault ?? false,
+                    ShowInContextMenu = existing?.ShowInContextMenu ??
+                                        preference?.ShowInContextMenu ?? true,
+                });
+            }
+
+            if (_terminals.FindHerdr() is { } herdr)
+            {
+                preferences.TryGetValue("herdr", out var preference);
+                previous.TryGetValue("herdr", out var existing);
+                Terminals.Add(new TerminalSettingViewModel
+                {
+                    Id = "herdr",
+                    Name = herdr.Name,
+                    Detail = herdr.Executable,
+                    IsHerdr = true,
+                    IsDefault = false,
+                    ShowInContextMenu = existing?.ShowInContextMenu ??
+                                        preference?.ShowInContextMenu ?? false,
+                });
+            }
+        }
+
+        if (Terminals.All(item => !item.IsDefault || !item.CanBeDefault))
+        {
+            var first = Terminals.FirstOrDefault(item => item.CanBeDefault);
+            if (first is not null)
+                first.IsDefault = true;
+        }
+
+        OnPropertyChanged(nameof(HasTerminals));
+        OnPropertyChanged(nameof(TerminalScanSummary));
+    }
+
+    public void SetDefaultTerminal(string id)
+    {
+        foreach (var terminal in Terminals)
+            terminal.IsDefault = terminal.CanBeDefault &&
+                                 string.Equals(terminal.Id, id, StringComparison.Ordinal);
+    }
+
+    public void SetTerminalMode(string value)
+    {
+        if (Enum.TryParse<TerminalDetectionMode>(value, true, out var mode))
+            TerminalMode = mode;
+    }
+
+    public void AddCustomCommand()
+    {
+        CustomCommands.Add(new CustomCommandViewModel
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            WorkingDirectory = "%d",
+            ShowInContextMenu = true,
+        });
+        OnPropertyChanged(nameof(HasCustomCommands));
+    }
+
+    public void RemoveCustomCommand(string id)
+    {
+        var command = CustomCommands.FirstOrDefault(item =>
+            string.Equals(item.Id, id, StringComparison.Ordinal));
+        if (command is null)
+            return;
+
+        CustomCommands.Remove(command);
+        OnPropertyChanged(nameof(HasCustomCommands));
+    }
+
     public void ClearOpenWithDefaults()
     {
         if (_openWithDefaults.Count == 0)
@@ -666,6 +907,36 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             ? FolderOpenMode.NewWindow
             : FolderOpenMode.CurrentWindow;
         settings.UndoBehavior = (UndoBehavior)Math.Clamp(UndoBehaviorIndex, 0, 3);
+        settings.TerminalMode = TerminalMode;
+        settings.ManualTerminalName = (ManualTerminalName ?? string.Empty).Trim();
+        settings.ManualTerminalPath = (ManualTerminalPath ?? string.Empty).Trim();
+        settings.ManualTerminalArguments = (ManualTerminalArguments ?? string.Empty).Trim();
+        settings.ManualTerminalCommandArguments = (ManualTerminalCommandArguments ?? string.Empty).Trim();
+        settings.TerminalPreferences = Terminals
+            .Select(terminal => new TerminalPreference
+            {
+                Id = terminal.Id,
+                IsDefault = terminal.IsDefault,
+                ShowInContextMenu = terminal.ShowInContextMenu,
+            })
+            .ToList();
+        settings.CustomCommands = CustomCommands
+            .Where(command => !string.IsNullOrWhiteSpace(command.Command))
+            .Select(command => new CustomCommand
+            {
+                Id = command.Id,
+                Name = string.IsNullOrWhiteSpace(command.Name)
+                    ? FirstWord(command.Command)
+                    : command.Name.Trim(),
+                Command = command.Command.Trim(),
+                WorkingDirectory = string.IsNullOrWhiteSpace(command.WorkingDirectory)
+                    ? "%d"
+                    : command.WorkingDirectory.Trim(),
+                ShowInContextMenu = command.ShowInContextMenu,
+                RunInTerminal = command.RunInTerminal,
+                RequiresSelection = command.RequiresSelection,
+            })
+            .ToList();
         settings.OpenWithDefaults = new Dictionary<string, string>(_openWithDefaults, StringComparer.Ordinal);
         settings.CustomSidebarPaths = CustomPaths.Select(item => item.Path).ToList();
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
@@ -702,6 +973,14 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         AllowMultipleWindows = defaults.AllowMultipleWindows;
         FolderOpenIndex = defaults.FolderOpenMode == FolderOpenMode.NewWindow ? 1 : 0;
         UndoBehaviorIndex = (int)defaults.UndoBehavior;
+        TerminalMode = defaults.TerminalMode;
+        ManualTerminalName = defaults.ManualTerminalName;
+        ManualTerminalPath = defaults.ManualTerminalPath;
+        ManualTerminalArguments = defaults.ManualTerminalArguments;
+        ManualTerminalCommandArguments = defaults.ManualTerminalCommandArguments;
+        ReloadTerminals(resetToDefaults: true);
+        CustomCommands.Clear();
+        OnPropertyChanged(nameof(HasCustomCommands));
         _openWithDefaults.Clear();
         OnPropertyChanged(nameof(HasOpenWithDefaults));
         OnPropertyChanged(nameof(OpenWithSummary));
@@ -798,5 +1077,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         if (item is not null)
             CustomPaths.Remove(item);
         CustomPathError = null;
+    }
+
+    private static string FirstWord(string command)
+    {
+        var trimmed = command.Trim();
+        var index = trimmed.IndexOfAny([' ', '\t', '\r', '\n']);
+        return index > 0 ? trimmed[..index] : trimmed;
     }
 }

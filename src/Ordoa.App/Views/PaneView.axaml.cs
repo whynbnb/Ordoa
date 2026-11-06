@@ -10,6 +10,7 @@ using Avalonia.VisualTree;
 using Ordoa.App.Services;
 using Ordoa.App.ViewModels;
 using Ordoa.Core.FileSystems;
+using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
 using Ordoa.Core.Localization;
@@ -846,7 +847,8 @@ public partial class PaneView : UserControl
         menu.Items.Add(MenuItem(L10n.T("解压到此处"), pane.ExtractAsync, pane.CanExtract));
         menu.Items.Add(MenuItem(L10n.T("计算 SHA-256"), pane.ChecksumAsync, pane.CanChecksum));
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem(L10n.T("在终端中打开"), pane.OpenTerminalAsync, pane.CanOpenTerminal));
+        AddTerminalMenuItems(menu, pane);
+        AddCustomCommandMenuItems(menu, pane);
         menu.Items.Add(MenuItem(L10n.T("复制路径"), pane.CopyPathAsync, true));
         menu.Items.Add(MenuItem(L10n.T("复制名称"), pane.CopyNameAsync, pane.HasSelection));
         menu.Items.Add(MenuItem(L10n.T("属性"), pane.PropertiesAsync, true));
@@ -863,6 +865,66 @@ public partial class PaneView : UserControl
         host.ContextMenu = menu;
         menu.Open(host);
         e.Handled = true;
+    }
+
+    private void AddTerminalMenuItems(ContextMenu menu, PaneViewModel pane)
+    {
+        var contextTerminals = pane.ContextTerminals;
+        var defaultTerminal = pane.DefaultContextTerminal;
+        if (defaultTerminal is not null)
+        {
+            menu.Items.Add(MenuItem(L10n.Format("在 {0} 中打开", defaultTerminal.Name),
+                () => pane.OpenTerminalAsync(defaultTerminal.Id), pane.CanOpenTerminal));
+        }
+
+        var alternates = contextTerminals
+            .Where(terminal => !string.Equals(terminal.Id, defaultTerminal?.Id, StringComparison.Ordinal))
+            .ToList();
+        if (alternates.Count > 0)
+        {
+            var submenu = new MenuItem
+            {
+                Header = defaultTerminal is null
+                    ? L10n.T("在终端中打开")
+                    : L10n.T("使用其他终端打开"),
+            };
+            foreach (var terminal in alternates)
+            {
+                var id = terminal.Id;
+                submenu.Items.Add(MenuItem(terminal.Name,
+                    () => pane.OpenTerminalAsync(id), pane.CanOpenTerminal));
+            }
+
+            menu.Items.Add(submenu);
+        }
+
+        if (pane.EnabledHerdr is not null)
+        {
+            menu.Items.Add(MenuItem(L10n.T("在 Herdr 中打开"),
+                pane.OpenInHerdrAsync, pane.CanOpenTerminal));
+        }
+    }
+
+    private void AddCustomCommandMenuItems(ContextMenu menu, PaneViewModel pane)
+    {
+        var commands = pane.ContextCustomCommands;
+        if (commands.Count == 0)
+            return;
+
+        var submenu = new MenuItem { Header = L10n.T("自定义命令") };
+        foreach (var command in commands)
+        {
+            var id = command.Id;
+            var item = new MenuItem
+            {
+                Header = command.Name,
+                IsEnabled = pane.CanRunCustomCommand(command),
+            };
+            item.Click += (_, _) => Run(p => p.RunCustomCommandAsync(id));
+            submenu.Items.Add(item);
+        }
+
+        menu.Items.Add(submenu);
     }
 
     private MenuItem MenuItem(string header, Func<Task> action, bool enabled)

@@ -161,7 +161,8 @@ public partial class SidebarView : UserControl
         if (entry.Kind is SidebarEntryKind.Volume or SidebarEntryKind.Place or SidebarEntryKind.Bookmark or SidebarEntryKind.Recent)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(CreateItem(L10n.T("在终端中打开"), () => vm.OpenTerminalForSidebarEntryAsync(entry)));
+            AddTerminalMenu(menu, vm, entry);
+            AddCustomCommandMenu(menu, vm, entry);
         }
 
         if (entry.Kind == SidebarEntryKind.Bookmark)
@@ -180,6 +181,63 @@ public partial class SidebarView : UserControl
         button.ContextMenu = menu;
         menu.Open(button);
         e.Handled = true;
+    }
+
+    private static void AddTerminalMenu(ContextMenu menu, MainViewModel vm, SidebarEntryViewModel entry)
+    {
+        var contextTerminals = vm.Services.Terminals.GetContextMenuProfiles();
+        var defaultTerminal = vm.Services.Terminals.GetDefaultContextProfile();
+        if (defaultTerminal is not null)
+        {
+            menu.Items.Add(CreateItem(L10n.Format("在 {0} 中打开", defaultTerminal.Name),
+                () => vm.OpenTerminalForSidebarEntryAsync(entry, defaultTerminal.Id)));
+        }
+
+        var alternates = contextTerminals
+            .Where(terminal => !string.Equals(terminal.Id, defaultTerminal?.Id, StringComparison.Ordinal))
+            .ToList();
+        if (alternates.Count > 0)
+        {
+            var submenu = new MenuItem
+            {
+                Header = defaultTerminal is null
+                    ? L10n.T("在终端中打开")
+                    : L10n.T("使用其他终端打开"),
+            };
+            foreach (var terminal in alternates)
+            {
+                var id = terminal.Id;
+                submenu.Items.Add(CreateItem(terminal.Name,
+                    () => vm.OpenTerminalForSidebarEntryAsync(entry, id)));
+            }
+
+            menu.Items.Add(submenu);
+        }
+
+        if (vm.Services.Terminals.GetEnabledHerdr() is not null)
+        {
+            menu.Items.Add(CreateItem(L10n.T("在 Herdr 中打开"),
+                () => vm.OpenHerdrForSidebarEntryAsync(entry)));
+        }
+    }
+
+    private static void AddCustomCommandMenu(ContextMenu menu, MainViewModel vm, SidebarEntryViewModel entry)
+    {
+        var commands = vm.Services.CustomCommands.GetContextMenuCommands()
+            .Where(command => !command.RequiresSelection)
+            .ToList();
+        if (commands.Count == 0)
+            return;
+
+        var submenu = new MenuItem { Header = L10n.T("自定义命令") };
+        foreach (var command in commands)
+        {
+            var id = command.Id;
+            submenu.Items.Add(CreateItem(command.Name,
+                () => vm.RunCustomCommandForSidebarEntryAsync(entry, id)));
+        }
+
+        menu.Items.Add(submenu);
     }
 
     private void OnEntryDragOver(object? sender, DragEventArgs e)

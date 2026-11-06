@@ -1,4 +1,5 @@
 using Ordoa.Core.Localization;
+using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
 
@@ -23,6 +24,30 @@ public sealed class JsonFileTests
                 ShowVolumes = false,
                 ShowHiddenVolumes = true,
                 CustomSidebarPaths = ["/home/why/Projects"],
+                TerminalMode = TerminalDetectionMode.Manual,
+                ManualTerminalPath = "/usr/bin/kitty",
+                TerminalPreferences =
+                [
+                    new TerminalPreference
+                    {
+                        Id = "exe:kitty",
+                        IsDefault = true,
+                        ShowInContextMenu = true,
+                    },
+                ],
+                CustomCommands =
+                [
+                    new CustomCommand
+                    {
+                        Id = "deploy",
+                        Name = "Deploy",
+                        Command = "./scripts/deploy.sh %d",
+                        WorkingDirectory = "%d",
+                        ShowInContextMenu = true,
+                        RunInTerminal = true,
+                        RequiresSelection = false,
+                    },
+                ],
             };
 
             JsonFile.Save(path, settings);
@@ -38,6 +63,13 @@ public sealed class JsonFileTests
             Assert.False(loaded.ShowVolumes);
             Assert.True(loaded.ShowHiddenVolumes);
             Assert.Equal(["/home/why/Projects"], loaded.CustomSidebarPaths);
+            Assert.Equal(TerminalDetectionMode.Manual, loaded.TerminalMode);
+            Assert.Equal("/usr/bin/kitty", loaded.ManualTerminalPath);
+            Assert.Single(loaded.TerminalPreferences);
+            Assert.True(loaded.TerminalPreferences[0].IsDefault);
+            Assert.Single(loaded.CustomCommands);
+            Assert.Equal("Deploy", loaded.CustomCommands[0].Name);
+            Assert.True(loaded.CustomCommands[0].RunInTerminal);
         }
         finally
         {

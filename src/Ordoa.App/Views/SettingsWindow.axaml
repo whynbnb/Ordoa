@@ -78,7 +78,7 @@
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <StackPanel Spacing="2">
         <TextBlock Text="{loc:Tr 设置}" Classes="h2" />
-        <TextBlock Text="{loc:Tr 按类别调整外观、浏览、网络与系统行为}" Classes="caption" />
+        <TextBlock Text="{loc:Tr 按类别调整外观、浏览、终端、命令、网络与系统行为}" Classes="caption" />
       </StackPanel>
     </Border>
 
@@ -345,6 +345,179 @@
                         SelectedIndex="{Binding PreviewPanelPlacementIndex, Mode=TwoWay}"
                         MinWidth="160" HorizontalAlignment="Left" />
             </Grid>
+          </StackPanel>
+
+          <!-- Terminal -->
+          <StackPanel IsVisible="{Binding ShowTerminal}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 终端}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 扫描系统中的终端，选择默认终端和右键菜单项目}" Classes="caption" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 检测方式}" Classes="section" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Classes="chip" Tag="Auto" Click="OnTerminalModeClick"
+                      Classes.active="{Binding TerminalMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Auto}">
+                <TextBlock Text="{loc:Tr 自动探测}" />
+              </Button>
+              <Button Classes="chip" Tag="Manual" Click="OnTerminalModeClick"
+                      Classes.active="{Binding TerminalMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Manual}">
+                <TextBlock Text="{loc:Tr 手动路径}" />
+              </Button>
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding ShowTerminalAuto}" Spacing="8">
+              <TextBlock Text="{loc:Tr 左侧圆点设为默认终端，右侧复选框控制哪些终端出现在右键菜单。}"
+                         Classes="fieldhint" TextWrapping="Wrap" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding TerminalScanSummary}" Classes="fieldhint" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="{loc:Tr 重新扫描}" Classes="link"
+                        Click="OnRescanTerminalsClick" />
+              </Grid>
+
+              <Grid ColumnDefinitions="24,*,Auto" ColumnSpacing="10" Margin="10,0,10,0"
+                    IsVisible="{Binding HasTerminals}">
+                <TextBlock Text="{loc:Tr 默认}" Classes="fieldhint" HorizontalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{loc:Tr 终端}" Classes="fieldhint" />
+              </Grid>
+
+              <ItemsControl ItemsSource="{Binding Terminals}" IsVisible="{Binding HasTerminals}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TerminalSettingViewModel">
+                    <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="7" Padding="10,7"
+                            Margin="0,3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                      <Grid ColumnDefinitions="24,*,Auto" ColumnSpacing="10">
+                        <RadioButton GroupName="DefaultTerminal" VerticalAlignment="Center"
+                                     IsChecked="{Binding IsDefault, Mode=OneWay}"
+                                     IsVisible="{Binding CanBeDefault}"
+                                     Tag="{Binding Id}" Click="OnTerminalDefaultClick"
+                                     ToolTip.Tip="{loc:Tr 设为默认终端}" />
+                        <StackPanel Grid.Column="1" Spacing="1">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" />
+                            <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="4"
+                                    Padding="5,0" IsVisible="{Binding IsHerdr}">
+                              <TextBlock Text="{loc:Tr 终端复用器}" Classes="tiny"
+                                         Foreground="{DynamicResource AccentBrush}" />
+                            </Border>
+                          </StackPanel>
+                          <TextBlock Text="{Binding Detail}" Classes="tiny"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{loc:Tr 默认不启用；启用后右键菜单会出现“在 Herdr 中打开”。}"
+                                     Classes="fieldhint" TextWrapping="Wrap"
+                                     IsVisible="{Binding IsHerdr}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="2" Content="{loc:Tr 在右键菜单显示}"
+                                  IsChecked="{Binding ShowInContextMenu, Mode=TwoWay}"
+                                  VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="{loc:Tr 未检测到终端。可切换到手动路径模式指定可执行文件。}"
+                         Classes="fieldhint" TextWrapping="Wrap"
+                         IsVisible="{Binding !HasTerminals}" />
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding ShowTerminalManual}" Spacing="8">
+              <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                <TextBlock Text="{loc:Tr 名称}" Classes="fieldlabel" />
+                <TextBox Grid.Column="1" Text="{Binding ManualTerminalName, Mode=TwoWay}"
+                         PlaceholderText="{loc:Tr 自定义终端}" />
+
+                <TextBlock Grid.Row="1" Text="{loc:Tr 可执行文件}" Classes="fieldlabel" />
+                <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBox Text="{Binding ManualTerminalPath, Mode=TwoWay}"
+                           PlaceholderText="{loc:Tr 例如 /usr/bin/kitty}" />
+                  <Button Grid.Column="1" Content="{loc:Tr 浏览…}" Classes="chip"
+                          Click="OnBrowseTerminalClick" />
+                </Grid>
+
+                <TextBlock Grid.Row="2" Text="{loc:Tr 打开文件夹参数}" Classes="fieldlabel" />
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ManualTerminalArguments, Mode=TwoWay}"
+                         PlaceholderText="--working-directory=%d" />
+
+                <TextBlock Grid.Row="3" Text="{loc:Tr 运行命令参数}" Classes="fieldlabel" />
+                <TextBox Grid.Row="3" Grid.Column="1"
+                         Text="{Binding ManualTerminalCommandArguments, Mode=TwoWay}"
+                         PlaceholderText="-e sh -lc %c" />
+              </Grid>
+              <TextBlock Text="{Binding TerminalError}" Classes="fieldhint"
+                         Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
+                         IsVisible="{Binding TerminalError, Converter={StaticResource NotNullConverter}}" />
+              <TextBlock Text="{loc:Tr 在参数中使用 %d 表示文件夹，%c 表示要运行的命令。留空时使用进程工作目录。}"
+                         Classes="fieldhint" TextWrapping="Wrap" />
+              <TextBlock Text="{loc:Tr 手动模式只使用这里指定的终端；自动探测模式按上面的勾选决定默认终端和右键菜单。}"
+                         Classes="fieldhint" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr Herdr 会作为独立的“在 Herdr 中打开”菜单项显示，默认不启用。它需要当前终端支持运行命令。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <!-- Custom commands -->
+          <StackPanel IsVisible="{Binding ShowCommands}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 命令}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 用占位符运行脚本和快捷动作，适合开发者和运维}" Classes="caption" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 占位符}" Classes="section" />
+            <TextBlock Text="{loc:Tr %f 第一个选中项的路径；%F 所有选中项的路径；%n 第一个名称；%N 所有名称；%d 当前文件夹；%p 选中项所在文件夹；%% 百分号。占位符会自动加引号，无需再手动加引号。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
+            <TextBlock Text="{loc:Tr 工作目录留空或使用 %d 表示当前文件夹；使用 %f 或 %p 时会自动取对应文件夹。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
+
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{loc:Tr 勾选“在右键菜单显示”时会出现在右键菜单；所有命令都会加入命令面板。}" Classes="fieldhint"
+                         VerticalAlignment="Center" TextWrapping="Wrap" />
+              <Button Grid.Column="1" Content="{loc:Tr 添加命令}" Classes="chip"
+                      Click="OnAddCustomCommandClick" />
+            </Grid>
+
+            <ItemsControl ItemsSource="{Binding CustomCommands}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CustomCommandViewModel">
+                  <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="7" Padding="10,8"
+                          Margin="0,3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
+                      <TextBox Text="{Binding Name, Mode=TwoWay}"
+                               PlaceholderText="{loc:Tr 命令名称}" />
+                      <Button Grid.Column="1" Classes="tool" Width="24" Height="24" Margin="8,0,0,0"
+                              Tag="{Binding Id}" Click="OnRemoveCustomCommandClick"
+                              ToolTip.Tip="{loc:Tr 删除}">
+                        <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
+                              Fill="{DynamicResource TextTertiaryBrush}" />
+                      </Button>
+
+                      <TextBox Grid.Row="1" Grid.ColumnSpan="2"
+                               Text="{Binding Command, Mode=TwoWay}"
+                               FontFamily="{DynamicResource MonoFontFamily}"
+                               PlaceholderText="{loc:Tr 例如：code %f 或 ./scripts/deploy.sh %d}" />
+
+                      <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="120,*" ColumnSpacing="8">
+                        <TextBlock Text="{loc:Tr 工作目录}" Classes="fieldlabel" />
+                        <TextBox Grid.Column="1" Text="{Binding WorkingDirectory, Mode=TwoWay}"
+                                 PlaceholderText="%d" />
+                      </Grid>
+
+                      <WrapPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal">
+                        <CheckBox Content="{loc:Tr 在右键菜单显示}"
+                                  IsChecked="{Binding ShowInContextMenu, Mode=TwoWay}" Margin="0,0,14,0" />
+                        <CheckBox Content="{loc:Tr 在终端中运行}"
+                                  IsChecked="{Binding RunInTerminal, Mode=TwoWay}" Margin="0,0,14,0" />
+                        <CheckBox Content="{loc:Tr 仅在有选中项时可用}"
+                                  IsChecked="{Binding RequiresSelection, Mode=TwoWay}" />
+                      </WrapPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{loc:Tr 还没有自定义命令}" Classes="fieldhint"
+                       IsVisible="{Binding !HasCustomCommands}" />
           </StackPanel>
 
           <!-- Network -->

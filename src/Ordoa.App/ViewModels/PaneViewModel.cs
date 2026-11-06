@@ -343,6 +343,18 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanOpenInNewWindow => HasSelection && SelectedCount == 1 && !IsTrash &&
                                       FileSystem.IsLocal && _services.Settings.Current.AllowMultipleWindows;
     public bool CanOpenTerminal => FileSystem.IsLocal && !IsTrash;
+    public string TerminalTargetPath =>
+        SelectedCount == 1 && PrimarySelection is { IsDirectory: true } selected
+            ? selected.Path
+            : CurrentPath;
+    public bool CanRunCustomCommands => FileSystem.IsLocal && !IsTrash;
+    public bool CanRunCustomCommand(CustomCommand command) =>
+        CanRunCustomCommands && (!command.RequiresSelection || HasSelection);
+    public IReadOnlyList<TerminalProfile> ContextTerminals => _services.Terminals.GetContextMenuProfiles();
+    public TerminalProfile? DefaultTerminal => _services.Terminals.GetDefaultProfile();
+    public TerminalProfile? DefaultContextTerminal => _services.Terminals.GetDefaultContextProfile();
+    public TerminalProfile? EnabledHerdr => _services.Terminals.GetEnabledHerdr();
+    public IReadOnlyList<CustomCommand> ContextCustomCommands => _services.CustomCommands.GetContextMenuCommands();
     public bool CanRestore => IsTrash && HasSelection;
     public bool CanEmptyTrash => IsTrash;
     public bool CanSelectAll => VisibleItems.Count > 0;
@@ -1307,13 +1319,54 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         Toast(L10n.T("已复制名称"), text, false);
     }
 
-    public async Task OpenTerminalAsync()
+    public Task OpenTerminalAsync() => OpenTerminalAsync(null);
+
+    public Task OpenTerminalAsync(string? terminalId)
     {
         if (!CanOpenTerminal)
-            return;
-        var success = await _services.Shell.OpenTerminalAsync(CurrentPath).ConfigureAwait(true);
+            return Task.CompletedTask;
+
+        var path = TerminalTargetPath;
+        var success = string.IsNullOrWhiteSpace(terminalId)
+            ? _services.Terminals.OpenDefault(path)
+            : _services.Terminals.OpenById(terminalId, path);
         if (!success)
             Toast(L10n.T("无法打开终端"), L10n.T("未找到可用的终端程序"), true);
+        return Task.CompletedTask;
+    }
+
+    public Task OpenInHerdrAsync()
+    {
+        if (!CanOpenTerminal)
+            return Task.CompletedTask;
+
+        var success = _services.Terminals.OpenInHerdr(TerminalTargetPath);
+        if (!success)
+            Toast(L10n.T("无法打开 Herdr"), L10n.T("请确认已安装 herdr，并且当前终端支持运行命令"), true);
+        return Task.CompletedTask;
+    }
+
+    public Task RunCustomCommandAsync(string id)
+    {
+        var command = _services.CustomCommands.Find(id);
+        if (command is null)
+            return Task.CompletedTask;
+        if (!CanRunCustomCommands)
+        {
+            Toast(L10n.T("无法运行命令"), L10n.T("自定义命令只支持本地文件夹"), true);
+            return Task.CompletedTask;
+        }
+        if (!CanRunCustomCommand(command))
+        {
+            Toast(L10n.T("无法运行命令"), L10n.T("该命令需要先选中文件或文件夹"), true);
+            return Task.CompletedTask;
+        }
+
+        var paths = _selected.Select(item => item.Entry.Path).ToList();
+        var success = _services.CustomCommands.Run(command, CurrentPath, paths);
+        if (!success)
+            Toast(L10n.T("无法运行命令"), command.Name, true);
+        return Task.CompletedTask;
     }
 
     public void ToggleSelection(FileItemViewModel item, bool selected)
