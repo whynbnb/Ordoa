@@ -26,6 +26,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _initialized;
     private bool _disposed;
     private bool _refreshingSidebar;
+    private bool _settingsDialogOpen;
 
     public MainViewModel(AppServices services, bool restoreSession = true,
         string? startupLocation = null, IReadOnlyList<string>? startupSelection = null)
@@ -990,28 +991,39 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public async Task ShowSettingsAsync()
     {
-        var previous = _services.Settings.Current;
-        var result = await _services.Dialogs.ShowSettingsAsync(previous).ConfigureAwait(true);
-        if (result is null)
+        if (_settingsDialogOpen)
             return;
 
-        _services.Settings.Replace(result);
-        L10n.SetLanguage(result.Language);
-        ThemeService.Apply(_services.Settings.Current);
-        foreach (var window in _services.Windows.Windows)
-            ThemeService.ApplyDensity(window, _services.Settings.Current.CompactMode);
-
-        SidebarWidth = _services.Settings.Current.SidebarWidth;
-        IsSidebarVisible = _services.Settings.Current.ShowSidebar;
-
-        foreach (var pane in Tabs.SelectMany(t => t.Panes).ToList())
+        _settingsDialogOpen = true;
+        try
         {
-            pane.ViewMode = _services.Settings.Current.View;
-            pane.FoldersFirst = _services.Settings.Current.FoldersFirst;
-        }
+            var previous = _services.Settings.Current;
+            var result = await _services.Dialogs.ShowSettingsAsync(previous).ConfigureAwait(true);
+            if (result is null)
+                return;
 
-        await RefreshSidebarAsync().ConfigureAwait(true);
-        OnPropertyChanged(nameof(ActivePane));
+            _services.Settings.Replace(result);
+            L10n.SetLanguage(result.Language);
+            ThemeService.Apply(_services.Settings.Current);
+            foreach (var window in _services.Windows.Windows)
+                ThemeService.ApplyDensity(window, _services.Settings.Current.CompactMode);
+
+            SidebarWidth = _services.Settings.Current.SidebarWidth;
+            IsSidebarVisible = _services.Settings.Current.ShowSidebar;
+
+            foreach (var pane in Tabs.SelectMany(t => t.Panes).ToList())
+            {
+                pane.ViewMode = _services.Settings.Current.View;
+                pane.FoldersFirst = _services.Settings.Current.FoldersFirst;
+            }
+
+            await RefreshSidebarAsync().ConfigureAwait(true);
+            OnPropertyChanged(nameof(ActivePane));
+        }
+        finally
+        {
+            _settingsDialogOpen = false;
+        }
     }
 
     /// <summary>Drop onto a sidebar folder: copy or move the sources there.</summary>

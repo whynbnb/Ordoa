@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Ordoa.App.Services;
 using Ordoa.App.ViewModels;
 using Avalonia.Input;
@@ -99,6 +101,15 @@ public partial class SettingsWindow : Window
         {
             vm.IsRegisteringFileManager = false;
         }
+    }
+
+    private void OnCategoryChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (SettingsScroll is not null)
+                SettingsScroll.Offset = new Vector(0, 0);
+        });
     }
 
     private void OnDuplicateConnectionClick(object? sender, RoutedEventArgs e)

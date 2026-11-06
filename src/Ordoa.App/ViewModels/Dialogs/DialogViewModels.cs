@@ -1,4 +1,6 @@
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Ordoa.App.Services;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
@@ -347,6 +349,12 @@ public sealed class CustomPathViewModel
     public string Detail => KnownFolders.ShortenForDisplay(Path);
 }
 
+public sealed class SettingsCategoryViewModel
+{
+    public required string Title { get; init; }
+    public Geometry? Icon { get; init; }
+}
+
 public sealed partial class ConnectionSettingViewModel : ObservableObject
 {
     public required string Id { get; init; }
@@ -414,6 +422,17 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             L10n.T("底部"),
         ];
 
+        Categories =
+        [
+            new SettingsCategoryViewModel { Title = L10n.T("外观"), Icon = FileIconCatalog.Resource("IconApps") },
+            new SettingsCategoryViewModel { Title = L10n.T("浏览"), Icon = FileIconCatalog.Resource("IconFolder") },
+            new SettingsCategoryViewModel { Title = L10n.T("侧栏"), Icon = FileIconCatalog.Resource("IconPanel") },
+            new SettingsCategoryViewModel { Title = L10n.T("预览"), Icon = FileIconCatalog.Resource("IconEye") },
+            new SettingsCategoryViewModel { Title = L10n.T("网络"), Icon = FileIconCatalog.Resource("IconCloud") },
+            new SettingsCategoryViewModel { Title = L10n.T("行为与撤销"), Icon = FileIconCatalog.Resource("IconUndo") },
+            new SettingsCategoryViewModel { Title = L10n.T("系统与集成"), Icon = FileIconCatalog.Resource("IconSettings") },
+        ];
+
         ReloadConnections();
 
         foreach (var path in settings.CustomSidebarPaths ?? [])
@@ -438,6 +457,36 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public System.Collections.ObjectModel.ObservableCollection<ConnectionSettingViewModel> Connections { get; } = [];
 
     public bool HasConnections => Connections.Count > 0;
+
+    public IReadOnlyList<SettingsCategoryViewModel> Categories { get; }
+
+    [ObservableProperty]
+    private int _selectedCategoryIndex;
+
+    public bool ShowAppearance => SelectedCategoryIndex == 0;
+    public bool ShowBrowsing => SelectedCategoryIndex == 1;
+    public bool ShowSidebarCategory => SelectedCategoryIndex == 2;
+    public bool ShowPreview => SelectedCategoryIndex == 3;
+    public bool ShowNetwork => SelectedCategoryIndex == 4;
+    public bool ShowBehavior => SelectedCategoryIndex == 5;
+    public bool ShowSystem => SelectedCategoryIndex == 6;
+
+    partial void OnSelectedCategoryIndexChanged(int value)
+    {
+        if (Categories.Count > 0 && (value < 0 || value >= Categories.Count))
+        {
+            SelectedCategoryIndex = Math.Clamp(value, 0, Categories.Count - 1);
+            return;
+        }
+
+        OnPropertyChanged(nameof(ShowAppearance));
+        OnPropertyChanged(nameof(ShowBrowsing));
+        OnPropertyChanged(nameof(ShowSidebarCategory));
+        OnPropertyChanged(nameof(ShowPreview));
+        OnPropertyChanged(nameof(ShowNetwork));
+        OnPropertyChanged(nameof(ShowBehavior));
+        OnPropertyChanged(nameof(ShowSystem));
+    }
 
     [ObservableProperty]
     private UiLanguage _language;

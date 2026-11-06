@@ -6,8 +6,9 @@
         x:CompileBindings="True"
         x:Class="Ordoa.App.Views.SettingsWindow"
         Title="{loc:Tr 设置}"
-        Width="660" Height="650" CanResize="False" ShowInTaskbar="False"
-        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
+        Width="920" Height="700" MinWidth="780" MinHeight="540" CanResize="True"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
   <Window.Styles>
     <Style Selector="Button.chip">
       <Setter Property="Padding" Value="14,6" />
@@ -44,347 +45,439 @@
       <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
       <Setter Property="Margin" Value="0,2,0,0" />
     </Style>
+    <Style Selector="ListBox.settingsnav">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="8,10" />
+    </Style>
+    <Style Selector="ListBox.settingsnav ListBoxItem">
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="Margin" Value="0,1" />
+      <Setter Property="CornerRadius" Value="7" />
+    </Style>
+    <Style Selector="ListBox.settingsnav ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="ListBox.settingsnav ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    </Style>
+    <Style Selector="ListBox.settingsnav ListBoxItem:selected TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="ListBox.settingsnav Path">
+      <Setter Property="Fill" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="ListBox.settingsnav ListBoxItem:selected Path">
+      <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+    </Style>
   </Window.Styles>
 
   <Grid RowDefinitions="Auto,*,Auto">
-    <Border Grid.Row="0" Padding="22,16,22,12" Background="{DynamicResource SidebarBrush}"
+    <Border Grid.Row="0" Padding="24,16,24,12" Background="{DynamicResource SidebarBrush}"
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <StackPanel Spacing="2">
         <TextBlock Text="{loc:Tr 设置}" Classes="h2" />
-        <TextBlock Text="{loc:Tr 外观、浏览行为与高级选项}" Classes="caption" />
+        <TextBlock Text="{loc:Tr 按类别调整外观、浏览、网络与系统行为}" Classes="caption" />
       </StackPanel>
     </Border>
 
-    <ScrollViewer Grid.Row="1" Padding="22,14,22,8" VerticalScrollBarVisibility="Auto">
-      <StackPanel Spacing="14">
-        <!-- Appearance -->
-        <TextBlock Text="{loc:Tr 外观}" Classes="section" />
-        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
-          <TextBlock Text="{loc:Tr 主题}" Classes="fieldlabel" />
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-            <Button Classes="chip" Tag="System" Click="OnThemeClick"
-                    Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
-              <TextBlock Text="{loc:Tr 跟随系统}" />
-            </Button>
-            <Button Classes="chip" Tag="Light" Click="OnThemeClick"
-                    Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=Light}">
-              <TextBlock Text="{loc:Tr 浅色}" />
-            </Button>
-            <Button Classes="chip" Tag="Dark" Click="OnThemeClick"
-                    Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=Dark}">
-              <TextBlock Text="{loc:Tr 深色}" />
-            </Button>
-          </StackPanel>
+    <Grid Grid.Row="1" ColumnDefinitions="190,*">
+      <Border Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="0,0,1,0">
+        <ListBox Classes="settingsnav" ItemsSource="{Binding Categories}"
+                 SelectedIndex="{Binding SelectedCategoryIndex, Mode=TwoWay}"
+                 SelectionMode="Single" SelectionChanged="OnCategoryChanged">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:SettingsCategoryViewModel">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="4,5">
+                <Path Data="{Binding Icon}" Width="15" Height="15" Stretch="Uniform"
+                      VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12.5"
+                           VerticalAlignment="Center" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
 
-          <TextBlock Grid.Row="1" Text="{loc:Tr 强调色}" Classes="fieldlabel" />
-          <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="9">
-            <Border Background="#17937F" Tag="Jade" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 翡翠}"
-                    Classes="accentdot"
-                    Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Jade}" />
-            <Border Background="#3B7EDB" Tag="Blue" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 靛蓝}"
-                    Classes="accentdot"
-                    Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Blue}" />
-            <Border Background="#C9862B" Tag="Amber" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 琥珀}"
-                    Classes="accentdot"
-                    Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Amber}" />
-            <Border Background="#C2688A" Tag="Rose" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 玫瑰}"
-                    Classes="accentdot"
-                    Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Rose}" />
-            <Border Background="#7C63D8" Tag="Violet" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 紫罗兰}"
-                    Classes="accentdot"
-                    Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Violet}" />
-          </StackPanel>
+      <ScrollViewer x:Name="SettingsScroll" Grid.Column="1" Padding="24,18,24,14"
+                    VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="14">
 
-          <TextBlock Grid.Row="2" Text="{loc:Tr 密度}" Classes="fieldlabel" />
-          <CheckBox Grid.Row="2" Grid.Column="1" Content="{loc:Tr 紧凑模式（更小的行高与间距）}"
-                    IsChecked="{Binding CompactMode, Mode=TwoWay}" />
-
-          <TextBlock Grid.Row="3" Text="{loc:Tr 默认视图}" Classes="fieldlabel" />
-          <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="6">
-            <Button Classes="chip" Tag="List" Click="OnViewClick"
-                    Classes.active="{Binding View, Converter={StaticResource EqualsConverter}, ConverterParameter=List}">
-              <TextBlock Text="{loc:Tr 列表}" />
-            </Button>
-            <Button Classes="chip" Tag="Grid" Click="OnViewClick"
-                    Classes.active="{Binding View, Converter={StaticResource EqualsConverter}, ConverterParameter=Grid}">
-              <TextBlock Text="{loc:Tr 网格}" />
-            </Button>
-          </StackPanel>
-
-          <TextBlock Grid.Row="4" Text="{loc:Tr 窗口}" Classes="fieldlabel" />
-          <StackPanel Grid.Row="4" Grid.Column="1" Spacing="2">
-            <CheckBox Content="{loc:Tr 使用系统标题栏（非沉浸式）}"
-                      IsChecked="{Binding UseSystemWindowFrame, Mode=TwoWay}" />
-            <TextBlock Text="{loc:Tr 关闭时使用沉浸式自绘标题栏；打开时保留系统非客户区。}"
-                       Classes="fieldhint" TextWrapping="Wrap" />
-          </StackPanel>
-
-          <TextBlock Grid.Row="5" Text="{loc:Tr 窗口按钮}" Classes="fieldlabel" />
-          <StackPanel Grid.Row="5" Grid.Column="1" Spacing="3">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <Button Classes="chip" Tag="Auto" Click="OnWindowButtonModeClick"
-                      Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Auto}">
-                <TextBlock Text="{loc:Tr 自动}" />
-              </Button>
-              <Button Classes="chip" Tag="Show" Click="OnWindowButtonModeClick"
-                      Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Show}">
-                <TextBlock Text="{loc:Tr 显示}" />
-              </Button>
-              <Button Classes="chip" Tag="Hide" Click="OnWindowButtonModeClick"
-                      Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Hide}">
-                <TextBlock Text="{loc:Tr 隐藏}" />
-              </Button>
+          <!-- Appearance -->
+          <StackPanel IsVisible="{Binding ShowAppearance}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 外观}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 主题、强调色、密度与窗口外观}" Classes="caption" />
             </StackPanel>
-            <TextBlock Text="{loc:Tr 自动会在 niri、Sway、Hyprland 等平铺合成器下隐藏窗口按钮。}"
-                       Classes="fieldhint" TextWrapping="Wrap" />
-          </StackPanel>
 
-          <TextBlock Grid.Row="6" Text="{loc:Tr 语言}" Classes="fieldlabel" />
-          <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="6">
-            <Button Classes="chip" Tag="System" Click="OnLanguageClick"
-                    Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
-              <TextBlock Text="{loc:Tr 跟随系统}" />
-            </Button>
-            <Button Classes="chip" Tag="Chinese" Click="OnLanguageClick"
-                    Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=Chinese}">
-              <TextBlock Text="中文" />
-            </Button>
-            <Button Classes="chip" Tag="English" Click="OnLanguageClick"
-                    Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=English}">
-              <TextBlock Text="English" />
-            </Button>
-          </StackPanel>
-        </Grid>
+            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
+              <TextBlock Text="{loc:Tr 主题}" Classes="fieldlabel" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <Button Classes="chip" Tag="System" Click="OnThemeClick"
+                        Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
+                  <TextBlock Text="{loc:Tr 跟随系统}" />
+                </Button>
+                <Button Classes="chip" Tag="Light" Click="OnThemeClick"
+                        Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=Light}">
+                  <TextBlock Text="{loc:Tr 浅色}" />
+                </Button>
+                <Button Classes="chip" Tag="Dark" Click="OnThemeClick"
+                        Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=Dark}">
+                  <TextBlock Text="{loc:Tr 深色}" />
+                </Button>
+              </StackPanel>
 
-        <Border Classes="divider" />
+              <TextBlock Grid.Row="1" Text="{loc:Tr 强调色}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="9">
+                <Border Background="#17937F" Tag="Jade" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 翡翠}"
+                        Classes="accentdot"
+                        Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Jade}" />
+                <Border Background="#3B7EDB" Tag="Blue" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 靛蓝}"
+                        Classes="accentdot"
+                        Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Blue}" />
+                <Border Background="#C9862B" Tag="Amber" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 琥珀}"
+                        Classes="accentdot"
+                        Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Amber}" />
+                <Border Background="#C2688A" Tag="Rose" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 玫瑰}"
+                        Classes="accentdot"
+                        Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Rose}" />
+                <Border Background="#7C63D8" Tag="Violet" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 紫罗兰}"
+                        Classes="accentdot"
+                        Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Violet}" />
+              </StackPanel>
 
-        <!-- Windows and integration -->
-        <TextBlock Text="{loc:Tr 窗口与多实例}" Classes="section" />
-        <StackPanel Spacing="8">
-          <CheckBox Content="{loc:Tr 单实例模式（再次启动时复用当前进程）}"
-                    IsChecked="{Binding SingleInstance, Mode=TwoWay}" />
-          <CheckBox Content="{loc:Tr 允许同时打开多个窗口}"
-                    IsChecked="{Binding AllowMultipleWindows, Mode=TwoWay}" />
-          <Grid ColumnDefinitions="120,*" ColumnSpacing="8">
-            <TextBlock Text="{loc:Tr 打开文件夹时}" Classes="fieldlabel" />
-            <ComboBox Grid.Column="1" ItemsSource="{Binding FolderOpenModes}"
-                      SelectedIndex="{Binding FolderOpenIndex, Mode=TwoWay}"
-                      IsEnabled="{Binding AllowMultipleWindows}" MinWidth="160"
-                      HorizontalAlignment="Left" />
-          </Grid>
-          <TextBlock Text="{loc:Tr 来自浏览器、IDE、命令行或其他应用的文件夹请求会按此设置打开。}"
-                     Classes="fieldhint" TextWrapping="Wrap" />
-          <TextBlock Text="{loc:Tr 单实例设置会在下次启动 Ordoa 时生效。}"
-                     Classes="fieldhint" />
-        </StackPanel>
+              <TextBlock Grid.Row="2" Text="{loc:Tr 密度}" Classes="fieldlabel" />
+              <CheckBox Grid.Row="2" Grid.Column="1" Content="{loc:Tr 紧凑模式（更小的行高与间距）}"
+                        IsChecked="{Binding CompactMode, Mode=TwoWay}" />
 
-        <TextBlock Text="{loc:Tr 系统集成}" Classes="section" IsVisible="{Binding IsLinux}" />
-        <StackPanel Spacing="6" IsVisible="{Binding IsLinux}">
-          <TextBlock Text="{loc:Tr 将 Ordoa 注册为默认文件管理器，并安装 org.freedesktop.FileManager1 D-Bus 服务。}"
-                     Classes="fieldhint" TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-            <Button Content="{loc:Tr 设为默认文件管理器}" Classes="subtle"
-                    Click="OnRegisterFileManagerClick" IsEnabled="{Binding !IsRegisteringFileManager}" />
-            <TextBlock Grid.Column="1" Text="{Binding IntegrationStatus}" Classes="caption"
-                       VerticalAlignment="Center" TextWrapping="Wrap" />
-          </Grid>
-        </StackPanel>
+              <TextBlock Grid.Row="3" Text="{loc:Tr 默认视图}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <Button Classes="chip" Tag="List" Click="OnViewClick"
+                        Classes.active="{Binding View, Converter={StaticResource EqualsConverter}, ConverterParameter=List}">
+                  <TextBlock Text="{loc:Tr 列表}" />
+                </Button>
+                <Button Classes="chip" Tag="Grid" Click="OnViewClick"
+                        Classes.active="{Binding View, Converter={StaticResource EqualsConverter}, ConverterParameter=Grid}">
+                  <TextBlock Text="{loc:Tr 网格}" />
+                </Button>
+              </StackPanel>
 
-        <TextBlock Text="{loc:Tr 打开方式}" Classes="section" IsVisible="{Binding IsLinux}" />
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding IsLinux}">
-          <TextBlock Text="{Binding OpenWithSummary}" Classes="caption" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Content="{loc:Tr 清除已记住的选择}" Classes="link"
-                  HorizontalAlignment="Left" Click="OnClearOpenWithClick"
-                  IsEnabled="{Binding HasOpenWithDefaults}" />
-        </Grid>
+              <TextBlock Grid.Row="4" Text="{loc:Tr 窗口}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="4" Grid.Column="1" Spacing="2">
+                <CheckBox Content="{loc:Tr 使用系统标题栏（非沉浸式）}"
+                          IsChecked="{Binding UseSystemWindowFrame, Mode=TwoWay}" />
+                <TextBlock Text="{loc:Tr 关闭时使用沉浸式自绘标题栏；打开时保留系统非客户区。}"
+                           Classes="fieldhint" TextWrapping="Wrap" />
+              </StackPanel>
 
-        <Border Classes="divider" />
-
-        <!-- Browsing -->
-        <TextBlock Text="{loc:Tr 浏览}" Classes="section" />
-        <StackPanel Spacing="7">
-          <CheckBox Content="{loc:Tr 显示隐藏文件（点文件）}" IsChecked="{Binding ShowHidden, Mode=TwoWay}" />
-          <CheckBox Content="{loc:Tr 文件夹排在文件之前}" IsChecked="{Binding FoldersFirst, Mode=TwoWay}" />
-          <CheckBox Content="{loc:Tr 在网格视图中加载图片缩略图}" IsChecked="{Binding ShowThumbnails, Mode=TwoWay}" />
-          <CheckBox Content="{loc:Tr 显示左侧栏}" IsChecked="{Binding ShowSidebar, Mode=TwoWay}" />
-          <CheckBox Content="{loc:Tr 显示磁盘}" IsChecked="{Binding ShowVolumes, Mode=TwoWay}" />
-          <StackPanel Spacing="2" IsVisible="{Binding IsMacOS}">
-            <CheckBox Content="{loc:Tr 显示 macOS 系统隐藏卷}"
-                      IsChecked="{Binding ShowHiddenVolumes, Mode=TwoWay}" />
-            <TextBlock Text="{loc:Tr 默认只显示 / 和 /Volumes 下的磁盘；打开后会显示 /System/Volumes 等内部卷。}"
-                       Classes="fieldhint" TextWrapping="Wrap" Margin="24,0,0,0" />
-          </StackPanel>
-          <CheckBox Content="{loc:Tr 耗时操作时自动展开传输队列}" IsChecked="{Binding ShowTransferPanel, Mode=TwoWay}" />
-        </StackPanel>
-
-        <Border Classes="divider" />
-
-        <!-- Sidebar places -->
-        <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Text="{loc:Tr 侧栏位置}" Classes="section" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Content="{loc:Tr 恢复默认位置}" Classes="ghost" FontSize="11"
-                  Padding="8,3" Click="OnResetPlacesClick" />
-        </Grid>
-        <ItemsControl ItemsSource="{Binding Places}">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-              <WrapPanel Orientation="Horizontal" />
-            </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:PlaceVisibilityViewModel">
-              <CheckBox Width="180" Margin="0,2,8,2" Content="{Binding Label}"
-                        IsChecked="{Binding IsVisible, Mode=TwoWay}" />
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <TextBlock Text="{loc:Tr 自定义位置}" Classes="section" Margin="0,6,0,0" />
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-          <TextBox Text="{Binding NewCustomPath, Mode=TwoWay}"
-                   PlaceholderText="{loc:Tr 添加路径，例如 ~/Projects 或 /mnt/data}" />
-          <Button Grid.Column="1" Content="{loc:Tr 添加}" Classes="chip" Click="OnAddCustomPathClick" />
-        </Grid>
-        <TextBlock Text="{Binding CustomPathError}" Classes="fieldhint" Foreground="{DynamicResource ErrorBrush}"
-                   TextWrapping="Wrap"
-                   IsVisible="{Binding CustomPathError, Converter={StaticResource NotNullConverter}}" />
-        <ItemsControl ItemsSource="{Binding CustomPaths}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:CustomPathViewModel">
-              <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="7" Padding="10,6"
-                      Margin="0,2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                  <StackPanel Spacing="1">
-                    <TextBlock Text="{Binding Label}" FontSize="12" />
-                    <TextBlock Text="{Binding Detail}" Classes="tiny" TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                  <Button Grid.Column="1" Classes="tool" Width="24" Height="24"
-                          Tag="{Binding Path}" Click="OnRemoveCustomPathClick"
-                          ToolTip.Tip="{loc:Tr 移除}">
-                    <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
-                          Fill="{DynamicResource TextTertiaryBrush}" />
+              <TextBlock Grid.Row="5" Text="{loc:Tr 窗口按钮}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="5" Grid.Column="1" Spacing="3">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Button Classes="chip" Tag="Auto" Click="OnWindowButtonModeClick"
+                          Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Auto}">
+                    <TextBlock Text="{loc:Tr 自动}" />
                   </Button>
-                </Grid>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+                  <Button Classes="chip" Tag="Show" Click="OnWindowButtonModeClick"
+                          Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Show}">
+                    <TextBlock Text="{loc:Tr 显示}" />
+                  </Button>
+                  <Button Classes="chip" Tag="Hide" Click="OnWindowButtonModeClick"
+                          Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Hide}">
+                    <TextBlock Text="{loc:Tr 隐藏}" />
+                  </Button>
+                </StackPanel>
+                <TextBlock Text="{loc:Tr 自动会在 niri、Sway、Hyprland 等平铺合成器下隐藏窗口按钮。}"
+                           Classes="fieldhint" TextWrapping="Wrap" />
+              </StackPanel>
 
-        <Border Classes="divider" />
-
-        <!-- Network -->
-        <TextBlock Text="{loc:Tr 网络}" Classes="section" />
-        <TextBlock Text="{loc:Tr 管理已保存的远程连接。隐藏设置随保存生效，复制和删除会立即生效。}"
-                   Classes="fieldhint" TextWrapping="Wrap" />
-        <ItemsControl ItemsSource="{Binding Connections}" IsVisible="{Binding HasConnections}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ConnectionSettingViewModel">
-              <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="7" Padding="10,7"
-                      Margin="0,3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
-                  <CheckBox Content="{loc:Tr 显示}" IsChecked="{Binding IsVisible, Mode=TwoWay}"
-                            VerticalAlignment="Center" ToolTip.Tip="{loc:Tr 在侧栏中显示}" />
-                  <StackPanel Grid.Column="1" Spacing="1">
-                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Detail}" Classes="tiny" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Error}" Classes="tiny" Foreground="{DynamicResource ErrorBrush}"
-                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Error}"
-                               IsVisible="{Binding IsFailed}" />
-                  </StackPanel>
-                  <Button Grid.Column="2" Content="{loc:Tr 复制}" Classes="link" Tag="{Binding Id}"
-                          Click="OnDuplicateConnectionClick" />
-                  <Button Grid.Column="3" Content="{loc:Tr 删除}" Classes="link" Tag="{Binding Id}"
-                          Click="OnDeleteConnectionClick" />
-                </Grid>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <TextBlock Text="{loc:Tr 还没有保存的远程连接}" Classes="fieldhint"
-                   IsVisible="{Binding !HasConnections}" />
-
-        <Border Classes="divider" />
-
-        <!-- Behaviour -->
-        <TextBlock Text="{loc:Tr 行为与安全}" Classes="section" />
-        <StackPanel Spacing="7">
-          <CheckBox Content="{loc:Tr 永久删除前请求确认}" IsChecked="{Binding ConfirmPermanentDelete, Mode=TwoWay}" />
-          <CheckBox Content="{loc:Tr 启动时恢复上次的标签页与分屏}" IsChecked="{Binding RestoreSession, Mode=TwoWay}" />
-        </StackPanel>
-
-        <Border Classes="divider" />
-
-        <!-- Undo -->
-        <TextBlock Text="{loc:Tr 撤销与重做}" Classes="section" />
-        <StackPanel Spacing="7">
-          <Grid ColumnDefinitions="120,*" ColumnSpacing="8">
-            <TextBlock Text="{loc:Tr 撤销行为}" Classes="fieldlabel" />
-            <ComboBox Grid.Column="1" ItemsSource="{Binding UndoBehaviors}"
-                      SelectedIndex="{Binding UndoBehaviorIndex, Mode=TwoWay}"
-                      MinWidth="210" HorizontalAlignment="Left" />
-          </Grid>
-          <TextBlock Text="{loc:Tr Windows 和 macOS 默认完整撤销（包括复制）；Linux 默认只撤销重命名、移动、回收站和新建。}"
-                     Classes="fieldhint" TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-            <Button Content="{loc:Tr 清除撤销历史}" Classes="link" Click="OnClearUndoHistoryClick" />
-            <TextBlock Grid.Column="1" Text="{Binding UndoStatus}" Classes="caption"
-                       VerticalAlignment="Center" TextWrapping="Wrap" />
-          </Grid>
-        </StackPanel>
-
-        <Border Classes="divider" />
-
-        <!-- Search -->
-        <TextBlock Text="{loc:Tr 搜索}" Classes="section" />
-        <Grid ColumnDefinitions="120,140,*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
-          <TextBlock Text="{loc:Tr 最大深度}" Classes="fieldlabel" />
-          <NumericUpDown Grid.Column="1" Minimum="1" Maximum="64" Increment="1" FormatString="0"
-                         Value="{Binding SearchDepth, Mode=TwoWay}" />
-          <TextBlock Grid.Column="2" Text="{loc:Tr 目录层级越深，搜索用时越长}" Classes="fieldhint"
-                     VerticalAlignment="Center" Margin="10,0,0,0" />
-
-          <TextBlock Grid.Row="1" Text="{loc:Tr 最大结果}" Classes="fieldlabel" />
-          <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="100" Maximum="20000" Increment="100"
-                         FormatString="0" Value="{Binding MaxSearchResults, Mode=TwoWay}" />
-          <TextBlock Grid.Row="1" Grid.Column="2" Text="{loc:Tr 达到上限后停止继续扫描}" Classes="fieldhint"
-                     VerticalAlignment="Center" Margin="10,0,0,0" />
-        </Grid>
-
-        <Border Classes="divider" />
-
-        <!-- Preview -->
-        <TextBlock Text="{loc:Tr 预览}" Classes="section" />
-        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" RowSpacing="6">
-          <TextBlock Text="{loc:Tr ffmpeg 路径}" Classes="fieldlabel" VerticalAlignment="Center" />
-          <TextBox Grid.Column="1" Text="{Binding FfmpegPath, Mode=TwoWay}"
-                   PlaceholderText="{loc:Tr 留空则自动从 PATH / FFMPEG_PATH 查找}" />
-          <TextBlock Grid.Row="1" Grid.Column="1" Classes="fieldhint" TextWrapping="Wrap"
-                     Text="{loc:Tr 用于视频缩略图与音视频信息；Ordoa 不附带 ffmpeg。图片预览不依赖它。}" />
-        </Grid>
-
-        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" RowSpacing="6" Margin="0,8,0,0">
-          <TextBlock Text="{loc:Tr 常驻预览面板}" Classes="fieldlabel" VerticalAlignment="Top" Margin="0,2,0,0" />
-          <StackPanel Grid.Column="1" Spacing="3">
-            <CheckBox Content="{loc:Tr 显示常驻预览面板}"
-                      IsChecked="{Binding ShowPreviewPanel, Mode=TwoWay}" />
-            <TextBlock Text="{loc:Tr 默认关闭；也可按 F3 或点击工具栏图标随时切换。}"
-                       Classes="fieldhint" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="6" Text="{loc:Tr 语言}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <Button Classes="chip" Tag="System" Click="OnLanguageClick"
+                        Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
+                  <TextBlock Text="{loc:Tr 跟随系统}" />
+                </Button>
+                <Button Classes="chip" Tag="Chinese" Click="OnLanguageClick"
+                        Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=Chinese}">
+                  <TextBlock Text="中文" />
+                </Button>
+                <Button Classes="chip" Tag="English" Click="OnLanguageClick"
+                        Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=English}">
+                  <TextBlock Text="English" />
+                </Button>
+              </StackPanel>
+            </Grid>
           </StackPanel>
-          <TextBlock Grid.Row="1" Text="{loc:Tr 面板位置}" Classes="fieldlabel" />
-          <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding PreviewPanelPlacements}"
-                    SelectedIndex="{Binding PreviewPanelPlacementIndex, Mode=TwoWay}"
-                    MinWidth="160" HorizontalAlignment="Left" />
-        </Grid>
 
-        <Border Classes="divider" />
+          <!-- Browsing -->
+          <StackPanel IsVisible="{Binding ShowBrowsing}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 浏览}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 文件列表、缩略图、搜索与传输队列}" Classes="caption" />
+            </StackPanel>
 
-        <StackPanel Spacing="4">
-          <TextBlock Text="{loc:Tr 设置保存在}" Classes="section" />
-          <TextBlock Text="{Binding SettingsPath}" Classes="tiny" FontFamily="{DynamicResource MonoFontFamily}" />
+            <TextBlock Text="{loc:Tr 文件列表}" Classes="section" />
+            <StackPanel Spacing="7">
+              <CheckBox Content="{loc:Tr 显示隐藏文件（点文件）}" IsChecked="{Binding ShowHidden, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 文件夹排在文件之前}" IsChecked="{Binding FoldersFirst, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 在网格视图中加载图片缩略图}" IsChecked="{Binding ShowThumbnails, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 耗时操作时自动展开传输队列}" IsChecked="{Binding ShowTransferPanel, Mode=TwoWay}" />
+            </StackPanel>
+
+            <Border Classes="divider" />
+
+            <TextBlock Text="{loc:Tr 搜索}" Classes="section" />
+            <Grid ColumnDefinitions="120,140,*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
+              <TextBlock Text="{loc:Tr 最大深度}" Classes="fieldlabel" />
+              <NumericUpDown Grid.Column="1" Minimum="1" Maximum="64" Increment="1" FormatString="0"
+                             Value="{Binding SearchDepth, Mode=TwoWay}" />
+              <TextBlock Grid.Column="2" Text="{loc:Tr 目录层级越深，搜索用时越长}" Classes="fieldhint"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
+
+              <TextBlock Grid.Row="1" Text="{loc:Tr 最大结果}" Classes="fieldlabel" />
+              <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="100" Maximum="20000" Increment="100"
+                             FormatString="0" Value="{Binding MaxSearchResults, Mode=TwoWay}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Text="{loc:Tr 达到上限后停止继续扫描}" Classes="fieldhint"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
+            </Grid>
+          </StackPanel>
+
+          <!-- Sidebar -->
+          <StackPanel IsVisible="{Binding ShowSidebarCategory}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 侧栏}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 侧栏显示内容、位置与自定义路径}" Classes="caption" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 显示内容}" Classes="section" />
+            <StackPanel Spacing="7">
+              <CheckBox Content="{loc:Tr 显示左侧栏}" IsChecked="{Binding ShowSidebar, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示磁盘}" IsChecked="{Binding ShowVolumes, Mode=TwoWay}" />
+              <StackPanel Spacing="2" IsVisible="{Binding IsMacOS}">
+                <CheckBox Content="{loc:Tr 显示 macOS 系统隐藏卷}"
+                          IsChecked="{Binding ShowHiddenVolumes, Mode=TwoWay}" />
+                <TextBlock Text="{loc:Tr 默认只显示 / 和 /Volumes 下的磁盘；打开后会显示 /System/Volumes 等内部卷。}"
+                           Classes="fieldhint" TextWrapping="Wrap" Margin="24,0,0,0" />
+              </StackPanel>
+            </StackPanel>
+
+            <Border Classes="divider" />
+
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{loc:Tr 侧栏位置}" Classes="section" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Content="{loc:Tr 恢复默认位置}" Classes="ghost" FontSize="11"
+                      Padding="8,3" Click="OnResetPlacesClick" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Places}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PlaceVisibilityViewModel">
+                  <CheckBox Width="180" Margin="0,2,8,2" Content="{Binding Label}"
+                            IsChecked="{Binding IsVisible, Mode=TwoWay}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="{loc:Tr 自定义位置}" Classes="section" Margin="0,6,0,0" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding NewCustomPath, Mode=TwoWay}"
+                       PlaceholderText="{loc:Tr 添加路径，例如 ~/Projects 或 /mnt/data}" />
+              <Button Grid.Column="1" Content="{loc:Tr 添加}" Classes="chip" Click="OnAddCustomPathClick" />
+            </Grid>
+            <TextBlock Text="{Binding CustomPathError}" Classes="fieldhint" Foreground="{DynamicResource ErrorBrush}"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding CustomPathError, Converter={StaticResource NotNullConverter}}" />
+            <ItemsControl ItemsSource="{Binding CustomPaths}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CustomPathViewModel">
+                  <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="7" Padding="10,6"
+                          Margin="0,2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <StackPanel Spacing="1">
+                        <TextBlock Text="{Binding Label}" FontSize="12" />
+                        <TextBlock Text="{Binding Detail}" Classes="tiny" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <Button Grid.Column="1" Classes="tool" Width="24" Height="24"
+                              Tag="{Binding Path}" Click="OnRemoveCustomPathClick"
+                              ToolTip.Tip="{loc:Tr 移除}">
+                        <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
+                              Fill="{DynamicResource TextTertiaryBrush}" />
+                      </Button>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
+          <!-- Preview -->
+          <StackPanel IsVisible="{Binding ShowPreview}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 预览}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 快速预览与常驻预览面板}" Classes="caption" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" RowSpacing="6">
+              <TextBlock Text="{loc:Tr ffmpeg 路径}" Classes="fieldlabel" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding FfmpegPath, Mode=TwoWay}"
+                       PlaceholderText="{loc:Tr 留空则自动从 PATH / FFMPEG_PATH 查找}" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Classes="fieldhint" TextWrapping="Wrap"
+                         Text="{loc:Tr 用于视频缩略图与音视频信息；Ordoa 不附带 ffmpeg。图片预览不依赖它。}" />
+            </Grid>
+
+            <Border Classes="divider" />
+
+            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" RowSpacing="6">
+              <TextBlock Text="{loc:Tr 常驻预览面板}" Classes="fieldlabel" VerticalAlignment="Top" Margin="0,2,0,0" />
+              <StackPanel Grid.Column="1" Spacing="3">
+                <CheckBox Content="{loc:Tr 显示常驻预览面板}"
+                          IsChecked="{Binding ShowPreviewPanel, Mode=TwoWay}" />
+                <TextBlock Text="{loc:Tr 默认关闭；也可按 F3 或点击工具栏图标随时切换。}"
+                           Classes="fieldhint" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock Grid.Row="1" Text="{loc:Tr 面板位置}" Classes="fieldlabel" />
+              <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding PreviewPanelPlacements}"
+                        SelectedIndex="{Binding PreviewPanelPlacementIndex, Mode=TwoWay}"
+                        MinWidth="160" HorizontalAlignment="Left" />
+            </Grid>
+          </StackPanel>
+
+          <!-- Network -->
+          <StackPanel IsVisible="{Binding ShowNetwork}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 网络}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 管理已保存的远程连接}" Classes="caption" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 管理已保存的远程连接。隐藏设置随保存生效，复制和删除会立即生效。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding Connections}" IsVisible="{Binding HasConnections}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ConnectionSettingViewModel">
+                  <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="7" Padding="10,7"
+                          Margin="0,3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                      <CheckBox Content="{loc:Tr 显示}" IsChecked="{Binding IsVisible, Mode=TwoWay}"
+                                VerticalAlignment="Center" ToolTip.Tip="{loc:Tr 在侧栏中显示}" />
+                      <StackPanel Grid.Column="1" Spacing="1">
+                        <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Detail}" Classes="tiny" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Error}" Classes="tiny" Foreground="{DynamicResource ErrorBrush}"
+                                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Error}"
+                                   IsVisible="{Binding IsFailed}" />
+                      </StackPanel>
+                      <Button Grid.Column="2" Content="{loc:Tr 复制}" Classes="link" Tag="{Binding Id}"
+                              Click="OnDuplicateConnectionClick" />
+                      <Button Grid.Column="3" Content="{loc:Tr 删除}" Classes="link" Tag="{Binding Id}"
+                              Click="OnDeleteConnectionClick" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{loc:Tr 还没有保存的远程连接}" Classes="fieldhint"
+                       IsVisible="{Binding !HasConnections}" />
+          </StackPanel>
+
+          <!-- Behaviour -->
+          <StackPanel IsVisible="{Binding ShowBehavior}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 行为与撤销}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 确认、会话恢复与撤销范围}" Classes="caption" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 行为与安全}" Classes="section" />
+            <StackPanel Spacing="7">
+              <CheckBox Content="{loc:Tr 永久删除前请求确认}" IsChecked="{Binding ConfirmPermanentDelete, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 启动时恢复上次的标签页与分屏}" IsChecked="{Binding RestoreSession, Mode=TwoWay}" />
+            </StackPanel>
+
+            <Border Classes="divider" />
+
+            <TextBlock Text="{loc:Tr 撤销与重做}" Classes="section" />
+            <StackPanel Spacing="7">
+              <Grid ColumnDefinitions="120,*" ColumnSpacing="8">
+                <TextBlock Text="{loc:Tr 撤销行为}" Classes="fieldlabel" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding UndoBehaviors}"
+                          SelectedIndex="{Binding UndoBehaviorIndex, Mode=TwoWay}"
+                          MinWidth="210" HorizontalAlignment="Left" />
+              </Grid>
+              <TextBlock Text="{loc:Tr Windows 和 macOS 默认完整撤销（包括复制）；Linux 默认只撤销重命名、移动、回收站和新建。}"
+                         Classes="fieldhint" TextWrapping="Wrap" />
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Button Content="{loc:Tr 清除撤销历史}" Classes="link" Click="OnClearUndoHistoryClick" />
+                <TextBlock Grid.Column="1" Text="{Binding UndoStatus}" Classes="caption"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+              </Grid>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- System -->
+          <StackPanel IsVisible="{Binding ShowSystem}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 系统与集成}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 多实例、默认文件管理器与打开方式}" Classes="caption" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 窗口与多实例}" Classes="section" />
+            <StackPanel Spacing="8">
+              <CheckBox Content="{loc:Tr 单实例模式（再次启动时复用当前进程）}"
+                        IsChecked="{Binding SingleInstance, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 允许同时打开多个窗口}"
+                        IsChecked="{Binding AllowMultipleWindows, Mode=TwoWay}" />
+              <Grid ColumnDefinitions="120,*" ColumnSpacing="8">
+                <TextBlock Text="{loc:Tr 打开文件夹时}" Classes="fieldlabel" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding FolderOpenModes}"
+                          SelectedIndex="{Binding FolderOpenIndex, Mode=TwoWay}"
+                          IsEnabled="{Binding AllowMultipleWindows}" MinWidth="160"
+                          HorizontalAlignment="Left" />
+              </Grid>
+              <TextBlock Text="{loc:Tr 来自浏览器、IDE、命令行或其他应用的文件夹请求会按此设置打开。}"
+                         Classes="fieldhint" TextWrapping="Wrap" />
+              <TextBlock Text="{loc:Tr 单实例设置会在下次启动 Ordoa 时生效。}"
+                         Classes="fieldhint" />
+            </StackPanel>
+
+            <Border Classes="divider" IsVisible="{Binding IsLinux}" />
+
+            <TextBlock Text="{loc:Tr 系统集成}" Classes="section" IsVisible="{Binding IsLinux}" />
+            <StackPanel Spacing="6" IsVisible="{Binding IsLinux}">
+              <TextBlock Text="{loc:Tr 将 Ordoa 注册为默认文件管理器，并安装 org.freedesktop.FileManager1 D-Bus 服务。}"
+                         Classes="fieldhint" TextWrapping="Wrap" />
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Button Content="{loc:Tr 设为默认文件管理器}" Classes="subtle"
+                        Click="OnRegisterFileManagerClick" IsEnabled="{Binding !IsRegisteringFileManager}" />
+                <TextBlock Grid.Column="1" Text="{Binding IntegrationStatus}" Classes="caption"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+              </Grid>
+            </StackPanel>
+
+            <Border Classes="divider" IsVisible="{Binding IsLinux}" />
+
+            <TextBlock Text="{loc:Tr 打开方式}" Classes="section" IsVisible="{Binding IsLinux}" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding IsLinux}">
+              <TextBlock Text="{Binding OpenWithSummary}" Classes="caption" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Content="{loc:Tr 清除已记住的选择}" Classes="link"
+                      HorizontalAlignment="Left" Click="OnClearOpenWithClick"
+                      IsEnabled="{Binding HasOpenWithDefaults}" />
+            </Grid>
+
+            <Border Classes="divider" />
+
+            <StackPanel Spacing="4">
+              <TextBlock Text="{loc:Tr 设置保存在}" Classes="section" />
+              <TextBlock Text="{Binding SettingsPath}" Classes="tiny" FontFamily="{DynamicResource MonoFontFamily}" />
+            </StackPanel>
+          </StackPanel>
         </StackPanel>
-      </StackPanel>
-    </ScrollViewer>
+      </ScrollViewer>
+    </Grid>
 
     <Border Grid.Row="2" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,1,0,0">

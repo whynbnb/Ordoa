@@ -179,7 +179,6 @@
  "已移除连接": "Connection removed",
  "已连接": "Connected",
  "外观": "Appearance",
- "外观、浏览行为与高级选项": "Appearance, browsing behavior, and advanced options",
  "主题": "Theme",
  "跟随系统": "Follow system",
  "浅色": "Light",
@@ -797,5 +796,18 @@
  "删除远程连接？": "Delete remote connection?",
  "将删除连接“{0}”及其保存的密码。": "Connection \"{0}\" and its saved password will be deleted.",
  "远程连接": "Remote connection",
- "管理已保存的远程连接。隐藏设置随保存生效，复制和删除会立即生效。": "Manage saved remote connections. Visibility changes apply on save; copy and delete take effect immediately."
+ "管理已保存的远程连接。隐藏设置随保存生效，复制和删除会立即生效。": "Manage saved remote connections. Visibility changes apply on save; copy and delete take effect immediately.",
+ "主题、强调色、密度与窗口外观": "Theme, accent, density and window appearance",
+ "侧栏": "Sidebar",
+ "侧栏显示内容、位置与自定义路径": "Sidebar content, location and custom paths",
+ "多实例、默认文件管理器与打开方式": "Multiple instances, default file manager and open-with",
+ "快速预览与常驻预览面板": "Quick look and the persistent preview panel",
+ "文件列表": "File list",
+ "文件列表、缩略图、搜索与传输队列": "File list, thumbnails, search and transfer queue",
+ "显示内容": "Displayed content",
+ "确认、会话恢复与撤销范围": "Confirmations, session restore and undo scope",
+ "管理已保存的远程连接": "Manage saved remote connections",
+ "系统与集成": "System and integration",
+ "行为与撤销": "Behavior and undo",
+ "按类别调整外观、浏览、网络与系统行为": "Adjust appearance, browsing, network and system behavior by category"
 }
