@@ -650,24 +650,53 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public async Task ShowConnectionDialogAsync(ConnectionProfile? preset)
     {
+        ConnectionDialogResult? result;
         try
         {
-            var result = await _services.Dialogs.ShowConnectionAsync(preset).ConfigureAwait(true);
-            if (result is null)
-                return;
+            result = await _services.Dialogs.ShowConnectionAsync(preset).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            AddToast(L10n.T("连接失败"), ex.Message, ToastKind.Error);
+            return;
+        }
 
-            var profile = result.Profile;
-            var fs = await _services.FileSystems.ConnectAsync(profile, result.Password).ConfigureAwait(true);
+        if (result is null)
+            return;
+
+        var profile = result.Profile;
+        IFileSystem fs;
+        try
+        {
+            fs = await _services.FileSystems.ConnectAsync(profile, result.Password).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
             if (result.SaveProfile)
-                await _services.FileSystems.SaveProfileAsync(profile, result.Password,
-                    deletePassword: !profile.SavePassword).ConfigureAwait(true);
+            {
+                // Keep failed connections in the sidebar so the user can edit
+                // the configuration and retry instead of re-entering it.
+                profile.LastError = ex.Message;
+                _services.FileSystems.Connections.Save(profile);
+            }
+            AddToast(L10n.T("连接失败"), ex.Message, ToastKind.Error);
+            return;
+        }
+
+        profile.LastError = null;
+        if (result.SaveProfile)
+            await _services.FileSystems.SaveProfileAsync(profile, result.Password,
+                deletePassword: !profile.SavePassword).ConfigureAwait(true);
+
+        try
+        {
             await CreateTabAsync(fs, profile.NormalizeInitialPath(profile.InitialPath), true).ConfigureAwait(true);
             await RefreshSidebarAsync().ConfigureAwait(true);
             AddToast(L10n.T("已连接"), $"{profile.ProtocolLabel} · {profile.DisplayTarget}", ToastKind.Success);
         }
         catch (Exception ex)
         {
-            AddToast(L10n.T("连接失败"), ex.Message, ToastKind.Error);
+            AddToast(L10n.T("无法打开连接"), ex.Message, ToastKind.Error);
         }
     }
 
@@ -715,30 +744,42 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (result is null)
                 return;
 
+            var updated = result.Profile;
+            updated.LastError = null;
             var oldId = profile.Id;
             await _services.FileSystems.DisconnectAsync(oldId).ConfigureAwait(true);
-            await _services.FileSystems.SaveProfileAsync(result.Profile, result.Password,
-                deletePassword: !result.Profile.SavePassword).ConfigureAwait(true);
+            await _services.FileSystems.SaveProfileAsync(updated, result.Password,
+                deletePassword: !updated.SavePassword).ConfigureAwait(true);
 
             var affected = Tabs.SelectMany(t => t.Panes).Where(p => p.FileSystem.Id == oldId).ToList();
             if (affected.Count > 0)
             {
-                var newFs = await _services.FileSystems.ConnectAsync(result.Profile, result.Password).ConfigureAwait(true);
-                foreach (var pane in affected)
+                try
                 {
-                    try
+                    var newFs = await _services.FileSystems.ConnectAsync(updated, result.Password).ConfigureAwait(true);
+                    foreach (var pane in affected)
                     {
-                        await pane.NavigateAsync(newFs, pane.CurrentPath).ConfigureAwait(true);
+                        try
+                        {
+                            await pane.NavigateAsync(newFs, pane.CurrentPath).ConfigureAwait(true);
+                        }
+                        catch
+                        {
+                            await pane.NavigateAsync(_services.FileSystems.Local, KnownFolders.DefaultStartupPath).ConfigureAwait(true);
+                        }
                     }
-                    catch
-                    {
-                        await pane.NavigateAsync(_services.FileSystems.Local, KnownFolders.DefaultStartupPath).ConfigureAwait(true);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    updated.LastError = ex.Message;
+                    _services.FileSystems.Connections.Save(updated);
+                    AddToast(L10n.T("更新连接失败"), ex.Message, ToastKind.Error);
+                    return;
                 }
             }
 
             RefreshSidebar();
-            AddToast(L10n.T("连接已更新"), result.Profile.Name, ToastKind.Success);
+            AddToast(L10n.T("连接已更新"), updated.Name, ToastKind.Success);
         }
         catch (Exception ex)
         {
@@ -756,10 +797,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
 
         await _services.FileSystems.RemoveProfileAsync(entry.ConnectionId).ConfigureAwait(true);
+        await HandleConnectionRemovedAsync(entry.ConnectionId).ConfigureAwait(true);
+        AddToast(L10n.T("已移除连接"), entry.Label, ToastKind.Success);
+    }
 
+    /// <summary>Updates open panes after a connection was removed from settings.</summary>
+    public async Task HandleConnectionRemovedAsync(string connectionId)
+    {
         foreach (var pane in Tabs.SelectMany(t => t.Panes).ToList())
         {
-            if (pane.FileSystem.Id == entry.ConnectionId)
+            if (pane.FileSystem.Id == connectionId)
             {
                 try
                 {
@@ -770,7 +817,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         RefreshSidebar();
-        AddToast(L10n.T("已移除连接"), entry.Label, ToastKind.Success);
     }
 
     public async Task ActivateSidebarEntryAsync(SidebarEntryViewModel entry)
@@ -794,11 +840,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 {
                     if (entry.ConnectionId is null)
                         return;
-                    var profile = _services.FileSystems.Connections.Get(entry.ConnectionId);
-                    if (profile is null)
+                    var fs = await ResolveSidebarFileSystemAsync(entry).ConfigureAwait(true);
+                    if (fs is null)
                         return;
-                    var fs = await _services.FileSystems.ConnectByIdAsync(profile.Id).ConfigureAwait(true);
-                    await NavigateActiveAsync(fs, profile.NormalizeInitialPath(profile.InitialPath)).ConfigureAwait(true);
+                    await NavigateActiveAsync(fs, entry.Path ?? fs.RootPath).ConfigureAwait(true);
                     break;
                 }
                 case SidebarEntryKind.Trash:
@@ -895,7 +940,27 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return _services.FileSystems.Local;
         if (entry.FileSystemId == "trash")
             return _services.TrashFs;
-        return await _services.FileSystems.ConnectByIdAsync(entry.FileSystemId).ConfigureAwait(true);
+
+        var profile = _services.FileSystems.Connections.Get(entry.FileSystemId);
+        try
+        {
+            var fs = await _services.FileSystems.ConnectByIdAsync(entry.FileSystemId).ConfigureAwait(true);
+            if (profile is { LastError: not null })
+            {
+                profile.LastError = null;
+                _services.FileSystems.Connections.Save(profile);
+            }
+            return fs;
+        }
+        catch (Exception ex)
+        {
+            if (profile is not null)
+            {
+                profile.LastError = ex.Message;
+                _services.FileSystems.Connections.Save(profile);
+            }
+            throw;
+        }
     }
 
     public async Task NavigateActiveAsync(IFileSystem fileSystem, string path, bool newTab = false)
@@ -1149,13 +1214,25 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (pane.FileSystemId == "trash")
             return _services.TrashFs;
 
+        var profile = _services.FileSystems.Connections.Get(pane.FileSystemId);
         try
         {
             StartupStatus = L10n.T("正在重新连接远程位置…");
-            return await _services.FileSystems.ConnectByIdAsync(pane.FileSystemId).ConfigureAwait(true);
+            var fileSystem = await _services.FileSystems.ConnectByIdAsync(pane.FileSystemId).ConfigureAwait(true);
+            if (profile is { LastError: not null })
+            {
+                profile.LastError = null;
+                _services.FileSystems.Connections.Save(profile);
+            }
+            return fileSystem;
         }
         catch (Exception ex)
         {
+            if (profile is not null)
+            {
+                profile.LastError = ex.Message;
+                _services.FileSystems.Connections.Save(profile);
+            }
             Log.Warn($"恢复远程连接失败: {pane.FileSystemId}", ex);
             AddToast(L10n.T("无法恢复远程连接"), L10n.T("已跳过该标签页，远程会话可能已失效。"), ToastKind.Error);
             return null;
@@ -1342,16 +1419,25 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             HeaderIcon = FileIconCatalog.Resource("IconPlus"),
             HeaderTooltip = L10n.T("添加远程连接"),
         };
+        var hiddenConnections = _services.Settings.Current.HiddenConnections
+            .ToHashSet(StringComparer.Ordinal);
         foreach (var connection in _services.FileSystems.Connections.GetAll())
         {
+            if (hiddenConnections.Contains(connection.Id))
+                continue;
+
+            var failed = !string.IsNullOrEmpty(connection.LastError);
             network.Items.Add(new SidebarEntryViewModel
             {
                 Label = connection.Name,
-                Detail = $"{connection.ProtocolLabel} · {connection.DisplayTarget}",
+                Detail = failed
+                    ? $"{connection.ProtocolLabel} · {connection.DisplayTarget} · {L10n.T("连接失败")}"
+                    : $"{connection.ProtocolLabel} · {connection.DisplayTarget}",
                 Kind = SidebarEntryKind.Connection,
                 Icon = FileIconCatalog.Resource("IconCloud"),
-                IconBrush = SidebarEntryViewModel.Brush("#5A9BD5"),
+                IconBrush = SidebarEntryViewModel.Brush(failed ? "#C26A6A" : "#5A9BD5"),
                 ConnectionId = connection.Id,
+                FailureMessage = connection.LastError,
                 FileSystemId = connection.Id,
                 Path = connection.NormalizeInitialPath(connection.InitialPath),
                 ActivateAsync = ActivateSidebarEntryAsync,

@@ -29,6 +29,12 @@ public sealed partial class SidebarEntryViewModel : ObservableObject
     public string? FileSystemId { get; init; }
     public string? Path { get; init; }
     public string? ConnectionId { get; init; }
+    /// <summary>Error from the most recent connection attempt, when any.</summary>
+    public string? FailureMessage { get; init; }
+    public bool IsFailed => !string.IsNullOrEmpty(FailureMessage);
+    public string TooltipText => IsFailed
+        ? $"{Label}\n{Detail}\n{FailureMessage}"
+        : Detail ?? Label;
     public string? BookmarkId { get; init; }
     public string? VolumeMountPoint { get; init; }
     public bool ShowUsage { get; init; }

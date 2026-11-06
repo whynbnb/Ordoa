@@ -347,14 +347,28 @@ public sealed class CustomPathViewModel
     public string Detail => KnownFolders.ShortenForDisplay(Path);
 }
 
+public sealed partial class ConnectionSettingViewModel : ObservableObject
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public required string Detail { get; init; }
+    public string? Error { get; init; }
+    public bool IsFailed => !string.IsNullOrEmpty(Error);
+
+    [ObservableProperty]
+    private bool _isVisible;
+}
+
 public sealed partial class SettingsDialogViewModel : ObservableObject
 {
     private readonly AppSettings _original;
     private readonly Dictionary<string, string> _openWithDefaults;
+    private readonly FileSystemManager? _fileSystems;
 
-    public SettingsDialogViewModel(AppSettings settings)
+    public SettingsDialogViewModel(AppSettings settings, FileSystemManager? fileSystems = null)
     {
         _original = settings;
+        _fileSystems = fileSystems;
         _openWithDefaults = new Dictionary<string, string>(
             settings.OpenWithDefaults ?? [], StringComparer.Ordinal);
         _language = settings.Language;
@@ -400,6 +414,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             L10n.T("底部"),
         ];
 
+        ReloadConnections();
+
         foreach (var path in settings.CustomSidebarPaths ?? [])
             CustomPaths.Add(new CustomPathViewModel { Path = path });
 
@@ -418,6 +434,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public System.Collections.ObjectModel.ObservableCollection<PlaceVisibilityViewModel> Places { get; } = [];
 
     public System.Collections.ObjectModel.ObservableCollection<CustomPathViewModel> CustomPaths { get; } = [];
+
+    public System.Collections.ObjectModel.ObservableCollection<ConnectionSettingViewModel> Connections { get; } = [];
+
+    public bool HasConnections => Connections.Count > 0;
 
     [ObservableProperty]
     private UiLanguage _language;
@@ -529,6 +549,32 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     public void SetUndoStatus(string message) => UndoStatus = message;
 
+    public void ReloadConnections()
+    {
+        var visibility = Connections.ToDictionary(item => item.Id, item => item.IsVisible, StringComparer.Ordinal);
+        var hidden = new HashSet<string>(_original.HiddenConnections ?? [], StringComparer.Ordinal);
+        Connections.Clear();
+
+        if (_fileSystems is not null)
+        {
+            foreach (var profile in _fileSystems.Connections.GetAll())
+            {
+                Connections.Add(new ConnectionSettingViewModel
+                {
+                    Id = profile.Id,
+                    Name = profile.Name,
+                    Detail = $"{profile.ProtocolLabel} · {profile.DisplayTarget}",
+                    Error = profile.LastError,
+                    IsVisible = visibility.TryGetValue(profile.Id, out var visible)
+                        ? visible
+                        : !hidden.Contains(profile.Id),
+                });
+            }
+        }
+
+        OnPropertyChanged(nameof(HasConnections));
+    }
+
     public void ClearOpenWithDefaults()
     {
         if (_openWithDefaults.Count == 0)
@@ -574,6 +620,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.OpenWithDefaults = new Dictionary<string, string>(_openWithDefaults, StringComparer.Ordinal);
         settings.CustomSidebarPaths = CustomPaths.Select(item => item.Path).ToList();
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
+        if (_fileSystems is not null)
+            settings.HiddenConnections = Connections.Where(item => !item.IsVisible).Select(item => item.Id).ToList();
         return settings;
     }
 
@@ -611,6 +659,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         CustomPaths.Clear();
         NewCustomPath = string.Empty;
         CustomPathError = null;
+        foreach (var connection in Connections)
+            connection.IsVisible = true;
         ResetPlaces();
     }
 

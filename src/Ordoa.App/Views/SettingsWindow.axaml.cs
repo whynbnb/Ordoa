@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Ordoa.App.Services;
+using Ordoa.App.ViewModels;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Ordoa.App.ViewModels.Dialogs;
@@ -98,6 +99,52 @@ public partial class SettingsWindow : Window
         {
             vm.IsRegisteringFileManager = false;
         }
+    }
+
+    private void OnDuplicateConnectionClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string id } || DataContext is not SettingsDialogViewModel vm ||
+            App.Services is not { } services)
+        {
+            return;
+        }
+
+        services.FileSystems.DuplicateProfile(id);
+        vm.ReloadConnections();
+    }
+
+    private async void OnDeleteConnectionClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string id } || DataContext is not SettingsDialogViewModel vm ||
+            App.Services is not { } services)
+        {
+            return;
+        }
+
+        var profile = services.FileSystems.Connections.Get(id);
+        if (profile is null)
+            return;
+
+        var confirm = new ConfirmWindow
+        {
+            DataContext = new ConfirmDialogViewModel
+            {
+                TitleText = L10n.T("删除远程连接？"),
+                Message = L10n.Format("将删除连接“{0}”及其保存的密码。", profile.Name),
+                ConfirmText = L10n.T("删除"),
+                Destructive = true,
+            },
+        };
+        if (!await confirm.ShowDialog<bool>(this))
+            return;
+
+        await services.FileSystems.RemoveProfileAsync(id);
+        foreach (var window in services.Windows.Windows)
+        {
+            if (window.DataContext is MainViewModel main)
+                await main.HandleConnectionRemovedAsync(id);
+        }
+        vm.ReloadConnections();
     }
 
     private void OnClearUndoHistoryClick(object? sender, RoutedEventArgs e)

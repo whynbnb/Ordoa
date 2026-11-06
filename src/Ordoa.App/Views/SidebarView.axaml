@@ -10,16 +10,17 @@
     <Button Classes="sidebaritem"
             Classes.active="{Binding IsActive}"
             Classes.drop="{Binding IsDropTarget}"
+            Classes.failed="{Binding IsFailed}"
             Click="OnEntryClick"
             ContextRequested="OnEntryContextRequested"
-            ToolTip.Tip="{Binding Detail}"
+            ToolTip.Tip="{Binding TooltipText}"
             DragDrop.AllowDrop="True"
             DragDrop.DragEnter="OnEntryDragOver"
             DragDrop.DragOver="OnEntryDragOver"
             DragDrop.DragLeave="OnEntryDragLeave"
             DragDrop.Drop="OnEntryDrop">
       <Panel>
-        <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,2" VerticalAlignment="Center"
+        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,2" VerticalAlignment="Center"
               Opacity="{Binding IsDropTarget, Converter={StaticResource BoolToOpacityConverter}}">
           <Path Data="{Binding Icon}" Fill="{Binding IconBrush}"
                 Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"
@@ -29,6 +30,9 @@
             <TextBlock Text="{Binding Detail}" Classes="sidebardetail"
                        IsVisible="{Binding Detail, Converter={StaticResource NotNullConverter}}" />
           </StackPanel>
+          <Path Grid.Column="2" Data="{StaticResource IconWarning}" Width="13" Height="13"
+                Stretch="Uniform" VerticalAlignment="Center" Margin="6,0,0,0"
+                Fill="{DynamicResource ErrorBrush}" IsVisible="{Binding IsFailed}" />
         </Grid>
         <ProgressBar Height="2" MinHeight="2"
                      VerticalAlignment="Bottom" Margin="24,0,4,0"
@@ -89,6 +93,9 @@
     <Style Selector="Button.sidebaritem.active TextBlock.sidebarlabel">
       <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
       <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.sidebaritem.failed TextBlock.sidebarlabel">
+      <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
     </Style>
     <Style Selector="Border.sidebar-drop">
       <Setter Property="Background" Value="{DynamicResource DropOverlayBrush}" />

@@ -834,7 +834,29 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 await _services.FileSystems.SaveProfileAsync(profile, password).ConfigureAwait(true);
         }
 
-        var fs = await _services.FileSystems.ConnectAsync(profile, password ?? uriPassword).ConfigureAwait(true);
+        IFileSystem fs;
+        try
+        {
+            fs = await _services.FileSystems.ConnectAsync(profile, password ?? uriPassword).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            var stored = _services.FileSystems.Connections.Get(profile.Id);
+            if (stored is not null)
+            {
+                stored.LastError = ex.Message;
+                _services.FileSystems.Connections.Save(stored);
+            }
+            throw;
+        }
+
+        if (profile.LastError is not null)
+        {
+            profile.LastError = null;
+            if (_services.FileSystems.Connections.Get(profile.Id) is not null)
+                _services.FileSystems.Connections.Save(profile);
+        }
+
         var path = string.IsNullOrEmpty(uri.AbsolutePath) ? fs.RootPath : Uri.UnescapeDataString(uri.AbsolutePath);
         await NavigateAsync(fs, path).ConfigureAwait(true);
     }

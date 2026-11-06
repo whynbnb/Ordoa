@@ -123,7 +123,7 @@ public sealed class DialogService : IDialogService
         if (owner is null)
             return null;
 
-        var viewModel = new SettingsDialogViewModel(current);
+        var viewModel = new SettingsDialogViewModel(current, App.Services?.FileSystems);
         var window = new SettingsWindow { DataContext = viewModel };
         return await window.ShowDialog<AppSettings?>(owner);
     }

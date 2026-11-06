@@ -408,13 +408,24 @@ public partial class SidebarView : UserControl
 
         if (entry.FileSystemId is { Length: > 0 } id && id is not ("local" or "trash"))
         {
+            var profile = vm.Services.FileSystems.Connections.Get(id);
             try
             {
                 var fileSystem = await vm.Services.FileSystems.ConnectByIdAsync(id).ConfigureAwait(true);
+                if (profile is { LastError: not null })
+                {
+                    profile.LastError = null;
+                    vm.Services.FileSystems.Connections.Save(profile);
+                }
                 return (fileSystem, entry.Path);
             }
             catch (Exception ex)
             {
+                if (profile is not null)
+                {
+                    profile.LastError = ex.Message;
+                    vm.Services.FileSystems.Connections.Save(profile);
+                }
                 vm.AddToast(L10n.T("连接失败"), ex.Message, ToastKind.Error);
                 return null;
             }

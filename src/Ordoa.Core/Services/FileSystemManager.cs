@@ -159,6 +159,36 @@ public sealed class FileSystemManager : IAsyncDisposable
         }
     }
 
+    public ConnectionProfile? DuplicateProfile(string connectionId)
+    {
+        var source = Connections.Get(connectionId);
+        if (source is null)
+            return null;
+
+        var clone = source.Clone();
+        clone.Id = Guid.NewGuid().ToString("N");
+        clone.Name = UniqueProfileName(source.Name);
+        clone.LastError = null;
+        clone.SavePassword = false;
+        Connections.Save(clone);
+        return clone;
+    }
+
+    private string UniqueProfileName(string name)
+    {
+        var baseName = string.IsNullOrWhiteSpace(name)
+            ? L10n.T("远程连接")
+            : $"{name} {L10n.T("副本")}";
+        var candidate = baseName;
+        var existing = Connections.GetAll()
+            .Select(profile => profile.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var index = 2;
+        while (existing.Contains(candidate))
+            candidate = $"{baseName} ({index++})";
+        return candidate;
+    }
+
     public async Task RemoveProfileAsync(string connectionId, CancellationToken cancellationToken = default)
     {
         await DisconnectAsync(connectionId).ConfigureAwait(false);

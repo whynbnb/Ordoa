@@ -789,5 +789,13 @@
  "无法连接 SSH Agent，请确认 SSH_AUTH_SOCK 或 ssh-agent 正在运行。": "Could not connect to SSH Agent. Check that SSH_AUTH_SOCK or ssh-agent is running.",
  "服务器主机密钥已被 known_hosts 标记为吊销，连接已中止。": "The server host key is marked as revoked in known_hosts; the connection was aborted.",
  "服务器主机密钥与 known_hosts 中的记录不一致，连接已中止。": "The server host key does not match the entry in known_hosts; the connection was aborted.",
- "请选择私钥文件": "Select a private key file"
+ "请选择私钥文件": "Select a private key file",
+ "副本": "copy",
+ "无法打开连接": "Could not open the connection",
+ "在侧栏中显示": "Show in the sidebar",
+ "还没有保存的远程连接": "No saved remote connections",
+ "删除远程连接？": "Delete remote connection?",
+ "将删除连接“{0}”及其保存的密码。": "Connection \"{0}\" and its saved password will be deleted.",
+ "远程连接": "Remote connection",
+ "管理已保存的远程连接。隐藏设置随保存生效，复制和删除会立即生效。": "Manage saved remote connections. Visibility changes apply on save; copy and delete take effect immediately."
 }

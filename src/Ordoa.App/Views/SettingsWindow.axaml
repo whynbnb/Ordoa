@@ -272,6 +272,40 @@
 
         <Border Classes="divider" />
 
+        <!-- Network -->
+        <TextBlock Text="{loc:Tr 网络}" Classes="section" />
+        <TextBlock Text="{loc:Tr 管理已保存的远程连接。隐藏设置随保存生效，复制和删除会立即生效。}"
+                   Classes="fieldhint" TextWrapping="Wrap" />
+        <ItemsControl ItemsSource="{Binding Connections}" IsVisible="{Binding HasConnections}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ConnectionSettingViewModel">
+              <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="7" Padding="10,7"
+                      Margin="0,3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                  <CheckBox Content="{loc:Tr 显示}" IsChecked="{Binding IsVisible, Mode=TwoWay}"
+                            VerticalAlignment="Center" ToolTip.Tip="{loc:Tr 在侧栏中显示}" />
+                  <StackPanel Grid.Column="1" Spacing="1">
+                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Detail}" Classes="tiny" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Error}" Classes="tiny" Foreground="{DynamicResource ErrorBrush}"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Error}"
+                               IsVisible="{Binding IsFailed}" />
+                  </StackPanel>
+                  <Button Grid.Column="2" Content="{loc:Tr 复制}" Classes="link" Tag="{Binding Id}"
+                          Click="OnDuplicateConnectionClick" />
+                  <Button Grid.Column="3" Content="{loc:Tr 删除}" Classes="link" Tag="{Binding Id}"
+                          Click="OnDeleteConnectionClick" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{loc:Tr 还没有保存的远程连接}" Classes="fieldhint"
+                   IsVisible="{Binding !HasConnections}" />
+
+        <Border Classes="divider" />
+
         <!-- Behaviour -->
         <TextBlock Text="{loc:Tr 行为与安全}" Classes="section" />
         <StackPanel Spacing="7">

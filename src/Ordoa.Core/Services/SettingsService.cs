@@ -67,6 +67,8 @@ public sealed class AppSettings
     public List<string> CustomSidebarPaths { get; set; } = [];
     /// <summary>Known-folder keys hidden from the sidebar's Places section.</summary>
     public List<string> HiddenPlaces { get; set; } = [];
+    /// <summary>Connection ids hidden from the sidebar's Network section.</summary>
+    public List<string> HiddenConnections { get; set; } = [];
     public double SidebarWidth { get; set; } = 232;
     public bool ShowThumbnails { get; set; } = true;
     public bool ShowTransferPanel { get; set; } = true;
@@ -114,6 +116,7 @@ public sealed class AppSettings
         var clone = (AppSettings)MemberwiseClone();
         clone.CustomSidebarPaths = [.. CustomSidebarPaths];
         clone.HiddenPlaces = [.. HiddenPlaces];
+        clone.HiddenConnections = [.. HiddenConnections];
         clone.OpenWithDefaults = new Dictionary<string, string>(OpenWithDefaults, StringComparer.Ordinal);
         return clone;
     }
@@ -187,6 +190,10 @@ public sealed class SettingsService
         Current.HiddenPlaces = (Current.HiddenPlaces ?? [])
             .Where(key => !string.IsNullOrWhiteSpace(key))
             .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        Current.HiddenConnections = (Current.HiddenConnections ?? [])
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
             .ToList();
         Current.CustomSidebarPaths = (Current.CustomSidebarPaths ?? [])
             .Where(path => !string.IsNullOrWhiteSpace(path))
