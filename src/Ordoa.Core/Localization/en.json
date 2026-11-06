@@ -754,5 +754,20 @@
  "重做": "Redo",
  "撤销上一步文件操作": "Undo the last file operation",
  "重做被撤销的文件操作": "Redo the last undone file operation",
- "源项目已不存在": "The source item no longer exists"
+ "源项目已不存在": "The source item no longer exists",
+ "预览面板": "Preview panel",
+ "显示或隐藏常驻预览面板": "Show or hide the persistent preview panel",
+ "选择一个文件以预览": "Select a file to preview",
+ "按 F3 可显示或隐藏此面板": "Press F3 to show or hide this panel",
+ "关闭预览面板 (F3)": "Close preview panel (F3)",
+ "预览面板 (F3)": "Preview panel (F3)",
+ "常驻预览面板": "Persistent preview panel",
+ "显示常驻预览面板": "Show persistent preview panel",
+ "默认关闭；也可按 F3 或点击工具栏图标随时切换。": "Off by default; press F3 or use the toolbar icon to toggle it at any time.",
+ "面板位置": "Panel position",
+ "右侧": "Right side",
+ "底部": "Bottom",
+ "显示 / 隐藏常驻预览面板": "Show / hide persistent preview panel",
+ "· 常驻预览面板（F3，右侧或底部）": "· Persistent preview panel (F3, right or bottom)",
+ "选中文件后会自动刷新预览": "The preview refreshes automatically when you select a file"
 }

@@ -8,7 +8,7 @@ using Ordoa.Core.Util;
 
 namespace Ordoa.App.ViewModels;
 
-/// <summary>State for the space-bar Quick Look overlay.</summary>
+/// <summary>Preview state shared by the Space-bar overlay and the persistent panel.</summary>
 public sealed partial class FilePreviewViewModel : ObservableObject, IDisposable
 {
     private readonly AppServices _services;
@@ -68,7 +68,10 @@ public sealed partial class FilePreviewViewModel : ObservableObject, IDisposable
     private IReadOnlyList<PreviewRow> _rows = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDetails))]
     private IReadOnlyList<PreviewDetail> _details = [];
+
+    public bool HasDetails => Details.Count > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNotice))]

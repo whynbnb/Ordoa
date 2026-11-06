@@ -309,6 +309,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _showHiddenVolumes = settings.ShowHiddenVolumes;
         _showThumbnails = settings.ShowThumbnails;
         _showTransferPanel = settings.ShowTransferPanel;
+        _showPreviewPanel = settings.ShowPreviewPanel;
+        _previewPanelPlacementIndex = settings.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         _searchDepth = settings.SearchDepth;
         _maxSearchResults = settings.MaxSearchResults;
         _ffmpegPath = settings.FfmpegPath;
@@ -329,6 +331,11 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             L10n.T("完整（包括复制）"),
             L10n.T("仅结构操作"),
             L10n.T("关闭"),
+        ];
+        PreviewPanelPlacements =
+        [
+            L10n.T("右侧"),
+            L10n.T("底部"),
         ];
 
         foreach (var path in settings.CustomSidebarPaths ?? [])
@@ -399,6 +406,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private bool _showTransferPanel;
 
     [ObservableProperty]
+    private bool _showPreviewPanel;
+
+    [ObservableProperty]
+    private int _previewPanelPlacementIndex;
+
+    [ObservableProperty]
     private decimal _searchDepth;
 
     [ObservableProperty]
@@ -436,6 +449,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     public IReadOnlyList<string> FolderOpenModes { get; }
     public IReadOnlyList<string> UndoBehaviors { get; }
+    public IReadOnlyList<string> PreviewPanelPlacements { get; }
 
     public string SettingsPath => AppPaths.SettingsFile;
 
@@ -480,6 +494,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.ShowHiddenVolumes = ShowHiddenVolumes;
         settings.ShowThumbnails = ShowThumbnails;
         settings.ShowTransferPanel = ShowTransferPanel;
+        settings.ShowPreviewPanel = ShowPreviewPanel;
+        settings.PreviewPanelPlacement = PreviewPanelPlacementIndex == 1
+            ? PreviewPanelPlacement.Bottom
+            : PreviewPanelPlacement.Right;
         settings.SearchDepth = Math.Clamp((int)SearchDepth, 1, 64);
         settings.MaxSearchResults = Math.Clamp((int)MaxSearchResults, 100, 20000);
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
@@ -514,6 +532,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         ShowHiddenVolumes = defaults.ShowHiddenVolumes;
         ShowThumbnails = defaults.ShowThumbnails;
         ShowTransferPanel = defaults.ShowTransferPanel;
+        ShowPreviewPanel = defaults.ShowPreviewPanel;
+        PreviewPanelPlacementIndex = defaults.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         SearchDepth = defaults.SearchDepth;
         MaxSearchResults = defaults.MaxSearchResults;
         FfmpegPath = defaults.FfmpegPath;

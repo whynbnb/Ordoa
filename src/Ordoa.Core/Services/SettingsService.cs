@@ -41,6 +41,12 @@ public enum UndoBehavior
     Disabled,
 }
 
+public enum PreviewPanelPlacement
+{
+    Right,
+    Bottom,
+}
+
 public sealed class AppSettings
 {
     public UiLanguage Language { get; set; } = UiLanguage.System;
@@ -64,6 +70,10 @@ public sealed class AppSettings
     public double SidebarWidth { get; set; } = 232;
     public bool ShowThumbnails { get; set; } = true;
     public bool ShowTransferPanel { get; set; } = true;
+    /// <summary>Keep a preview panel open for the current selection.</summary>
+    public bool ShowPreviewPanel { get; set; }
+    /// <summary>Where the persistent preview panel is docked.</summary>
+    public PreviewPanelPlacement PreviewPanelPlacement { get; set; } = PreviewPanelPlacement.Right;
     public int SearchDepth { get; set; } = 12;
     public int MaxSearchResults { get; set; } = 3000;
     /// <summary>Optional path to the ffmpeg executable used for media previews.</summary>
@@ -164,6 +174,8 @@ public sealed class SettingsService
             Current.FolderOpenMode = FolderOpenMode.CurrentWindow;
         if (!Enum.IsDefined(Current.UndoBehavior))
             Current.UndoBehavior = UndoBehavior.System;
+        if (!Enum.IsDefined(Current.PreviewPanelPlacement))
+            Current.PreviewPanelPlacement = PreviewPanelPlacement.Right;
         Current.OpenWithDefaults = (Current.OpenWithDefaults ?? [])
             .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
             .GroupBy(pair => pair.Key.Trim().TrimStart('.').ToLowerInvariant(), StringComparer.Ordinal)

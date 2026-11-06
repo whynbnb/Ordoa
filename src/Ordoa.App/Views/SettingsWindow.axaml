@@ -329,6 +329,20 @@
                      Text="{loc:Tr 用于视频缩略图与音视频信息；Ordoa 不附带 ffmpeg。图片预览不依赖它。}" />
         </Grid>
 
+        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" RowSpacing="6" Margin="0,8,0,0">
+          <TextBlock Text="{loc:Tr 常驻预览面板}" Classes="fieldlabel" VerticalAlignment="Top" Margin="0,2,0,0" />
+          <StackPanel Grid.Column="1" Spacing="3">
+            <CheckBox Content="{loc:Tr 显示常驻预览面板}"
+                      IsChecked="{Binding ShowPreviewPanel, Mode=TwoWay}" />
+            <TextBlock Text="{loc:Tr 默认关闭；也可按 F3 或点击工具栏图标随时切换。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{loc:Tr 面板位置}" Classes="fieldlabel" />
+          <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding PreviewPanelPlacements}"
+                    SelectedIndex="{Binding PreviewPanelPlacementIndex, Mode=TwoWay}"
+                    MinWidth="160" HorizontalAlignment="Left" />
+        </Grid>
+
         <Border Classes="divider" />
 
         <StackPanel Spacing="4">

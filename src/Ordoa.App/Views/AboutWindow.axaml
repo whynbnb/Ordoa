@@ -40,7 +40,7 @@
         <Border Classes="divider" />
 
         <TextBlock Text="{loc:Tr 能力}" Classes="section" />
-        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="18" RowSpacing="7">
+        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="18" RowSpacing="7">
           <TextBlock Text="{loc:Tr · 多标签页与可拖拽分屏}" Classes="shortcutdesc" />
           <TextBlock Grid.Column="1" Text="{loc:Tr · 本地、FTP/FTPS、SFTP、SMB、WebDAV}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="1" Text="{loc:Tr · 跨文件系统复制、移动与传输队列}" Classes="shortcutdesc" />
@@ -49,12 +49,13 @@
           <TextBlock Grid.Row="2" Grid.Column="1" Text="{loc:Tr · SHA-256 校验和与权限查看}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="3" Text="{loc:Tr · 递归搜索、自然排序、缩略图}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="3" Grid.Column="1" Text="{loc:Tr · 空格快速预览与命令面板}" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="4" Text="{loc:Tr · 常驻预览面板（F3，右侧或底部）}" Classes="shortcutdesc" />
         </Grid>
 
         <Border Classes="divider" />
 
         <TextBlock Text="{loc:Tr 快捷键}" Classes="section" />
-        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
               ColumnSpacing="18" RowSpacing="6">
           <TextBlock Text="Ctrl+T" Classes="shortcut" /><TextBlock Grid.Column="1" Text="{loc:Tr 新建标签页}" Classes="shortcutdesc" />
           <TextBlock Grid.Column="2" Text="Ctrl+W" Classes="shortcut" /><TextBlock Grid.Column="3" Text="{loc:Tr 关闭标签页}" Classes="shortcutdesc" />
@@ -103,6 +104,8 @@
 
           <TextBlock Grid.Row="15" Text="Ctrl+Z" Classes="shortcut" /><TextBlock Grid.Row="15" Grid.Column="1" Text="{loc:Tr 撤销}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="15" Grid.Column="2" Text="Ctrl+Shift+Z" Classes="shortcut" /><TextBlock Grid.Row="15" Grid.Column="3" Text="{loc:Tr 重做}" Classes="shortcutdesc" />
+
+          <TextBlock Grid.Row="16" Text="F3" Classes="shortcut" /><TextBlock Grid.Row="16" Grid.Column="1" Text="{loc:Tr 显示 / 隐藏常驻预览面板}" Classes="shortcutdesc" />
         </Grid>
 
         <Border Classes="divider" />

@@ -1,0 +1,177 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:loc="using:Ordoa.App.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ordoa.App.ViewModels"
+             xmlns:services="using:Ordoa.App.Services"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True"
+             x:Class="Ordoa.App.Views.PreviewPanelView">
+  <UserControl.Styles>
+    <Style Selector="Border.previewpanel">
+      <Setter Property="Background" Value="{DynamicResource SidebarBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    </Style>
+    <Style Selector="Border.previewpanel.right">
+      <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+    <Style Selector="Border.previewpanel.bottom">
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="previewpanel" Classes.right="{Binding IsPreviewPanelAtRight}"
+          Classes.bottom="{Binding IsPreviewPanelAtBottom}">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <Border Grid.Row="0" Padding="12,9,8,8" BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+          <Path Data="{Binding PreviewPanel.Icon}" Width="20" Height="20" Stretch="Uniform"
+                Fill="{Binding PreviewPanel.IconBrush}" VerticalAlignment="Center"
+                IsVisible="{Binding PreviewPanel.IsOpen}" />
+          <Path Data="{StaticResource IconEye}" Width="20" Height="14" Stretch="Uniform"
+                Fill="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"
+                IsVisible="{Binding !PreviewPanel.IsOpen}" />
+
+          <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+            <TextBlock Text="{Binding PreviewPanel.Title}" FontSize="13" FontWeight="SemiBold"
+                       TextTrimming="CharacterEllipsis" IsVisible="{Binding PreviewPanel.IsOpen}" />
+            <TextBlock Text="{loc:Tr 预览面板}" FontSize="13" FontWeight="SemiBold"
+                       IsVisible="{Binding !PreviewPanel.IsOpen}" />
+            <TextBlock Text="{Binding PreviewPanel.Subtitle}" Classes="caption"
+                       TextTrimming="CharacterEllipsis" IsVisible="{Binding PreviewPanel.IsOpen}" />
+            <TextBlock Text="{loc:Tr 按 F3 可显示或隐藏此面板}" Classes="caption"
+                       TextTrimming="CharacterEllipsis" IsVisible="{Binding !PreviewPanel.IsOpen}" />
+          </StackPanel>
+
+          <Button Grid.Column="2" Classes="tool" Width="26" Height="26"
+                  Command="{Binding OpenPreviewPanelItemCommand}"
+                  ToolTip.Tip="{loc:Tr 打开}" IsVisible="{Binding PreviewPanel.IsOpen}">
+            <Path Data="{StaticResource IconOpenExternal}" Width="13" Height="13" Stretch="Uniform"
+                  Fill="{DynamicResource TextSecondaryBrush}" />
+          </Button>
+          <Button Grid.Column="3" Classes="tool" Width="26" Height="26"
+                  Command="{Binding TogglePreviewPanelCommand}"
+                  ToolTip.Tip="{loc:Tr 关闭预览面板 (F3)}">
+            <Path Data="{StaticResource IconClose}" Width="10" Height="10" Stretch="Uniform"
+                  Fill="{DynamicResource TextSecondaryBrush}" />
+          </Button>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Row="1" RowDefinitions="*,Auto" Margin="10,8,10,0">
+        <Border Grid.Row="0" Background="{DynamicResource SurfaceAltBrush}" CornerRadius="8"
+                ClipToBounds="True">
+          <Panel>
+            <StackPanel IsVisible="{Binding !PreviewPanel.IsOpen}" HorizontalAlignment="Center"
+                        VerticalAlignment="Center" Spacing="9" MaxWidth="260">
+              <Path Data="{StaticResource IconEye}" Width="40" Height="28" Stretch="Uniform"
+                    Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center"
+                    VerticalAlignment="Center" />
+              <TextBlock Text="{loc:Tr 选择一个文件以预览}" Classes="caption" HorizontalAlignment="Center" />
+              <TextBlock Text="{loc:Tr 选中文件后会自动刷新预览}" Classes="tiny" TextAlignment="Center"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Panel IsVisible="{Binding PreviewPanel.IsOpen}">
+              <Image Source="{Binding PreviewPanel.Image}" Stretch="Uniform" Margin="10"
+                     IsVisible="{Binding PreviewPanel.HasImage}" />
+
+              <ScrollViewer IsVisible="{Binding PreviewPanel.HasText}" Padding="10"
+                            HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <SelectableTextBlock Text="{Binding PreviewPanel.Text}"
+                                     FontFamily="{DynamicResource MonoFontFamily}" FontSize="11.5"
+                                     TextWrapping="NoWrap" />
+              </ScrollViewer>
+
+              <ScrollViewer IsVisible="{Binding PreviewPanel.HasRows}"
+                            HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                            Padding="2,4">
+                <ItemsControl ItemsSource="{Binding PreviewPanel.Rows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="services:PreviewRow">
+                      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="8,3">
+                        <Path Data="{Binding Icon}" Width="14" Height="14" Stretch="Uniform"
+                              Fill="{Binding IconBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11.5"
+                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="tiny"
+                                   VerticalAlignment="Center" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+
+              <StackPanel IsVisible="{Binding PreviewPanel.HasError}" HorizontalAlignment="Center"
+                          VerticalAlignment="Center" Spacing="8" MaxWidth="260">
+                <Path Data="{StaticResource IconWarning}" Width="28" Height="28" Stretch="Uniform"
+                      Fill="{DynamicResource WarningBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{loc:Tr 无法生成预览}" Classes="h2" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding PreviewPanel.Error}" Classes="caption" TextAlignment="Center"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+
+              <StackPanel IsVisible="{Binding PreviewPanel.ShowPlaceholder}" HorizontalAlignment="Center"
+                          VerticalAlignment="Center" Spacing="8" MaxWidth="260">
+                <Path Data="{Binding PreviewPanel.Icon}" Width="42" Height="42" Stretch="Uniform"
+                      Fill="{Binding PreviewPanel.IconBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding PreviewPanel.KindLabel}" Classes="h2" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding PreviewPanel.Notice}" Classes="caption" TextAlignment="Center"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+
+              <Border Background="{DynamicResource SurfaceAltBrush}" Opacity="0.9"
+                      IsVisible="{Binding PreviewPanel.IsLoading}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                  <ProgressBar IsIndeterminate="True" Width="100" Height="3" />
+                  <TextBlock Text="{loc:Tr 正在读取…}" Classes="caption" HorizontalAlignment="Center" />
+                </StackPanel>
+              </Border>
+            </Panel>
+          </Panel>
+        </Border>
+
+        <StackPanel Grid.Row="1" Spacing="6">
+          <Border IsVisible="{Binding PreviewPanel.HasDetails}" BorderBrush="{DynamicResource BorderBrush}"
+                  BorderThickness="0,1,0,0" Margin="0,7,0,0" Padding="2,7,2,0">
+            <ScrollViewer MaxHeight="150" HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="6">
+                <TextBlock Text="{loc:Tr 详细信息}" Classes="section" />
+                <ItemsControl ItemsSource="{Binding PreviewPanel.Details}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel ItemSpacing="10" LineSpacing="6" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="services:PreviewDetail">
+                      <StackPanel Width="150" Spacing="1">
+                        <TextBlock Text="{Binding Label}" Classes="tiny" />
+                        <SelectableTextBlock Text="{Binding Value}" FontSize="11.5" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+
+          <Border IsVisible="{Binding PreviewPanel.HasNotice}" Background="{DynamicResource AccentSoftBrush}"
+                  CornerRadius="7" Padding="9,7" Margin="0,2,0,0">
+            <TextBlock Text="{Binding PreviewPanel.Notice}" FontSize="11.5" TextWrapping="Wrap" />
+          </Border>
+        </StackPanel>
+      </Grid>
+
+      <Border Grid.Row="2" Padding="12,7,12,8" BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="0,1,0,0">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <TextBlock Text="{Binding PreviewPanel.PathText}" Classes="tiny"
+                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="F3" Classes="tiny" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

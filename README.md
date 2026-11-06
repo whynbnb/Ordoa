@@ -56,6 +56,7 @@
 ### 快速预览
 
 - 选中文件后按 `Space` 打开快速预览，再按 `Space` / `Esc` 关闭，`Enter` 直接打开文件；右键菜单和命令面板也可进入。
+- 常驻预览面板：按 `F3` 或点击工具栏眼睛图标显示/隐藏，默认关闭；可在设置中选择停靠在右侧或底部，选中文件时自动刷新。
 - 文本、源码、配置、CSV、SVG 等按文本读取，限制读取大小，自动识别 UTF-8 / UTF-16 / UTF-32 / GB18030，并提供文件名、编码、行数等信息。
 - 图片使用 Avalonia / Skia 原生解码，并用纯托管 [SimdCodecs](https://www.nuget.org/packages/Sdcb.SimdCodecs) 补充 TIFF、JPEG 2000、QOI、Netpbm 等格式；支持 EXIF 方向、缩放与动图首帧。
 - 视频显示首帧缩略图与时长、分辨率、编码、码率、音轨等信息；音频显示容器、时长、编码、采样率与声道。二者通过可选的 ffmpeg / ffprobe 完成，软件不附带它们。
@@ -300,6 +301,7 @@ chmod +x scripts/install-arch.sh scripts/uninstall-arch.sh
 | `Ctrl+Shift+P` | 命令面板 |
 | `Ctrl+,` | 设置 |
 | `Space` | 快速预览选中的文件 / 关闭预览 |
+| `F3` | 显示 / 隐藏常驻预览面板 |
 | `Enter` / `Esc` | 预览中打开文件 / 关闭预览 |
 | `Enter` / `Backspace` | 打开 / 上一级 |
 | `Alt+←` / `Alt+→` / `Alt+↑` | 后退 / 前进 / 上一级 |
@@ -400,7 +402,7 @@ tests/Ordoa.Core.Tests
 - SSH 私钥 / Agent 认证与 known_hosts 集成
 - SMB 加密共享、DFS 与端口配置
 - 网格视图虚拟化
-- 文件比较、常驻预览面板
+- 文件比较
 - Wayland 下的 CSD 细节与 KDE 全局菜单
 
 ## 致谢

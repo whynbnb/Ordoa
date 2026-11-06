@@ -635,6 +635,10 @@ public partial class MainWindow : Window
                     Run(active.RenameAsync);
                 e.Handled = true;
                 break;
+            case Key.F3:
+                _viewModel.TogglePreviewPanelCommand.Execute(null);
+                e.Handled = true;
+                break;
             case Key.F5:
                 if (active is not null)
                     Run(active.RefreshAsync);

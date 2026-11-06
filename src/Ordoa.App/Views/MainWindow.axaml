@@ -184,6 +184,12 @@
                     Fill="{DynamicResource TextSecondaryBrush}" />
             </Button>
 
+            <Button Classes="tool" Command="{Binding TogglePreviewPanelCommand}"
+                    ToolTip.Tip="{loc:Tr 预览面板 (F3)}" Width="28" Height="28">
+              <Path Data="{StaticResource IconEye}" Width="15" Height="10.5" Stretch="Uniform"
+                    VerticalAlignment="Center" Fill="{DynamicResource TextSecondaryBrush}" />
+            </Button>
+
             <Panel Margin="3,0,0,0">
               <Button Classes="tool" Command="{Binding ToggleTransferPanelCommand}" ToolTip.Tip="{loc:Tr 传输队列}"
                       Width="28" Height="28">
@@ -251,7 +257,19 @@
         </Grid>
       </Border>
 
-      <ContentControl Grid.Row="1" Content="{Binding ActiveTab}" />
+      <Grid Grid.Row="1" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+        <ContentControl Grid.Row="0" Grid.Column="0" Content="{Binding ActiveTab}" />
+
+        <ContentControl Grid.Row="0" Grid.Column="1" Width="340"
+                        IsVisible="{Binding ShowPreviewPanelRight}">
+          <views:PreviewPanelView />
+        </ContentControl>
+
+        <ContentControl Grid.Row="1" Grid.Column="0" Height="300"
+                        IsVisible="{Binding ShowPreviewPanelBottom}">
+          <views:PreviewPanelView />
+        </ContentControl>
+      </Grid>
 
       <views:TransferPanelView Grid.Row="2" IsVisible="{Binding IsTransferPanelOpen}"
                                DataContext="{Binding}" />
