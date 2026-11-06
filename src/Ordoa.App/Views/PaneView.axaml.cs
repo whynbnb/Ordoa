@@ -781,6 +781,8 @@ public partial class PaneView : UserControl
     private void OnCompressTarClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CompressAsync(true));
     private void OnExtractClick(object? sender, RoutedEventArgs e) => Run(pane => pane.ExtractAsync());
     private void OnChecksumClick(object? sender, RoutedEventArgs e) => Run(pane => pane.ChecksumAsync());
+    private void OnDiskUsageClick(object? sender, RoutedEventArgs e) => Run(pane => pane.AnalyzeDiskUsageAsync());
+    private void OnDuplicateFinderClick(object? sender, RoutedEventArgs e) => Run(pane => pane.FindDuplicateFilesAsync());
     private void OnOpenTerminalClick(object? sender, RoutedEventArgs e) => Run(pane => pane.OpenTerminalAsync());
     private void OnCopyPathClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CopyPathAsync());
     private void OnPropertiesClick(object? sender, RoutedEventArgs e) => Run(pane => pane.PropertiesAsync());
@@ -846,6 +848,10 @@ public partial class PaneView : UserControl
         menu.Items.Add(MenuItem(L10n.T("压缩为 tar.gz"), () => pane.CompressAsync(true), pane.CanCompress));
         menu.Items.Add(MenuItem(L10n.T("解压到此处"), pane.ExtractAsync, pane.CanExtract));
         menu.Items.Add(MenuItem(L10n.T("计算 SHA-256"), pane.ChecksumAsync, pane.CanChecksum));
+        var analysisMenu = new MenuItem { Header = L10n.T("分析工具") };
+        analysisMenu.Items.Add(MenuItem(L10n.T("磁盘占用分析"), pane.AnalyzeDiskUsageAsync, pane.CanAnalyze));
+        analysisMenu.Items.Add(MenuItem(L10n.T("查找重复文件"), pane.FindDuplicateFilesAsync, pane.CanAnalyze));
+        menu.Items.Add(analysisMenu);
         menu.Items.Add(new Separator());
         AddTerminalMenuItems(menu, pane);
         AddCustomCommandMenuItems(menu, pane);

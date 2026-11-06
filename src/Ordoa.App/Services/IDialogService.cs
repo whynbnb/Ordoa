@@ -21,4 +21,6 @@ public interface IDialogService
     Task ShowAboutAsync();
     Task<ConflictChoice> ResolveConflictAsync(ConflictInfo info, CancellationToken cancellationToken = default);
     Task ShowErrorAsync(string title, string message);
+    Task ShowDiskUsageAsync(string path);
+    Task ShowDuplicateFinderAsync(string path);
 }

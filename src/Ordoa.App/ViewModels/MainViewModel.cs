@@ -963,6 +963,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return Task.CompletedTask;
     }
 
+    public Task AnalyzeDiskUsageForSidebarEntryAsync(SidebarEntryViewModel entry)
+    {
+        var path = entry.VolumeMountPoint ?? entry.Path;
+        return string.IsNullOrEmpty(path)
+            ? Task.CompletedTask
+            : _services.Dialogs.ShowDiskUsageAsync(path);
+    }
+
+    public Task FindDuplicatesForSidebarEntryAsync(SidebarEntryViewModel entry)
+    {
+        var path = entry.VolumeMountPoint ?? entry.Path;
+        return string.IsNullOrEmpty(path)
+            ? Task.CompletedTask
+            : _services.Dialogs.ShowDuplicateFinderAsync(path);
+    }
+
     private async Task<IFileSystem?> ResolveSidebarFileSystemAsync(SidebarEntryViewModel entry)
     {
         if (entry.FileSystemId is null or "local")
@@ -1968,6 +1984,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         });
         Add(L10n.T("属性"), L10n.T("查看选中项目的详细信息"), "Alt+Enter", "IconInfo", () => PaneAction(p => p.PropertiesAsync()));
         Add(L10n.T("计算 SHA-256"), L10n.T("计算选中文件的校验和"), null, "IconCheckCircle", () => PaneAction(p => p.ChecksumAsync()));
+        Add(L10n.T("磁盘占用分析"), L10n.T("用树图查看当前文件夹的空间占用"), null, "IconDisk", () => PaneAction(p => p.AnalyzeDiskUsageAsync()));
+        Add(L10n.T("查找重复文件"), L10n.T("按内容查找当前文件夹中的重复文件"), null, "IconCopy", () => PaneAction(p => p.FindDuplicateFilesAsync()));
         Add(L10n.T("压缩为 ZIP"), L10n.T("将选中的项目压缩为 zip"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(false)));
         Add(L10n.T("压缩为 tar.gz"), L10n.T("将选中的项目压缩为 tar.gz"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(true)));
         Add(L10n.T("解压到此处"), L10n.T("解压选中的压缩包"), null, "IconDownload", () => PaneAction(p => p.ExtractAsync()));

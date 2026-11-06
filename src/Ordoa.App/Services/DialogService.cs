@@ -183,6 +183,30 @@ public sealed class DialogService : IDialogService
         }
     }
 
+    public async Task ShowDiskUsageAsync(string path)
+    {
+        if (!TryPrepareDialog("diskusage", out var owner))
+            return;
+
+        var viewModel = new DiskUsageDialogViewModel(path);
+        var window = new DiskUsageWindow { DataContext = viewModel };
+        await ShowDialogAsync("diskusage", window, owner).ConfigureAwait(true);
+    }
+
+    public async Task ShowDuplicateFinderAsync(string path)
+    {
+        if (!TryPrepareDialog("duplicates", out var owner))
+            return;
+
+        var services = App.Services;
+        if (services is null)
+            return;
+
+        var viewModel = new DuplicateFinderDialogViewModel(path, services.Dialogs, services.Trash);
+        var window = new DuplicateFinderWindow { DataContext = viewModel };
+        await ShowDialogAsync("duplicates", window, owner).ConfigureAwait(true);
+    }
+
     public async Task ShowErrorAsync(string title, string message)
     {
         var kind = "error:" + title;

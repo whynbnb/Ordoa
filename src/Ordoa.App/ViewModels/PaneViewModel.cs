@@ -343,6 +343,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanOpenInNewWindow => HasSelection && SelectedCount == 1 && !IsTrash &&
                                       FileSystem.IsLocal && _services.Settings.Current.AllowMultipleWindows;
     public bool CanOpenTerminal => FileSystem.IsLocal && !IsTrash;
+    public bool CanAnalyze => FileSystem.IsLocal && !IsTrash;
     public string TerminalTargetPath =>
         SelectedCount == 1 && PrimarySelection is { IsDirectory: true } selected
             ? selected.Path
@@ -1344,6 +1345,26 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (!success)
             Toast(L10n.T("无法打开 Herdr"), L10n.T("请确认已安装 herdr，并且当前终端支持运行命令"), true);
         return Task.CompletedTask;
+    }
+
+    public async Task AnalyzeDiskUsageAsync()
+    {
+        if (!CanAnalyze)
+        {
+            Toast(L10n.T("无法分析"), L10n.T("仅支持本地文件夹"), true);
+            return;
+        }
+        await _services.Dialogs.ShowDiskUsageAsync(TerminalTargetPath).ConfigureAwait(true);
+    }
+
+    public async Task FindDuplicateFilesAsync()
+    {
+        if (!CanAnalyze)
+        {
+            Toast(L10n.T("无法分析"), L10n.T("仅支持本地文件夹"), true);
+            return;
+        }
+        await _services.Dialogs.ShowDuplicateFinderAsync(TerminalTargetPath).ConfigureAwait(true);
     }
 
     public Task RunCustomCommandAsync(string id)

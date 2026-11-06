@@ -193,6 +193,10 @@
               <MenuItem Header="{loc:Tr 压缩为 tar.gz}" Click="OnCompressTarClick" />
               <MenuItem Header="{loc:Tr 解压到此处}" Click="OnExtractClick" />
               <MenuItem Header="{loc:Tr 计算 SHA-256}" Click="OnChecksumClick" />
+              <MenuItem Header="{loc:Tr 分析工具}">
+                <MenuItem Header="{loc:Tr 磁盘占用分析}" Click="OnDiskUsageClick" />
+                <MenuItem Header="{loc:Tr 查找重复文件}" Click="OnDuplicateFinderClick" />
+              </MenuItem>
               <Separator />
               <MenuItem Header="{loc:Tr 切换列表 / 网格}" Click="OnToggleViewClick" />
               <MenuItem Header="{loc:Tr 切换分屏}" Click="OnToggleSplitClick" />

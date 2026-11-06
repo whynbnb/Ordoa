@@ -163,6 +163,12 @@ public partial class SidebarView : UserControl
             menu.Items.Add(new Separator());
             AddTerminalMenu(menu, vm, entry);
             AddCustomCommandMenu(menu, vm, entry);
+            var analysisMenu = new MenuItem { Header = L10n.T("分析工具") };
+            analysisMenu.Items.Add(CreateItem(L10n.T("磁盘占用分析"),
+                () => vm.AnalyzeDiskUsageForSidebarEntryAsync(entry)));
+            analysisMenu.Items.Add(CreateItem(L10n.T("查找重复文件"),
+                () => vm.FindDuplicatesForSidebarEntryAsync(entry)));
+            menu.Items.Add(analysisMenu);
         }
 
         if (entry.Kind == SidebarEntryKind.Bookmark)
