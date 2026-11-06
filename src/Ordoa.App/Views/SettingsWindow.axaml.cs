@@ -136,17 +136,11 @@ public partial class SettingsWindow : Window
         if (profile is null)
             return;
 
-        var confirm = new ConfirmWindow
-        {
-            DataContext = new ConfirmDialogViewModel
-            {
-                TitleText = L10n.T("删除远程连接？"),
-                Message = L10n.Format("将删除连接“{0}”及其保存的密码。", profile.Name),
-                ConfirmText = L10n.T("删除"),
-                Destructive = true,
-            },
-        };
-        if (!await confirm.ShowDialog<bool>(this))
+        var confirmed = await services.Dialogs.ConfirmAsync(
+            L10n.T("删除远程连接？"),
+            L10n.Format("将删除连接“{0}”及其保存的密码。", profile.Name),
+            L10n.T("删除"), destructive: true);
+        if (!confirmed)
             return;
 
         await services.FileSystems.RemoveProfileAsync(id);

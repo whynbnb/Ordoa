@@ -12,17 +12,33 @@ namespace Ordoa.App.Services;
 public sealed class DialogService : IDialogService
 {
     private readonly Func<Window?> _ownerProvider;
+    private readonly List<(string Kind, Window Window)> _openDialogs = [];
+    private readonly SemaphoreSlim _conflictGate = new(1, 1);
 
     public DialogService(Func<Window?> ownerProvider)
     {
         _ownerProvider = ownerProvider;
     }
 
+    /// <summary>True while a dialog owned by the given main window is visible.</summary>
+    public bool HasOpenDialogFor(Window owner)
+    {
+        foreach (var entry in _openDialogs)
+        {
+            if (entry.Window.IsVisible && IsOwnedBy(entry.Window, owner))
+                return true;
+        }
+
+        return false;
+    }
+
     public async Task<ConnectionDialogResult?> ShowConnectionAsync(ConnectionProfile? preset = null)
     {
-        var owner = _ownerProvider();
+        if (!TryPrepareDialog("connection", out var owner))
+            return null;
+
         var services = App.Services;
-        if (owner is null || services is null)
+        if (services is null)
             return null;
 
         string? password = null;
@@ -34,13 +50,12 @@ public sealed class DialogService : IDialogService
 
         var viewModel = new ConnectionDialogViewModel(preset, password, services.FileSystems);
         var window = new ConnectionWindow { DataContext = viewModel };
-        return await window.ShowDialog<ConnectionDialogResult?>(owner);
+        return await ShowDialogAsync<ConnectionDialogResult>("connection", window, owner).ConfigureAwait(true);
     }
 
     public async Task<bool> ConfirmAsync(string title, string message, string? confirmText = null, bool destructive = false)
     {
-        var owner = _ownerProvider();
-        if (owner is null)
+        if (!TryPrepareDialog("confirm", out var owner))
             return false;
 
         confirmText ??= L10n.T("确定");
@@ -54,120 +69,128 @@ public sealed class DialogService : IDialogService
                 Destructive = destructive,
             },
         };
-        return await window.ShowDialog<bool>(owner);
+        return await ShowDialogAsync<bool?>("confirm", window, owner).ConfigureAwait(true) ?? false;
     }
 
     public async Task<string?> PromptAsync(string title, string label, string initial = "",
         Func<string, string?>? validate = null)
     {
-        var owner = _ownerProvider();
-        if (owner is null)
+        if (!TryPrepareDialog("prompt", out var owner))
             return null;
 
         var window = new TextPromptWindow
         {
             DataContext = new PromptDialogViewModel(title, label, initial, validate),
         };
-        return await window.ShowDialog<string?>(owner);
+        return await ShowDialogAsync<string>("prompt", window, owner).ConfigureAwait(true);
     }
 
     public async Task ShowPropertiesAsync(FileEntry entry, IFileSystem fileSystem)
     {
-        var owner = _ownerProvider();
-        if (owner is null)
+        if (!TryPrepareDialog("properties", out var owner))
             return;
 
         var viewModel = new PropertiesDialogViewModel(entry, fileSystem);
         var window = new PropertiesWindow { DataContext = viewModel };
-        await window.ShowDialog(owner);
+        await ShowDialogAsync("properties", window, owner).ConfigureAwait(true);
     }
 
     public async Task ShowChecksumAsync(IReadOnlyList<OperationSource> sources)
     {
-        var owner = _ownerProvider();
+        if (!TryPrepareDialog("checksum", out var owner))
+            return;
+
         var services = App.Services;
-        if (owner is null || services is null || sources.Count == 0)
+        if (services is null || sources.Count == 0)
             return;
 
         var viewModel = new ChecksumDialogViewModel(sources, services.Clipboard);
         var window = new ChecksumWindow { DataContext = viewModel };
-        await window.ShowDialog(owner);
+        await ShowDialogAsync("checksum", window, owner).ConfigureAwait(true);
     }
 
     public async Task<OpenWithChoice?> ShowOpenWithAsync(FileEntry entry,
         IReadOnlyList<DesktopApplication> applications, string? currentDefaultId)
     {
-        var owner = _ownerProvider();
-        if (owner is null)
+        if (!TryPrepareDialog("openwith", out var owner))
             return null;
 
         var viewModel = new OpenWithDialogViewModel(entry, applications, currentDefaultId);
         var window = new OpenWithWindow { DataContext = viewModel };
-        return await window.ShowDialog<OpenWithChoice?>(owner);
+        return await ShowDialogAsync<OpenWithChoice>("openwith", window, owner).ConfigureAwait(true);
     }
 
     public async Task<BatchRenamePlan?> ShowBatchRenameAsync(BatchRenameRequest request)
     {
-        var owner = _ownerProvider();
-        if (owner is null)
+        if (!TryPrepareDialog("batchrename", out var owner))
             return null;
 
         var viewModel = new BatchRenameDialogViewModel(request);
         var window = new BatchRenameWindow { DataContext = viewModel };
-        return await window.ShowDialog<BatchRenamePlan?>(owner);
+        return await ShowDialogAsync<BatchRenamePlan>("batchrename", window, owner).ConfigureAwait(true);
     }
 
     public async Task<AppSettings?> ShowSettingsAsync(AppSettings current)
     {
-        var owner = _ownerProvider();
-        if (owner is null)
+        if (!TryPrepareDialog("settings", out var owner))
             return null;
 
         var viewModel = new SettingsDialogViewModel(current, App.Services?.FileSystems);
         var window = new SettingsWindow { DataContext = viewModel };
-        return await window.ShowDialog<AppSettings?>(owner);
+        return await ShowDialogAsync<AppSettings>("settings", window, owner).ConfigureAwait(true);
     }
 
     public async Task ShowAboutAsync()
     {
-        var owner = _ownerProvider();
-        if (owner is null)
+        if (!TryPrepareDialog("about", out var owner))
             return;
 
         var window = new AboutWindow { DataContext = new AboutDialogViewModel() };
-        await window.ShowDialog(owner);
+        await ShowDialogAsync("about", window, owner).ConfigureAwait(true);
     }
 
     public async Task<ConflictChoice> ResolveConflictAsync(ConflictInfo info, CancellationToken cancellationToken = default)
     {
-        var owner = _ownerProvider();
-        if (owner is null)
-            return ConflictChoice.Rename;
-
-        var viewModel = new ConflictDialogViewModel
+        // Concurrent operations may need a conflict decision at the same
+        // time. Serialize them instead of stacking modal dialogs.
+        await _conflictGate.WaitAsync(cancellationToken).ConfigureAwait(true);
+        try
         {
-            Name = info.Name,
-            SourcePath = info.SourcePath,
-            DestinationPath = info.DestinationPath,
-            SourceIsDirectory = info.SourceIsDirectory,
-            DestinationIsDirectory = info.DestinationIsDirectory,
-            SourceSizeText = info.SourceIsDirectory ? L10n.T("文件夹") : Humanize.Size(info.SourceSize),
-            DestinationSizeText = info.DestinationIsDirectory ? L10n.T("文件夹")
-                : info.DestinationSize is { } size ? Humanize.Size(size) : L10n.T("未知"),
-            SourceKindText = info.SourceIsDirectory ? L10n.T("文件夹") : L10n.T("文件"),
-            DestinationKindText = info.DestinationIsDirectory ? L10n.T("文件夹") : L10n.T("文件"),
-        };
+            if (!TryPrepareDialog("conflict", out var owner))
+                return ConflictChoice.Rename;
 
-        var window = new ConflictWindow { DataContext = viewModel };
-        var result = await window.ShowDialog<ConflictChoice?>(owner);
-        return result ?? ConflictChoice.Cancel;
+            var viewModel = new ConflictDialogViewModel
+            {
+                Name = info.Name,
+                SourcePath = info.SourcePath,
+                DestinationPath = info.DestinationPath,
+                SourceIsDirectory = info.SourceIsDirectory,
+                DestinationIsDirectory = info.DestinationIsDirectory,
+                SourceSizeText = info.SourceIsDirectory ? L10n.T("文件夹") : Humanize.Size(info.SourceSize),
+                DestinationSizeText = info.DestinationIsDirectory ? L10n.T("文件夹")
+                    : info.DestinationSize is { } size ? Humanize.Size(size) : L10n.T("未知"),
+                SourceKindText = info.SourceIsDirectory ? L10n.T("文件夹") : L10n.T("文件"),
+                DestinationKindText = info.DestinationIsDirectory ? L10n.T("文件夹") : L10n.T("文件"),
+            };
+
+            var window = new ConflictWindow { DataContext = viewModel };
+            var result = await ShowDialogAsync<ConflictChoice?>("conflict", window, owner).ConfigureAwait(true);
+            return result ?? ConflictChoice.Cancel;
+        }
+        finally
+        {
+            _conflictGate.Release();
+        }
     }
 
     public async Task ShowErrorAsync(string title, string message)
     {
-        var owner = _ownerProvider();
-        if (owner is null)
+        var kind = "error:" + title;
+        if (!TryPrepareDialog(kind, out var owner))
+        {
+            Log.Warn($"已有同类错误对话框或没有可用窗口，忽略新的错误: {title} - {message}");
             return;
+        }
 
         var window = new ConfirmWindow
         {
@@ -181,6 +204,95 @@ public sealed class DialogService : IDialogService
                 Destructive = true,
             },
         };
-        await window.ShowDialog<bool>(owner);
+        await ShowDialogAsync<bool?>(kind, window, owner).ConfigureAwait(true);
+    }
+
+    private bool TryPrepareDialog(string kind, out Window owner)
+    {
+        owner = null!;
+        var root = _ownerProvider();
+        if (root is null)
+            return false;
+
+        if (TryActivateOpen(kind, root))
+            return false;
+
+        owner = ResolveOwner(root);
+        return true;
+    }
+
+    private Window ResolveOwner(Window root)
+    {
+        // Keep nested dialogs above the dialog that requested them, but only
+        // consider dialogs owned by this main window.
+        for (var i = _openDialogs.Count - 1; i >= 0; i--)
+        {
+            var dialog = _openDialogs[i].Window;
+            if (dialog.IsVisible && IsOwnedBy(dialog, root))
+                return dialog;
+        }
+
+        return root;
+    }
+
+    private static bool IsOwnedBy(Window dialog, Window root)
+    {
+        for (var current = dialog.Owner; current is not null; current = current.Owner)
+        {
+            if (ReferenceEquals(current, root))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool TryActivateOpen(string kind, Window root)
+    {
+        for (var i = _openDialogs.Count - 1; i >= 0; i--)
+        {
+            var entry = _openDialogs[i];
+            if (entry.Kind == kind && entry.Window.IsVisible && IsOwnedBy(entry.Window, root))
+            {
+                entry.Window.Activate();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private async Task<TResult?> ShowDialogAsync<TResult>(string kind, Window dialog, Window owner)
+    {
+        _openDialogs.Add((kind, dialog));
+        try
+        {
+            return await dialog.ShowDialog<TResult?>(owner).ConfigureAwait(true);
+        }
+        finally
+        {
+            RemoveDialog(dialog);
+        }
+    }
+
+    private async Task ShowDialogAsync(string kind, Window dialog, Window owner)
+    {
+        _openDialogs.Add((kind, dialog));
+        try
+        {
+            await dialog.ShowDialog(owner).ConfigureAwait(true);
+        }
+        finally
+        {
+            RemoveDialog(dialog);
+        }
+    }
+
+    private void RemoveDialog(Window dialog)
+    {
+        for (var i = _openDialogs.Count - 1; i >= 0; i--)
+        {
+            if (ReferenceEquals(_openDialogs[i].Window, dialog))
+                _openDialogs.RemoveAt(i);
+        }
     }
 }

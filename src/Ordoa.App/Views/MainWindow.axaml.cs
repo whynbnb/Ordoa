@@ -23,7 +23,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        WindowAppearance.Apply(this);
+        WindowAppearance.Apply(this, guardInitialKeys: false);
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         Opened += OnOpened;
@@ -381,6 +381,11 @@ public partial class MainWindow : Window
     private async void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
         if (_viewModel is null)
+            return;
+
+        // Modal dialogs own the keyboard; never run main-window shortcuts
+        // behind them (which used to open duplicate dialogs on key repeat).
+        if (App.Services?.Dialogs.HasOpenDialogFor(this) == true)
             return;
 
         var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
