@@ -121,6 +121,8 @@ public sealed class GitRepositoryStatus
         new HashSet<string>(StringComparer.Ordinal);
     public IReadOnlySet<string> SubmodulePaths { get; init; } =
         new HashSet<string>(StringComparer.Ordinal);
+    public IReadOnlySet<string> TrackedDirectories { get; init; } =
+        new HashSet<string>(StringComparer.Ordinal);
 
     public int ChangedCount => Files.Count;
     public int StagedCount => Files.Count(file => file.IsStaged);
@@ -319,6 +321,24 @@ public static class GitService
             }
         }
 
+        var trackedDirectories = new HashSet<string>(comparer);
+        foreach (var path in tracked)
+        {
+            var directory = submodules.Contains(path) ? path : Path.GetDirectoryName(path);
+            while (!string.IsNullOrEmpty(directory) &&
+                   directory.StartsWith(root, comparer == StringComparer.Ordinal
+                       ? StringComparison.Ordinal
+                       : StringComparison.OrdinalIgnoreCase))
+            {
+                if (!trackedDirectories.Add(Path.TrimEndingDirectorySeparator(directory)))
+                    break;
+                var parent = Path.GetDirectoryName(directory);
+                if (string.Equals(parent, directory, StringComparison.Ordinal))
+                    break;
+                directory = parent;
+            }
+        }
+
         var ignored = new HashSet<string>(comparer);
         var ignoredDirectories = new HashSet<string>(comparer);
         if (!string.IsNullOrEmpty(ignoredOutput))
@@ -355,6 +375,7 @@ public static class GitService
             IgnoredPaths = ignored,
             IgnoredDirectories = ignoredDirectories,
             SubmodulePaths = submodules,
+            TrackedDirectories = trackedDirectories,
         };
     }
 

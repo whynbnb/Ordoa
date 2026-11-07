@@ -81,6 +81,7 @@ public sealed class GitServiceTests : IDisposable
         var status = await GitService.GetStatusAsync(_root);
         Assert.NotNull(status);
         Assert.Contains(Path.Combine(_root, "clean.txt"), status.TrackedPaths);
+        Assert.Contains(Path.TrimEndingDirectorySeparator(_root), status.TrackedDirectories);
         Assert.Contains(Path.Combine(_root, "ignored.txt"), status.IgnoredPaths);
         Assert.Contains(Path.Combine(_root, "module"), status.SubmodulePaths);
     }

@@ -697,13 +697,13 @@
                           IsChecked="{Binding ShowGitStatusBar, Mode=TwoWay}" />
                 <CheckBox Content="{loc:Tr 在文件和文件夹上显示 Git 标记}"
                           IsChecked="{Binding ShowGitFileBadges, Mode=TwoWay}" />
-                <CheckBox Content="{loc:Tr 已跟踪且无变更的文件显示绿色勾}"
+                <CheckBox Content="{loc:Tr 已跟踪且无变更的文件/文件夹显示绿色勾}"
                           IsChecked="{Binding ShowGitCleanCheck, Mode=TwoWay}" />
                 <CheckBox Content="{loc:Tr 在文件夹外显示 Git 仓库标记}"
                           IsChecked="{Binding ShowGitRepositoryBadges, Mode=TwoWay}" />
                 <CheckBox Content="{loc:Tr 显示子模块特殊标记}"
                           IsChecked="{Binding ShowGitSubmoduleBadges, Mode=TwoWay}" />
-                <CheckBox Content="{loc:Tr 淡显被 Git 忽略的文件}"
+                <CheckBox Content="{loc:Tr 淡显被 Git 忽略的文件（显示 I 标记）}"
                           IsChecked="{Binding DimGitIgnored, Mode=TwoWay}" />
               </StackPanel>
             </StackPanel>

@@ -611,10 +611,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                           status?.IgnoredDirectories.Any(directory => IsUnder(itemPath, directory)) == true);
             var submodule = enabled && (status?.SubmodulePaths.Contains(itemPath) == true ||
                                         change?.IsSubmodule == true);
-            var trackedClean = enabled && !item.IsDirectory && change is null &&
-                               status?.TrackedPaths.Contains(itemPath) == true;
             var directoryDirty = enabled && item.IsDirectory && status is not null &&
                                  status.ChangedDirectories.Contains(itemPath);
+            var trackedClean = enabled && change is null && !ignored && !submodule &&
+                               (item.IsDirectory
+                                   ? status?.TrackedDirectories.Contains(itemPath) == true && !directoryDirty
+                                   : status?.TrackedPaths.Contains(itemPath) == true);
             item.SetGitState(change, directoryDirty, trackedClean, ignored, repository, submodule);
         }
 

@@ -92,12 +92,12 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     public bool IsGitDirectoryDirty => _isGitDirectoryDirty;
     public bool IsGitIgnored => _isGitIgnored;
+    public bool IsGitIgnoredDimmed => _isGitIgnored && _dimGitIgnored;
     public bool IsGitRepository => _isGitRepository;
     public bool IsGitSubmodule => _isGitSubmodule;
-    public bool IsDimmed => IsHidden || _dimGitIgnored && _isGitIgnored;
 
     public bool ShowGitBadge => _gitBadgesVisible &&
-        (_gitChange is not null || _isGitDirectoryDirty ||
+        (_gitChange is not null || _isGitDirectoryDirty || _isGitIgnored ||
          _showGitClean && _isGitTrackedClean ||
          _showGitRepository && _isGitRepository ||
          _showGitSubmodule && _isGitSubmodule);
@@ -112,6 +112,8 @@ public sealed partial class FileItemViewModel : ObservableObject
                 return "GIT";
             if (_gitChange is not null)
                 return _gitChange.Code;
+            if (_isGitIgnored)
+                return "I";
             if (_showGitClean && _isGitTrackedClean)
                 return "✓";
             return _isGitDirectoryDirty ? "●" : string.Empty;
@@ -128,6 +130,8 @@ public sealed partial class FileItemViewModel : ObservableObject
                 return _gitChange is not null ? BrushFor(_gitChange) : GitBrushes.Repository;
             if (_gitChange is not null)
                 return BrushFor(_gitChange);
+            if (_isGitIgnored)
+                return GitBrushes.Ignored;
             if (_isGitTrackedClean)
                 return GitBrushes.Added;
             return _isGitDirectoryDirty ? GitBrushes.Modified : null;
@@ -190,7 +194,6 @@ public sealed partial class FileItemViewModel : ObservableObject
         _showGitSubmodule = submoduleBadges;
         _dimGitIgnored = dimIgnored;
         NotifyGitChanged();
-        OnPropertyChanged(nameof(IsDimmed));
     }
 
     private void NotifyGitChanged()
@@ -198,6 +201,7 @@ public sealed partial class FileItemViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowGitBadge));
         OnPropertyChanged(nameof(IsGitDirectoryDirty));
         OnPropertyChanged(nameof(IsGitIgnored));
+        OnPropertyChanged(nameof(IsGitIgnoredDimmed));
         OnPropertyChanged(nameof(IsGitRepository));
         OnPropertyChanged(nameof(IsGitSubmodule));
         OnPropertyChanged(nameof(GitBadgeText));
@@ -228,4 +232,5 @@ internal static class GitBrushes
     public static readonly IBrush Renamed = new SolidColorBrush(Color.Parse("#5A9BD5"));
     public static readonly IBrush Submodule = new SolidColorBrush(Color.Parse("#8E6AD6"));
     public static readonly IBrush Repository = new SolidColorBrush(Color.Parse("#6A5ACD"));
+    public static readonly IBrush Ignored = new SolidColorBrush(Color.Parse("#7D8794"));
 }
