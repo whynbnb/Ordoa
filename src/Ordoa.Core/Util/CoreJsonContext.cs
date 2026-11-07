@@ -21,6 +21,10 @@ namespace Ordoa.Core.Util;
 [JsonSerializable(typeof(SessionState))]
 [JsonSerializable(typeof(List<Bookmark>))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
+[JsonSerializable(typeof(Dictionary<string, Ordoa.Core.Models.FileTagInfo>))]
+[JsonSerializable(typeof(Ordoa.Core.Models.FileTagInfo))]
+[JsonSerializable(typeof(List<Ordoa.Core.Models.FileTagInfo>))]
+[JsonSerializable(typeof(List<SavedWorkspace>))]
 internal sealed partial class CoreJsonContext : JsonSerializerContext
 {
 }

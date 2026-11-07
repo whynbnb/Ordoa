@@ -61,6 +61,67 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     public Thickness Indent => new(Depth * 16 + 2, 0, 0, 0);
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasTagColor))]
+    [NotifyPropertyChangedFor(nameof(TagTooltip))]
+    private IBrush? _tagBrush;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasTags))]
+    [NotifyPropertyChangedFor(nameof(TagTooltip))]
+    private string _tagsText = string.Empty;
+
+    public bool HasTagColor => TagBrush is not null;
+    public bool HasTags => TagsText.Length > 0;
+
+    public string? TagTooltip
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (HasTagColor)
+            {
+                parts.Add(L10n.T("颜色") + ": " + TagText);
+            }
+            if (HasTags)
+                parts.Add(L10n.T("标签") + ": " + TagsText);
+            return parts.Count == 0 ? null : string.Join(Environment.NewLine, parts);
+        }
+    }
+
+    private string _tagText = string.Empty;
+
+    public string TagText => _tagText;
+
+    public void ApplyTag(FileColor color, IReadOnlyList<string> tags)
+    {
+        TagBrush = color switch
+        {
+            FileColor.Red => TagBrushes.Red,
+            FileColor.Orange => TagBrushes.Orange,
+            FileColor.Yellow => TagBrushes.Yellow,
+            FileColor.Green => TagBrushes.Green,
+            FileColor.Blue => TagBrushes.Blue,
+            FileColor.Purple => TagBrushes.Purple,
+            FileColor.Gray => TagBrushes.Gray,
+            _ => null,
+        };
+        _tagText = color switch
+        {
+            FileColor.Red => L10n.T("红色"),
+            FileColor.Orange => L10n.T("橙色"),
+            FileColor.Yellow => L10n.T("黄色"),
+            FileColor.Green => L10n.T("绿色"),
+            FileColor.Blue => L10n.T("蓝色"),
+            FileColor.Purple => L10n.T("紫色"),
+            FileColor.Gray => L10n.T("灰色"),
+            _ => string.Empty,
+        };
+        TagsText = string.Join(", ", tags);
+        OnPropertyChanged(nameof(TagText));
+        OnPropertyChanged(nameof(TooltipText));
+    }
+
     public string SizeText => Entry.IsDirectory
         ? FolderSizeText ?? (IsCalculatingFolderSize ? "…" : "—")
         : Humanize.Size(Entry.Size);
@@ -88,6 +149,8 @@ public sealed partial class FileItemViewModel : ObservableObject
                 text += $"\n{L10n.T("所有者")}: {OwnershipText}";
             if (GitTooltip is not null)
                 text += $"\n{GitTooltip}";
+            if (TagTooltip is not null)
+                text += $"\n{TagTooltip}";
             if (Entry.IsDirectory && Entry.OriginalPath is not null)
                 text += "\n" + L10n.Format("原位置: {0}", Entry.OriginalPath);
             return text;
@@ -256,4 +319,15 @@ internal static class GitBrushes
     public static readonly IBrush Submodule = new SolidColorBrush(Color.Parse("#8E6AD6"));
     public static readonly IBrush Repository = new SolidColorBrush(Color.Parse("#6A5ACD"));
     public static readonly IBrush Ignored = new SolidColorBrush(Color.Parse("#7D8794"));
+}
+
+public static class TagBrushes
+{
+    public static readonly IBrush Red = new SolidColorBrush(Color.Parse("#D9534F"));
+    public static readonly IBrush Orange = new SolidColorBrush(Color.Parse("#E58B2A"));
+    public static readonly IBrush Yellow = new SolidColorBrush(Color.Parse("#D8B321"));
+    public static readonly IBrush Green = new SolidColorBrush(Color.Parse("#2E9E5B"));
+    public static readonly IBrush Blue = new SolidColorBrush(Color.Parse("#4A90D9"));
+    public static readonly IBrush Purple = new SolidColorBrush(Color.Parse("#8E6AD6"));
+    public static readonly IBrush Gray = new SolidColorBrush(Color.Parse("#7D8794"));
 }

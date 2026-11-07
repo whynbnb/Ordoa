@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Selection;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -900,6 +901,23 @@ public partial class PaneView : UserControl
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem(L10n.T("重命名"), pane.RenameAsync, pane.CanRename));
         menu.Items.Add(MenuItem(L10n.T("批量重命名"), pane.BatchRenameAsync, pane.CanBatchRename));
+        var tagMenu = new MenuItem { Header = L10n.T("标签与颜色") };
+        tagMenu.Items.Add(MenuItem(L10n.T("无颜色"), () =>
+        {
+            pane.SetSelectionColor(Ordoa.Core.Models.FileColor.None);
+            return Task.CompletedTask;
+        }, pane.CanTag));
+        AddColorItem(tagMenu, pane, L10n.T("红色"), Ordoa.Core.Models.FileColor.Red, TagBrushes.Red);
+        AddColorItem(tagMenu, pane, L10n.T("橙色"), Ordoa.Core.Models.FileColor.Orange, TagBrushes.Orange);
+        AddColorItem(tagMenu, pane, L10n.T("黄色"), Ordoa.Core.Models.FileColor.Yellow, TagBrushes.Yellow);
+        AddColorItem(tagMenu, pane, L10n.T("绿色"), Ordoa.Core.Models.FileColor.Green, TagBrushes.Green);
+        AddColorItem(tagMenu, pane, L10n.T("蓝色"), Ordoa.Core.Models.FileColor.Blue, TagBrushes.Blue);
+        AddColorItem(tagMenu, pane, L10n.T("紫色"), Ordoa.Core.Models.FileColor.Purple, TagBrushes.Purple);
+        AddColorItem(tagMenu, pane, L10n.T("灰色"), Ordoa.Core.Models.FileColor.Gray, TagBrushes.Gray);
+        tagMenu.Items.Add(new Separator());
+        tagMenu.Items.Add(MenuItem(L10n.T("编辑标签…"), pane.EditTagsAsync, pane.CanTag));
+        menu.Items.Add(tagMenu);
+
         var linkMenu = new MenuItem { Header = L10n.T("创建链接") };
         linkMenu.Items.Add(MenuItem(L10n.T("符号链接"), () => pane.CreateSymbolicLinkAsync(false),
             pane.CanCreateLink));
@@ -1015,6 +1033,19 @@ public partial class PaneView : UserControl
         }
 
         menu.Items.Add(submenu);
+    }
+
+    private static void AddColorItem(MenuItem menu, PaneViewModel pane, string label,
+        Ordoa.Core.Models.FileColor color, IBrush brush)
+    {
+        var item = new MenuItem
+        {
+            Header = label,
+            IsEnabled = pane.CanTag,
+            Icon = new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(5), Background = brush },
+        };
+        item.Click += (_, _) => pane.SetSelectionColor(color);
+        menu.Items.Add(item);
     }
 
     private MenuItem MenuItem(string header, Func<Task> action, bool enabled)

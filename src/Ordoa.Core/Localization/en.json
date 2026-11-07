@@ -1163,5 +1163,21 @@
  "可撤销": "Undoable",
  "可重做": "Redoable",
  "查看并执行可撤销和可重做的操作": "View and run undoable and redoable operations",
- "移动": "Move"
+ "移动": "Move",
+ "标签与颜色": "Tags and colors",
+ "无颜色": "No color",
+ "红色": "Red",
+ "橙色": "Orange",
+ "黄色": "Yellow",
+ "绿色": "Green",
+ "蓝色": "Blue",
+ "紫色": "Purple",
+ "灰色": "Gray",
+ "编辑标签": "Edit tags",
+ "标签（用逗号分隔）": "Tags (comma separated)",
+ "标签已更新": "Tags updated",
+ "标签": "Tags",
+ "颜色": "Color",
+ "为选中的文件或文件夹设置标签": "Set tags for selected files or folders",
+ "编辑标签…": "Edit tags…"
 }

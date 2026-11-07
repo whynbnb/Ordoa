@@ -74,6 +74,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         _locationText = BuildEditablePath();
         _services.Settings.Changed += OnSettingsChanged;
         _services.Clipboard.Changed += OnClipboardChanged;
+        _services.Tags.Changed += OnTagsChanged;
     }
 
     public AppServices Services => _services;
@@ -550,6 +551,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                                           _selected.Any(item => item.IsDirectory);
     public bool CanCreateLink => FileSystem.IsLocal && !IsTrash && SelectedCount == 1 &&
                                  PrimarySelection is not null;
+    public bool CanTag => !IsTrash && HasSelection;
     public bool CanEmptyTrash => IsTrash;
     public bool CanSelectAll => VisibleItems.Count > 0;
     public bool CanGoHome => true;
@@ -615,7 +617,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             {
                 if (!ShowHidden && entry.IsHidden)
                     continue;
-                _entries.Add(new FileItemViewModel(entry));
+                var item = new FileItemViewModel(entry);
+                ApplyTagItem(item);
+                _entries.Add(item);
             }
 
             if (IsTree)
@@ -1002,6 +1006,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanExtractTo));
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanCompare));
+        OnPropertyChanged(nameof(CanTag));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -1394,6 +1399,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanExtractTo));
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanCompare));
+        OnPropertyChanged(nameof(CanTag));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -2131,6 +2137,60 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return total;
         }, cancellationToken);
 
+    private void ApplyTagItem(FileItemViewModel item)
+    {
+        var info = _services.Tags.Get(FileSystem, item.Path);
+        item.ApplyTag(info?.Color ?? FileColor.None, info?.Tags ?? []);
+    }
+
+    private void ApplyTagsToItems(IEnumerable<FileItemViewModel> items)
+    {
+        foreach (var item in items)
+            ApplyTagItem(item);
+    }
+
+    private void OnTagsChanged(object? sender, EventArgs e)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => OnTagsChanged(sender, e));
+            return;
+        }
+
+        ApplyTagsToItems(_entries);
+        ApplyTagsToItems(VisibleItems);
+    }
+
+    public void SetSelectionColor(FileColor color)
+    {
+        if (!CanTag)
+            return;
+        var selected = _selected.ToList();
+        foreach (var item in selected)
+            _services.Tags.SetColor(FileSystem, item.Path, color);
+        ApplyTagsToItems(selected);
+    }
+
+    public async Task EditTagsAsync()
+    {
+        if (!CanTag || PrimarySelection is not { } primary)
+            return;
+
+        var current = _services.Tags.Get(FileSystem, primary.Path)?.Tags ?? [];
+        var text = await _services.Dialogs.PromptAsync(
+            L10n.T("编辑标签"), L10n.T("标签（用逗号分隔）"), string.Join(", ", current))
+            .ConfigureAwait(true);
+        if (text is null)
+            return;
+
+        var tags = text.Split([',', '，', ';', '；'], StringSplitOptions.RemoveEmptyEntries);
+        var selected = _selected.ToList();
+        foreach (var item in selected)
+            _services.Tags.SetTags(FileSystem, item.Path, tags);
+        ApplyTagsToItems(selected);
+        Toast(L10n.T("标签已更新"), string.Join(", ", tags), false);
+    }
+
     public void ExitSearch()
     {
         CancelSearch();
@@ -2195,7 +2255,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                     break;
 
                 var parent = FileSystem.GetParent(entry.Path);
-                _searchResults.Add(new FileItemViewModel(entry, FileSystem.GetDisplayPath(parent)));
+                var resultItem = new FileItemViewModel(entry, FileSystem.GetDisplayPath(parent));
+                ApplyTagItem(resultItem);
+                _searchResults.Add(resultItem);
                 count++;
                 if (count % 20 == 0)
                     SearchStatus = L10n.Format("正在搜索… 已找到 {0} 个", count);
@@ -2302,7 +2364,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             var childItems = children
                 .Where(child => ShowHidden || !child.IsHidden)
                 .OrderBy(child => child, comparer)
-                .Select(child => new FileItemViewModel(child, FileSystem.GetDisplayPath(item.Path)));
+                .Select(child =>
+                {
+                    var viewModel = new FileItemViewModel(child, FileSystem.GetDisplayPath(item.Path));
+                    ApplyTagItem(viewModel);
+                    return viewModel;
+                });
             AddTreeRows(childItems, depth + 1, rows, comparer);
         }
     }
@@ -2503,6 +2570,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanExtractTo));
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanCompare));
+        OnPropertyChanged(nameof(CanTag));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -2916,6 +2984,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         StopWatcher();
         _services.Settings.Changed -= OnSettingsChanged;
         _services.Clipboard.Changed -= OnClipboardChanged;
+        _services.Tags.Changed -= OnTagsChanged;
     }
 
     private sealed record HistoryEntry(IFileSystem FileSystem, string Path);

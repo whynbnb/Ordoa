@@ -26,6 +26,7 @@ public sealed class AppServices : IAsyncDisposable
         Search = new SearchService();
         Session = new SessionService();
         Workspaces = new WorkspaceService();
+        Tags = new TagService();
         Thumbnails = new ThumbnailService();
         Previews = new PreviewService();
         Shell = new ShellLauncher();
@@ -53,6 +54,7 @@ public sealed class AppServices : IAsyncDisposable
     public BookmarkService Bookmarks { get; }
     public SessionService Session { get; }
     public WorkspaceService Workspaces { get; }
+    public TagService Tags { get; }
     public ThumbnailService Thumbnails { get; }
     public PreviewService Previews { get; }
     public ClipboardService Clipboard { get; }
