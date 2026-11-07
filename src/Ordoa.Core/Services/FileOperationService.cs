@@ -35,6 +35,17 @@ public sealed record OperationSource(IFileSystem FileSystem, FileEntry Entry)
     public bool IsDirectory => Entry.IsDirectory;
 }
 
+/// <summary>A completed or failed operation kept for the session history panel.</summary>
+public sealed record OperationHistoryEntry(
+    string Title,
+    string Detail,
+    OperationKind Kind,
+    OperationState State,
+    int SuccessCount,
+    int FailureCount,
+    string? Error,
+    DateTimeOffset FinishedAt);
+
 /// <summary>A source that failed to transfer, kept so retry can target only it.</summary>
 public sealed record FailedTransfer(OperationSource Source, string DestinationDirectory, string Message);
 
@@ -66,6 +77,7 @@ public enum ConflictChoice
     Cancel,
     ReplaceAll,
     SkipAll,
+    RenameAll,
 }
 
 public interface IConflictResolver
@@ -296,6 +308,7 @@ public sealed class FileOperationService : IDisposable
     }
 
     public System.Collections.ObjectModel.ObservableCollection<FileOperationItem> Operations { get; } = [];
+    public System.Collections.ObjectModel.ObservableCollection<OperationHistoryEntry> History { get; } = [];
     public IConflictResolver? ConflictResolver { get; set; }
 
     public event EventHandler<FileOperationItem>? Finished;
@@ -308,7 +321,7 @@ public sealed class FileOperationService : IDisposable
     }
 
     public FileOperationItem Copy(IReadOnlyList<OperationSource> sources, IFileSystem destinationFileSystem,
-        string destinationDirectory, bool move)
+        string destinationDirectory, bool move, ConflictChoice? conflictChoice = null)
     {
         ValidateSources(sources);
         var entries = sources.Select(source => new CopyEntry(source, destinationDirectory)).ToList();
@@ -321,7 +334,8 @@ public sealed class FileOperationService : IDisposable
         item.RetryFactory = () => item.State == OperationState.Failed && item.FailedTransfers.Count > 0
             ? RetryFailedTransfers(item, destinationFileSystem, move)
             : Copy(sources, destinationFileSystem, destinationDirectory, move);
-        Enqueue(item, token => RunCopyAsync(item, entries, destinationFileSystem, move, token));
+        Enqueue(item, token => RunCopyAsync(item, entries, destinationFileSystem, move, token,
+            conflictChoice));
         return item;
     }
 
@@ -340,7 +354,7 @@ public sealed class FileOperationService : IDisposable
             ? RetryFailedTransfers(item, destinationFileSystem, move)
             : RetryFailedTransfers(failed, destinationFileSystem, move);
         Enqueue(item, token => RunCopyAsync(item, entries, destinationFileSystem, move, token,
-            replaceAll: true));
+            ConflictChoice.ReplaceAll));
         return item;
     }
 
@@ -495,16 +509,35 @@ public sealed class FileOperationService : IDisposable
         }
     }
 
+    public void ClearHistory()
+    {
+        void Clear() => History.Clear();
+        if (_post is null)
+            Clear();
+        else
+            _post(Clear);
+    }
+
     private void RaiseFinished(FileOperationItem item)
     {
-        if (_post is null)
+        void Apply()
+        {
+            History.Insert(0, new OperationHistoryEntry(item.Title, item.Detail, item.Kind, item.State,
+                item.SuccessCount, item.FailureCount, item.Error, DateTimeOffset.Now));
+            while (History.Count > 200)
+                History.RemoveAt(History.Count - 1);
             Finished?.Invoke(this, item);
+        }
+
+        if (_post is null)
+            Apply();
         else
-            _post(() => Finished?.Invoke(this, item));
+            _post(Apply);
     }
 
     private async Task RunCopyAsync(FileOperationItem item, IReadOnlyList<CopyEntry> entries,
-        IFileSystem destinationFileSystem, bool move, CancellationToken cancellationToken, bool replaceAll = false)
+        IFileSystem destinationFileSystem, bool move, CancellationToken cancellationToken,
+        ConflictChoice? defaultConflictChoice = null)
     {
         SetState(item, OperationState.Scanning);
         SetProgress(item, 0, true, L10n.T("正在分析…"), string.Empty, string.Empty, string.Empty);
@@ -518,9 +551,10 @@ public sealed class FileOperationService : IDisposable
 
         var errors = new List<string>();
         var succeeded = 0;
-        var conflictContext = new ConflictContext();
-        if (replaceAll)
-            conflictContext.GlobalChoice = ConflictChoice.ReplaceAll;
+        var conflictContext = new ConflictContext
+        {
+            GlobalChoice = defaultConflictChoice,
+        };
 
         foreach (var entry in entries)
         {
@@ -816,11 +850,11 @@ public sealed class FileOperationService : IDisposable
         if (source.IsDirectory && existing.IsDirectory)
         {
             var choice = context.GlobalChoice ?? await ResolveAsync(source, destination, existing, cancellationToken).ConfigureAwait(false);
-            if (choice is ConflictChoice.ReplaceAll or ConflictChoice.SkipAll)
+            if (choice is ConflictChoice.ReplaceAll or ConflictChoice.SkipAll or ConflictChoice.RenameAll)
                 context.GlobalChoice = choice;
             if (choice is ConflictChoice.Skip or ConflictChoice.SkipAll)
-                return new DestinationPlan(destination, false, false, true);
-            if (choice is ConflictChoice.Rename)
+                return new DestinationPlan(destination, false, true);
+            if (choice is ConflictChoice.Rename or ConflictChoice.RenameAll)
             {
                 var renamed = await FindUniqueDestinationAsync(destinationFileSystem, destinationDirectory, name, cancellationToken)
                     .ConfigureAwait(false);
@@ -828,21 +862,23 @@ public sealed class FileOperationService : IDisposable
             }
             if (choice is ConflictChoice.Cancel)
                 throw new OperationCanceledException(L10n.T("用户取消了操作"));
-            return new DestinationPlan(destination, choice is ConflictChoice.Replace or ConflictChoice.ReplaceAll, true);
+            return new DestinationPlan(destination,
+                choice is ConflictChoice.Replace or ConflictChoice.ReplaceAll, false, true);
         }
 
         var resolved = context.GlobalChoice ?? await ResolveAsync(source, destination, existing, cancellationToken).ConfigureAwait(false);
-        if (resolved is ConflictChoice.ReplaceAll or ConflictChoice.SkipAll)
+        if (resolved is ConflictChoice.ReplaceAll or ConflictChoice.SkipAll or ConflictChoice.RenameAll)
             context.GlobalChoice = resolved;
         switch (resolved)
         {
             case ConflictChoice.Skip:
             case ConflictChoice.SkipAll:
-                return new DestinationPlan(destination, false, false, true);
+                return new DestinationPlan(destination, false, true);
             case ConflictChoice.Replace:
             case ConflictChoice.ReplaceAll:
                 return new DestinationPlan(destination, true, false, false, true);
             case ConflictChoice.Rename:
+            case ConflictChoice.RenameAll:
                 return new DestinationPlan(await FindUniqueDestinationAsync(destinationFileSystem, destinationDirectory, name,
                     cancellationToken).ConfigureAwait(false), false, false);
             case ConflictChoice.Cancel:

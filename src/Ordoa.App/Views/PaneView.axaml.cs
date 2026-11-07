@@ -676,7 +676,7 @@ public partial class PaneView : UserControl
                 FileDropHelper.GetPayload(e.DataTransfer) is not { Sources.Count: > 0 });
             if (move && FileDropHelper.IsNoOpMove(sources, _pane.FileSystem, destination))
                 return;
-            _pane.EnqueueDropTransfer(sources, destination, move);
+            await _pane.EnqueueDropTransferAsync(sources, destination, move);
         }
         catch (Exception ex)
         {

@@ -1318,7 +1318,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
         if (payload is { Sources.Count: > 0 })
         {
-            _services.Operations.Copy(payload.Sources, FileSystem, CurrentPath, payload.IsCut);
+            var preview = await PreviewTransferAsync(payload.Sources, FileSystem, CurrentPath, payload.IsCut)
+                .ConfigureAwait(true);
+            if (preview == ConflictChoice.Cancel)
+                return;
+            _services.Operations.Copy(payload.Sources, FileSystem, CurrentPath, payload.IsCut, preview);
             if (payload.IsCut)
                 await _services.Clipboard.ConsumeCutAsync().ConfigureAwait(true);
             OperationStarted?.Invoke(this);
@@ -1329,7 +1333,10 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         var external = await _services.Clipboard.TryReadExternalAsync().ConfigureAwait(true);
         if (external.Count > 0)
         {
-            _services.Operations.Copy(external, FileSystem, CurrentPath, false);
+            var preview = await PreviewTransferAsync(external, FileSystem, CurrentPath, false).ConfigureAwait(true);
+            if (preview == ConflictChoice.Cancel)
+                return;
+            _services.Operations.Copy(external, FileSystem, CurrentPath, false, preview);
             OperationStarted?.Invoke(this);
             Toast(L10n.T("正在复制"), L10n.Format("{0} 个项目", external.Count), false);
             return;
@@ -2327,13 +2334,49 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     public void Notify(string title, string message, bool error = false) => Toast(title, message, error);
 
-    public void EnqueueDropTransfer(IReadOnlyList<OperationSource> sources, string destinationPath, bool move)
+    public async Task EnqueueDropTransferAsync(IReadOnlyList<OperationSource> sources, string destinationPath,
+        bool move)
     {
         if (sources.Count == 0 || IsTrash)
             return;
-        _services.Operations.Copy(sources, FileSystem, destinationPath, move);
+        var preview = await PreviewTransferAsync(sources, FileSystem, destinationPath, move).ConfigureAwait(true);
+        if (preview == ConflictChoice.Cancel)
+            return;
+        _services.Operations.Copy(sources, FileSystem, destinationPath, move, preview);
         OperationStarted?.Invoke(this);
         Toast(move ? L10n.T("正在移动") : L10n.T("正在复制"), L10n.Format("{0} 个项目", sources.Count), false);
+    }
+
+    private async Task<ConflictChoice?> PreviewTransferAsync(IReadOnlyList<OperationSource> sources,
+        IFileSystem destinationFileSystem, string destinationDirectory, bool move)
+    {
+        if (!_services.Settings.Current.ShowTransferPreview || sources.Count < 2)
+            return null;
+
+        var conflicts = new List<string>();
+        var scanned = 0;
+        foreach (var source in sources.Take(500))
+        {
+            scanned++;
+            try
+            {
+                var target = destinationFileSystem.Combine(destinationDirectory, source.Name);
+                if (await destinationFileSystem.ExistsAsync(target).ConfigureAwait(true))
+                    conflicts.Add(source.Name);
+            }
+            catch
+            {
+                // A failed probe is handled by the normal conflict resolver.
+            }
+        }
+
+        if (conflicts.Count == 0)
+            return null;
+
+        var choice = await _services.Dialogs.ShowTransferPreviewAsync(new TransferPreviewRequest(
+            move, sources.Count, destinationFileSystem.GetDisplayPath(destinationDirectory),
+            conflicts.Count, conflicts.Take(12).ToList(), scanned)).ConfigureAwait(true);
+        return choice ?? ConflictChoice.Cancel;
     }
 
     /// <summary>Drop onto a Trash pane: move local sources to the XDG trash.</summary>

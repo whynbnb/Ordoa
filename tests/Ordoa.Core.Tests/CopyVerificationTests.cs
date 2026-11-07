@@ -43,6 +43,66 @@ public sealed class CopyVerificationTests : IDisposable
         Assert.Equal(0, operation.FailureCount);
         var destinationPath = Path.Combine(_root, "destination", "data.bin");
         Assert.Equal(data, await File.ReadAllBytesAsync(destinationPath));
+        var history = Assert.Single(service.History);
+        Assert.Equal(OperationState.Completed, history.State);
+        Assert.Equal(1, history.SuccessCount);
+        service.ClearHistory();
+        Assert.Empty(service.History);
+    }
+
+    [Fact]
+    public async Task SkipAllLeavesExistingDestinationUntouched()
+    {
+        var sourcePath = Path.Combine(_root, "source", "same.txt");
+        var destinationPath = Path.Combine(_root, "destination", "same.txt");
+        await File.WriteAllTextAsync(sourcePath, "new");
+        await File.WriteAllTextAsync(destinationPath, "old");
+
+        using var service = new FileOperationService(new TrashService());
+        var operation = service.Copy([Source(sourcePath)], LocalFileSystem.Instance,
+            Path.Combine(_root, "destination"), move: false, ConflictChoice.SkipAll);
+
+        await WaitForCompletionAsync(operation);
+
+        Assert.Equal(OperationState.Completed, operation.State);
+        Assert.Equal("old", await File.ReadAllTextAsync(destinationPath));
+    }
+
+    [Fact]
+    public async Task RenameAllKeepsBothFiles()
+    {
+        var sourcePath = Path.Combine(_root, "source", "same.txt");
+        var destinationPath = Path.Combine(_root, "destination", "same.txt");
+        await File.WriteAllTextAsync(sourcePath, "new");
+        await File.WriteAllTextAsync(destinationPath, "old");
+
+        using var service = new FileOperationService(new TrashService());
+        var operation = service.Copy([Source(sourcePath)], LocalFileSystem.Instance,
+            Path.Combine(_root, "destination"), move: false, ConflictChoice.RenameAll);
+
+        await WaitForCompletionAsync(operation);
+
+        Assert.Equal(OperationState.Completed, operation.State);
+        Assert.Equal("old", await File.ReadAllTextAsync(destinationPath));
+        Assert.Equal("new", await File.ReadAllTextAsync(Path.Combine(_root, "destination", "same (1).txt")));
+    }
+
+    [Fact]
+    public async Task ReplaceAllOverwritesExistingDestination()
+    {
+        var sourcePath = Path.Combine(_root, "source", "same.txt");
+        var destinationPath = Path.Combine(_root, "destination", "same.txt");
+        await File.WriteAllTextAsync(sourcePath, "new");
+        await File.WriteAllTextAsync(destinationPath, "old");
+
+        using var service = new FileOperationService(new TrashService());
+        var operation = service.Copy([Source(sourcePath)], LocalFileSystem.Instance,
+            Path.Combine(_root, "destination"), move: false, ConflictChoice.ReplaceAll);
+
+        await WaitForCompletionAsync(operation);
+
+        Assert.Equal(OperationState.Completed, operation.State);
+        Assert.Equal("new", await File.ReadAllTextAsync(destinationPath));
     }
 
     [Fact]
@@ -68,6 +128,9 @@ public sealed class CopyVerificationTests : IDisposable
         Assert.Equal(1, operation.FailedTransferCount);
         Assert.True(operation.CanRetry);
     }
+
+    private static OperationSource Source(string path)
+        => new(LocalFileSystem.Instance, LocalFileSystem.Instance.GetEntryAsync(path).GetAwaiter().GetResult()!);
 
     private static async Task WaitForCompletionAsync(FileOperationItem item)
     {

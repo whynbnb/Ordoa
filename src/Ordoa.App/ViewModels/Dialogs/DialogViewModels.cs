@@ -472,6 +472,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _transferConcurrency = settings.TransferConcurrency;
         _transferSpeedLimit = settings.TransferSpeedLimitMb;
         _copyVerificationIndex = (int)settings.CopyVerification;
+        _showTransferPreview = settings.ShowTransferPreview;
         _ffmpegPath = settings.FfmpegPath;
         _useSystemWindowFrame = settings.UseSystemWindowFrame;
         _windowButtonMode = settings.WindowButtonMode;
@@ -711,6 +712,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private int _copyVerificationIndex;
+
+    [ObservableProperty]
+    private bool _showTransferPreview;
 
     [ObservableProperty]
     private string _ffmpegPath = string.Empty;
@@ -1001,6 +1005,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.TransferConcurrency = Math.Clamp((int)TransferConcurrency, 1, 4);
         settings.TransferSpeedLimitMb = Math.Clamp((int)TransferSpeedLimit, 0, 100_000);
         settings.CopyVerification = (CopyVerificationMode)Math.Clamp(CopyVerificationIndex, 0, 2);
+        settings.ShowTransferPreview = ShowTransferPreview;
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
         settings.UseSystemWindowFrame = UseSystemWindowFrame;
         settings.WindowButtonMode = WindowButtonMode;
@@ -1091,6 +1096,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         TransferConcurrency = defaults.TransferConcurrency;
         TransferSpeedLimit = defaults.TransferSpeedLimitMb;
         CopyVerificationIndex = (int)defaults.CopyVerification;
+        ShowTransferPreview = defaults.ShowTransferPreview;
         FfmpegPath = defaults.FfmpegPath;
         UseSystemWindowFrame = defaults.UseSystemWindowFrame;
         WindowButtonMode = defaults.WindowButtonMode;

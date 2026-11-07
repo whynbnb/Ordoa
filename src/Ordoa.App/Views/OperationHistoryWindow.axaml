@@ -1,0 +1,61 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:OperationHistoryDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.OperationHistoryWindow"
+        Title="{loc:Tr 操作历史}"
+        Width="680" Height="540" MinWidth="480" MinHeight="320" CanResize="True"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,15" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{loc:Tr 操作历史}" Classes="h2" />
+          <TextBlock Text="{Binding SummaryText}" Classes="caption" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="{loc:Tr 关闭}" Click="OnCloseClick" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <TextBlock Grid.Row="1" Text="{loc:Tr 本次会话还没有完成的操作}" Classes="caption"
+               HorizontalAlignment="Center" VerticalAlignment="Center"
+               IsVisible="{Binding !HasHistory}" />
+
+    <ScrollViewer Grid.Row="1" Padding="14,10" VerticalScrollBarVisibility="Auto"
+                  IsVisible="{Binding HasHistory}">
+      <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:OperationHistoryRowViewModel">
+            <Border Classes="card" Padding="12,9" Margin="0,0,0,6">
+              <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10">
+                <TextBlock Text="{Binding Title}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding CountsText}" Classes="tiny" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding StateText}" Classes="tiny" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding TimeText}" Classes="tiny" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Grid.Row="1" Text="{Binding Detail}" Classes="tiny"
+                           TextTrimming="CharacterEllipsis" IsVisible="{Binding Detail, Converter={StaticResource NotNullConverter}}" />
+                <TextBlock Grid.Row="2" Text="{Binding Error}" Classes="tiny"
+                           Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
+                           IsVisible="{Binding HasError}" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Padding="18,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Content="{loc:Tr 清空历史}" Classes="ghost" Click="OnClearClick" />
+        <Button Grid.Column="2" Content="{loc:Tr 关闭}" Click="OnCloseClick" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

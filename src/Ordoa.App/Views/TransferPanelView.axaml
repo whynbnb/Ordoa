@@ -22,7 +22,7 @@
   <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
           BorderThickness="0,1,0,0">
     <Grid RowDefinitions="Auto,Auto">
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="12,7,10,5">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="12,7,10,5">
         <Path Data="{StaticResource IconSync}" Fill="{DynamicResource TextSecondaryBrush}"
               Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0"
@@ -30,12 +30,17 @@
           <TextBlock Text="{loc:Tr 传输队列}" FontWeight="SemiBold" FontSize="12" />
           <TextBlock Text="{Binding TransferSummary}" Classes="caption" VerticalAlignment="Center" />
         </StackPanel>
-        <Button Grid.Column="2" Classes="tool" Command="{Binding ClearTransfersCommand}"
+        <Button Grid.Column="2" Classes="tool" Command="{Binding ShowOperationHistoryCommand}"
+                ToolTip.Tip="{loc:Tr 操作历史}" Width="26" Height="26">
+          <Path Data="{StaticResource IconRestore}" Fill="{DynamicResource TextSecondaryBrush}"
+                Width="13" Height="13" Stretch="Uniform" />
+        </Button>
+        <Button Grid.Column="3" Classes="tool" Command="{Binding ClearTransfersCommand}"
                 ToolTip.Tip="{loc:Tr 清除已完成}" Width="26" Height="26">
           <Path Data="{StaticResource IconDelete}" Fill="{DynamicResource TextSecondaryBrush}"
                 Width="13" Height="13" Stretch="Uniform" />
         </Button>
-        <Button Grid.Column="3" Classes="tool" Command="{Binding ToggleTransferPanelCommand}"
+        <Button Grid.Column="4" Classes="tool" Command="{Binding ToggleTransferPanelCommand}"
                 ToolTip.Tip="{loc:Tr 收起传输队列}" Width="26" Height="26">
           <Path Data="{StaticResource IconChevronDown}" Fill="{DynamicResource TextSecondaryBrush}"
                 Width="13" Height="13" Stretch="Uniform" />

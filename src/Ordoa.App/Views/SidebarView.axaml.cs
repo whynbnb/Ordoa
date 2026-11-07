@@ -475,7 +475,7 @@ public partial class SidebarView : UserControl
                 same) == TransferMode.Move;
             if (move && FileDropHelper.IsNoOpMove(sources, target.Value.FileSystem, target.Value.Path))
                 return;
-            vm.EnqueueDropTransfer(sources, target.Value.FileSystem, target.Value.Path, move);
+            await vm.EnqueueDropTransferAsync(sources, target.Value.FileSystem, target.Value.Path, move);
         }
         catch (Exception ex)
         {

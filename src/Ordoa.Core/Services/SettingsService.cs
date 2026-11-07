@@ -91,6 +91,8 @@ public sealed class AppSettings
     public List<SavedSearch> SavedSearches { get; set; } = [];
     /// <summary>How copied files are verified after the transfer completes.</summary>
     public CopyVerificationMode CopyVerification { get; set; } = CopyVerificationMode.Size;
+    /// <summary>Show a conflict summary before a batch copy or move starts.</summary>
+    public bool ShowTransferPreview { get; set; } = true;
     /// <summary>Number of transfer jobs allowed to run at once.</summary>
     public int TransferConcurrency { get; set; } = 1;
     /// <summary>Global transfer speed limit in MB/s. Zero means unlimited.</summary>

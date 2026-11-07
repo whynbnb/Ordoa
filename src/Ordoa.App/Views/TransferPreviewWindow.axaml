@@ -1,0 +1,68 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:TransferPreviewDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.TransferPreviewWindow"
+        Title="{Binding TitleText}"
+        Width="520" Height="430" MinWidth="420" MinHeight="320" CanResize="True"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,15" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="2">
+        <TextBlock Text="{Binding TitleText}" Classes="h2" />
+        <TextBlock Text="{Binding SummaryText}" Classes="caption" />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="1" Padding="22,14" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="14">
+        <Border Classes="card" Padding="12,9">
+          <StackPanel Spacing="3">
+            <TextBlock Text="{loc:Tr 目标位置}" Classes="fieldlabel" />
+            <TextBlock Text="{Binding Destination}" FontFamily="{DynamicResource MonoFontFamily}"
+                       FontSize="12" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <StackPanel Spacing="6" IsVisible="{Binding HasConflicts}">
+          <TextBlock Text="{Binding ConflictText}" Classes="fieldlabel" />
+          <Border Classes="card" Padding="10,7">
+            <StackPanel Spacing="2">
+              <ItemsControl ItemsSource="{Binding ConflictNames}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <TextBlock Text="{Binding}" Classes="tiny" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="{Binding MoreText}" Classes="tiny"
+                         IsVisible="{Binding ShowMore}" />
+            </StackPanel>
+          </Border>
+
+          <TextBlock Text="{loc:Tr 同名项目处理}" Classes="fieldlabel" Margin="0,4,0,0" />
+          <RadioButton GroupName="conflict" Content="{loc:Tr 替换所有同名项目}"
+                       IsChecked="{Binding ReplaceChecked, Mode=TwoWay}" />
+          <RadioButton GroupName="conflict" Content="{loc:Tr 跳过所有同名项目}"
+                       IsChecked="{Binding SkipChecked, Mode=TwoWay}" />
+          <RadioButton GroupName="conflict" Content="{loc:Tr 保留两者（自动改名）}"
+                       IsChecked="{Binding RenameChecked, Mode=TwoWay}" />
+        </StackPanel>
+
+        <TextBlock Text="{Binding ScanText}" Classes="fieldhint" TextWrapping="Wrap" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Padding="18,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+        <Button Content="{loc:Tr 取消}" Click="OnCancelClick" />
+        <Button Content="{loc:Tr 开始}" Classes="primary" Click="OnContinueClick" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

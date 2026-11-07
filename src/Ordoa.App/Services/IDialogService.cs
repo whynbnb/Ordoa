@@ -7,6 +7,14 @@ namespace Ordoa.App.Services;
 
 public sealed record ConnectionDialogResult(ConnectionProfile Profile, string Password, bool SaveProfile);
 
+public sealed record TransferPreviewRequest(
+    bool Move,
+    int ItemCount,
+    string Destination,
+    int ConflictCount,
+    IReadOnlyList<string> ConflictNames,
+    int ScannedCount);
+
 public interface IDialogService
 {
     Task<ConnectionDialogResult?> ShowConnectionAsync(ConnectionProfile? preset = null);
@@ -24,4 +32,6 @@ public interface IDialogService
     Task ShowDiskUsageAsync(string path);
     Task ShowDuplicateFinderAsync(string path);
     Task<string?> ShowGitStatusAsync(string path);
+    Task<ConflictChoice?> ShowTransferPreviewAsync(TransferPreviewRequest request);
+    Task ShowOperationHistoryAsync(FileOperationService operations);
 }

@@ -217,6 +217,28 @@ public sealed class DialogService : IDialogService
         return await ShowDialogAsync<string>("gitstatus", window, owner).ConfigureAwait(true);
     }
 
+    public async Task<ConflictChoice?> ShowTransferPreviewAsync(TransferPreviewRequest request)
+    {
+        if (!TryPrepareDialog("transferpreview", out var owner))
+            return null;
+
+        var viewModel = new TransferPreviewDialogViewModel(request);
+        var window = new TransferPreviewWindow { DataContext = viewModel };
+        return await ShowDialogAsync<ConflictChoice?>("transferpreview", window, owner).ConfigureAwait(true);
+    }
+
+    public async Task ShowOperationHistoryAsync(FileOperationService operations)
+    {
+        if (!TryPrepareDialog("history", out var owner))
+            return;
+
+        var window = new OperationHistoryWindow
+        {
+            DataContext = new OperationHistoryDialogViewModel(operations),
+        };
+        await ShowDialogAsync("history", window, owner).ConfigureAwait(true);
+    }
+
     public async Task ShowErrorAsync(string title, string message)
     {
         var kind = "error:" + title;

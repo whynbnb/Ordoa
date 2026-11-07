@@ -47,6 +47,52 @@ public sealed class BatchRenamePlannerTests
     }
 
     [Fact]
+    public void RegexReplace_SupportsCaptureGroups()
+    {
+        var entries = new[] { Item("photo-2024.jpg"), Item("clip-2025.mp4") };
+        var plan = Plan(entries, new BatchRenameOptions
+        {
+            FindText = "^(\\w+)-(\\d+)$",
+            ReplaceText = "$2-$1",
+            UseRegex = true,
+        });
+
+        Assert.True(plan.CanApply);
+        Assert.Equal("2024-photo.jpg", plan.Rows[0].NewName);
+        Assert.Equal("2025-clip.mp4", plan.Rows[1].NewName);
+    }
+
+    [Fact]
+    public void RegexReplace_CanIgnoreCase()
+    {
+        var entries = new[] { Item("IMG_001.JPG") };
+        var plan = Plan(entries, new BatchRenameOptions
+        {
+            FindText = "img_(\\d+)",
+            ReplaceText = "image-$1",
+            UseRegex = true,
+        });
+
+        Assert.Equal("image-001.JPG", plan.Rows[0].NewName);
+    }
+
+    [Fact]
+    public void InvalidRegex_MarksPlanAsInvalid()
+    {
+        var entries = new[] { Item("notes.txt") };
+        var plan = Plan(entries, new BatchRenameOptions
+        {
+            FindText = "([",
+            ReplaceText = "$1",
+            UseRegex = true,
+        });
+
+        Assert.False(plan.CanApply);
+        Assert.Equal(BatchRenameIssue.InvalidName, plan.Rows[0].Issue);
+        Assert.Contains("正则表达式无效", plan.Rows[0].IssueText);
+    }
+
+    [Fact]
     public void MatchCase_CanKeepOriginalText()
     {
         var entries = new[] { Item("Photo.JPG") };

@@ -245,6 +245,8 @@
             <Border Classes="divider" />
 
             <TextBlock Text="{loc:Tr 传输}" Classes="section" />
+            <CheckBox Content="{loc:Tr 批量复制/移动前显示目标位置与冲突预览}"
+                      IsChecked="{Binding ShowTransferPreview, Mode=TwoWay}" />
             <Grid ColumnDefinitions="120,140,*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
               <TextBlock Text="{loc:Tr 并发任务}" Classes="fieldlabel" />
               <NumericUpDown Grid.Column="1" Minimum="1" Maximum="4" Increment="1" FormatString="0"

@@ -1244,15 +1244,53 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>Drop onto a sidebar folder: copy or move the sources there.</summary>
-    public void EnqueueDropTransfer(IReadOnlyList<OperationSource> sources, IFileSystem destinationFileSystem,
-        string destinationPath, bool move)
+    public async Task EnqueueDropTransferAsync(IReadOnlyList<OperationSource> sources,
+        IFileSystem destinationFileSystem, string destinationPath, bool move)
     {
         if (sources.Count == 0)
             return;
-        _services.Operations.Copy(sources, destinationFileSystem, destinationPath, move);
+
+        var preview = await PreviewTransferAsync(sources, destinationFileSystem, destinationPath, move)
+            .ConfigureAwait(true);
+        if (preview == ConflictChoice.Cancel)
+            return;
+
+        _services.Operations.Copy(sources, destinationFileSystem, destinationPath, move, preview);
         MaybeAutoShowTransferPanel();
         AddToast(move ? L10n.T("正在移动") : L10n.T("正在复制"),
             L10n.Format("{0} 个项目", sources.Count), ToastKind.Info);
+    }
+
+    private async Task<ConflictChoice?> PreviewTransferAsync(IReadOnlyList<OperationSource> sources,
+        IFileSystem destinationFileSystem, string destinationDirectory, bool move)
+    {
+        if (!_services.Settings.Current.ShowTransferPreview || sources.Count < 2)
+            return null;
+
+        var conflicts = new List<string>();
+        var scanned = 0;
+        foreach (var source in sources.Take(500))
+        {
+            scanned++;
+            try
+            {
+                var target = destinationFileSystem.Combine(destinationDirectory, source.Name);
+                if (await destinationFileSystem.ExistsAsync(target).ConfigureAwait(true))
+                    conflicts.Add(source.Name);
+            }
+            catch
+            {
+                // Let the per-file conflict resolver report probe failures.
+            }
+        }
+
+        if (conflicts.Count == 0)
+            return null;
+
+        var choice = await _services.Dialogs.ShowTransferPreviewAsync(new TransferPreviewRequest(
+            move, sources.Count, destinationFileSystem.GetDisplayPath(destinationDirectory),
+            conflicts.Count, conflicts.Take(12).ToList(), scanned)).ConfigureAwait(true);
+        return choice ?? ConflictChoice.Cancel;
     }
 
     /// <summary>Shift+drop onto the Trash entry: delete the sources permanently.</summary>
@@ -2145,6 +2183,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private Task ShowOperationHistoryAsync()
+        => _services.Dialogs.ShowOperationHistoryAsync(_services.Operations);
+
+    [RelayCommand]
     private void ClearTransfers()
     {
         _services.Operations.ClearFinished();
@@ -2272,6 +2314,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             Add(L10n.T("Git 状态"), L10n.T("查看当前仓库的分支与未提交变更"), null, "IconCode",
                 () => PaneAction(p => p.ShowGitStatusAsync()));
         }
+        Add(L10n.T("操作历史"), L10n.T("查看本次会话的复制、移动与删除记录"), null, "IconRestore",
+            () => _services.Dialogs.ShowOperationHistoryAsync(_services.Operations));
         Add(L10n.T("压缩为 ZIP"), L10n.T("将选中的项目压缩为 zip"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(false)));
         Add(L10n.T("压缩为 tar.gz"), L10n.T("将选中的项目压缩为 tar.gz"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(true)));
         Add(L10n.T("解压到此处"), L10n.T("解压选中的压缩包"), null, "IconDownload", () => PaneAction(p => p.ExtractAsync()));

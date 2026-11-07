@@ -144,6 +144,9 @@ public sealed partial class BatchRenameDialogViewModel : ObservableObject, IDisp
     private bool _matchCase;
 
     [ObservableProperty]
+    private bool _useRegex;
+
+    [ObservableProperty]
     private string _prefix = string.Empty;
 
     [ObservableProperty]
@@ -228,6 +231,7 @@ public sealed partial class BatchRenameDialogViewModel : ObservableObject, IDisp
             FindText = FindText ?? string.Empty,
             ReplaceText = ReplaceText ?? string.Empty,
             MatchCase = MatchCase,
+            UseRegex = UseRegex,
             Prefix = Prefix ?? string.Empty,
             Suffix = Suffix ?? string.Empty,
             Numbering = Numbering,

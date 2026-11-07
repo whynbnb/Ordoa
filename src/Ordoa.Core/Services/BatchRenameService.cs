@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using Ordoa.Core.Abstractions;
 using Ordoa.Core.Localization;
 using Ordoa.Core.Models;
@@ -35,6 +36,8 @@ public sealed class BatchRenameOptions
     public string FindText { get; set; } = string.Empty;
     public string ReplaceText { get; set; } = string.Empty;
     public bool MatchCase { get; set; }
+    /// <summary>Treat FindText as a regular expression; ReplaceText may use $1 groups.</summary>
+    public bool UseRegex { get; set; }
     public string Prefix { get; set; } = string.Empty;
     public string Suffix { get; set; } = string.Empty;
     public bool Numbering { get; set; }
@@ -98,6 +101,7 @@ public static class BatchRenamePlanner
     {
         var timestamp = now ?? DateTimeOffset.Now;
         var comparer = caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        var patternError = ValidateRegex(options);
 
         var rows = new List<BatchRenameRow>(entries.Count);
         for (var i = 0; i < entries.Count; i++)
@@ -106,6 +110,13 @@ public static class BatchRenamePlanner
             var newName = BuildName(entry, options, timestamp, i);
             var changed = !string.Equals(entry.Name, newName, StringComparison.Ordinal);
             rows.Add(new BatchRenameRow(entry, newName, BatchRenameIssue.None, null, changed));
+        }
+
+        if (patternError is not null)
+        {
+            for (var i = 0; i < rows.Count; i++)
+                rows[i] = rows[i] with { Issue = BatchRenameIssue.InvalidName, IssueText = patternError };
+            return new BatchRenamePlan(rows);
         }
 
         var changedRows = rows.Where(r => r.IsChanged).ToList();
@@ -178,10 +189,29 @@ public static class BatchRenamePlanner
 
         if (!string.IsNullOrEmpty(options.FindText))
         {
-            stem = stem.Replace(
-                options.FindText,
-                options.ReplaceText ?? string.Empty,
-                options.MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
+            if (options.UseRegex)
+            {
+                try
+                {
+                    stem = Regex.Replace(stem, options.FindText, options.ReplaceText ?? string.Empty,
+                        options.MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase,
+                        TimeSpan.FromSeconds(1));
+                }
+                catch (ArgumentException)
+                {
+                    // Invalid patterns are reported by ValidateRegex before rows are built.
+                }
+                catch (RegexMatchTimeoutException)
+                {
+                }
+            }
+            else
+            {
+                stem = stem.Replace(
+                    options.FindText,
+                    options.ReplaceText ?? string.Empty,
+                    options.MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
+            }
         }
 
         stem = options.CaseMode switch
@@ -219,6 +249,21 @@ public static class BatchRenamePlanner
             };
 
         return core + resultExtension;
+    }
+
+    private static string? ValidateRegex(BatchRenameOptions options)
+    {
+        if (!options.UseRegex || string.IsNullOrEmpty(options.FindText))
+            return null;
+        try
+        {
+            _ = new Regex(options.FindText, RegexOptions.None, TimeSpan.FromSeconds(1));
+            return null;
+        }
+        catch (ArgumentException ex)
+        {
+            return L10n.Format("正则表达式无效：{0}", ex.Message);
+        }
     }
 
     public static (string Stem, string Extension) SplitName(string name)
