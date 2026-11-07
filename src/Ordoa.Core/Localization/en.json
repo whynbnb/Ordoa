@@ -910,5 +910,10 @@
  "固定 / 取消固定标签页": "Pin / Unpin Tab",
  "固定标签页并保持在标签栏前部": "Pin a tab and keep it at the front of the tab strip",
  "固定标签页": "Pin Tab",
- "取消固定标签页": "Unpin Tab"
+ "取消固定标签页": "Unpin Tab",
+ "已暂停": "Paused",
+ "暂停": "Pause",
+ "继续": "Resume",
+ "无法重试": "Could not retry",
+ "只有失败或已取消的传输可以重试": "Only failed or cancelled transfers can be retried."
 }

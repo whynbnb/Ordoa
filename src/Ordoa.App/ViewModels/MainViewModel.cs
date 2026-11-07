@@ -1993,6 +1993,32 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void CancelTransfer(FileOperationItem? item) => item?.Cancel();
 
     [RelayCommand]
+    private void TogglePauseTransfer(FileOperationItem? item)
+    {
+        if (item is null)
+            return;
+        if (item.IsPausedState)
+            item.Resume();
+        else
+            item.Pause();
+        RefreshTransferState();
+    }
+
+    [RelayCommand]
+    private void RetryTransfer(FileOperationItem? item)
+    {
+        if (item is null)
+            return;
+        var retried = _services.Operations.Retry(item);
+        if (retried is null)
+        {
+            AddToast(L10n.T("无法重试"), L10n.T("只有失败或已取消的传输可以重试"), ToastKind.Info);
+            return;
+        }
+        RefreshTransferState();
+    }
+
+    [RelayCommand]
     private void ClearTransfers()
     {
         _services.Operations.ClearFinished();

@@ -22,6 +22,7 @@ public enum OperationState
     Queued,
     Scanning,
     Running,
+    Paused,
     Completed,
     Failed,
     Cancelled,
@@ -69,7 +70,9 @@ public interface IConflictResolver
 
 public sealed partial class FileOperationItem : ObservableObject
 {
+    private readonly PauseGate _pauseGate = new();
     private CancellationTokenSource _cts = new();
+    private OperationState _stateBeforePause = OperationState.Running;
 
     public FileOperationItem(string title, string detail, OperationKind kind)
     {
@@ -87,11 +90,15 @@ public sealed partial class FileOperationItem : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanCancel))]
+    [NotifyPropertyChangedFor(nameof(CanPause))]
+    [NotifyPropertyChangedFor(nameof(CanResume))]
+    [NotifyPropertyChangedFor(nameof(CanRetry))]
     [NotifyPropertyChangedFor(nameof(StateText))]
     [NotifyPropertyChangedFor(nameof(IsCompleted))]
     [NotifyPropertyChangedFor(nameof(IsFailed))]
     [NotifyPropertyChangedFor(nameof(IsCancelled))]
     [NotifyPropertyChangedFor(nameof(IsRunning))]
+    [NotifyPropertyChangedFor(nameof(IsPausedState))]
     private OperationState _state;
 
     [ObservableProperty]
@@ -125,23 +132,53 @@ public sealed partial class FileOperationItem : ObservableObject
     private bool _hasWarnings;
 
     public List<FileOperationResult> Results { get; } = [];
+    internal Func<FileOperationItem?>? RetryFactory { get; set; }
 
-    public bool CanCancel => State is OperationState.Queued or OperationState.Scanning or OperationState.Running;
+    public bool CanCancel => State is OperationState.Queued or OperationState.Scanning or
+        OperationState.Running or OperationState.Paused;
+    public bool CanPause => State is OperationState.Scanning or OperationState.Running;
+    public bool CanResume => State == OperationState.Paused;
+    public bool CanRetry => (State is OperationState.Failed or OperationState.Cancelled) &&
+                            RetryFactory is not null;
     public bool IsCompleted => State == OperationState.Completed;
     public bool IsFailed => State == OperationState.Failed;
     public bool IsCancelled => State == OperationState.Cancelled;
     public bool IsRunning => State is OperationState.Scanning or OperationState.Running;
+    public bool IsPausedState => State == OperationState.Paused;
 
     public string StateText => State switch
     {
         OperationState.Queued => L10n.T("等待中"),
         OperationState.Scanning => L10n.T("正在分析"),
         OperationState.Running => L10n.T("进行中"),
+        OperationState.Paused => L10n.T("已暂停"),
         OperationState.Completed => L10n.T("已完成"),
         OperationState.Failed => L10n.T("失败"),
         OperationState.Cancelled => L10n.T("已取消"),
         _ => string.Empty,
     };
+
+    public void Pause()
+    {
+        if (!CanPause)
+            return;
+        _stateBeforePause = State;
+        _pauseGate.Pause();
+        State = OperationState.Paused;
+    }
+
+    public void Resume()
+    {
+        if (!CanResume)
+            return;
+        _pauseGate.Resume();
+        State = _stateBeforePause is OperationState.Scanning
+            ? OperationState.Scanning
+            : OperationState.Running;
+    }
+
+    public Task WaitIfPausedAsync(CancellationToken cancellationToken)
+        => _pauseGate.WaitAsync(cancellationToken);
 
     public CancellationToken Token => _cts.Token;
 
@@ -160,6 +197,41 @@ public sealed partial class FileOperationItem : ObservableObject
     internal void DisposeToken()
     {
         try { _cts.Dispose(); } catch { /* ignore */ }
+    }
+}
+
+internal sealed class PauseGate
+{
+    private TaskCompletionSource _resume = CompletedSource();
+    private volatile bool _paused;
+
+    public void Pause()
+    {
+        if (_paused)
+            return;
+        _resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _paused = true;
+    }
+
+    public void Resume()
+    {
+        _paused = false;
+        _resume.TrySetResult();
+    }
+
+    public async Task WaitAsync(CancellationToken cancellationToken)
+    {
+        while (_paused)
+        {
+            await _resume.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static TaskCompletionSource CompletedSource()
+    {
+        var source = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        source.SetResult();
+        return source;
     }
 }
 
@@ -194,6 +266,7 @@ public sealed class FileOperationService : IDisposable
         {
             Destination = destination,
         };
+        item.RetryFactory = () => Copy(sources, destinationFileSystem, destinationDirectory, move);
         Enqueue(item, token => RunCopyAsync(item, sources, destinationFileSystem, destinationDirectory, move, token));
         return item;
     }
@@ -203,6 +276,7 @@ public sealed class FileOperationService : IDisposable
         ValidateSources(sources);
         var title = permanent ? L10n.Format("永久删除 {0} 个项目", sources.Count) : L10n.Format("移到回收站 {0} 个项目", sources.Count);
         var item = new FileOperationItem(title, string.Empty, permanent ? OperationKind.Delete : OperationKind.Trash);
+        item.RetryFactory = () => Delete(sources, permanent);
         Enqueue(item, token => RunDeleteAsync(item, sources, permanent, token));
         return item;
     }
@@ -213,6 +287,7 @@ public sealed class FileOperationService : IDisposable
             throw new ArgumentException(L10n.T("没有要恢复的项目"));
 
         var item = new FileOperationItem(L10n.Format("恢复 {0} 个项目", entries.Count), L10n.T("回收站"), OperationKind.Restore);
+        item.RetryFactory = () => Restore(entries);
         Enqueue(item, token => RunRestoreAsync(item, entries, token));
         return item;
     }
@@ -223,6 +298,7 @@ public sealed class FileOperationService : IDisposable
         {
             IsIndeterminate = true,
         };
+        item.RetryFactory = EmptyTrash;
         Enqueue(item, async token =>
         {
             SetState(item, OperationState.Running);
@@ -255,6 +331,10 @@ public sealed class FileOperationService : IDisposable
         foreach (var item in Operations)
             item.Cancel();
     }
+
+    /// <summary>Creates and queues a fresh attempt for a failed or cancelled operation.</summary>
+    public FileOperationItem? Retry(FileOperationItem item)
+        => item.CanRetry ? item.RetryFactory?.Invoke() : null;
 
     public void Dispose()
     {
@@ -337,9 +417,10 @@ public sealed class FileOperationService : IDisposable
         SetState(item, OperationState.Scanning);
         SetProgress(item, 0, true, L10n.T("正在分析…"), string.Empty, string.Empty, string.Empty);
 
-        var scan = await ScanSourcesAsync(sources, cancellationToken).ConfigureAwait(false);
+        var scan = await ScanSourcesAsync(item, sources, cancellationToken).ConfigureAwait(false);
         var tracker = new JobTracker(item, this, scan.TotalBytes, scan.TotalItems, scan.Indeterminate);
-        SetState(item, OperationState.Running);
+        if (item.State != OperationState.Paused)
+            SetState(item, OperationState.Running);
         tracker.Report(true);
 
         var errors = new List<string>();
@@ -349,6 +430,7 @@ public sealed class FileOperationService : IDisposable
         foreach (var source in sources)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            await item.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
             tracker.StartSource(source.Name);
 
             try
@@ -465,6 +547,7 @@ public sealed class FileOperationService : IDisposable
         foreach (var child in children)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            await tracker.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
             var childSource = new OperationSource(source.FileSystem, child);
             try
             {
@@ -529,29 +612,17 @@ public sealed class FileOperationService : IDisposable
             }
         }
 
-        if (source.FileSystem.IsLocal && destinationFileSystem.IsLocal)
+        // Always stream so pause can take effect mid-file, including on local disks.
+        await using (var input = await source.FileSystem.OpenReadAsync(source.Path, cancellationToken)
+                         .ConfigureAwait(false))
+        await using (var output = await destinationFileSystem.OpenWriteAsync(plan.Destination, true,
+                         source.Entry.Size > 0 ? source.Entry.Size : null, cancellationToken).ConfigureAwait(false))
         {
-            long previous = 0;
-            var progress = new InlineProgress<long>(value =>
-            {
-                var delta = value - previous;
-                previous = value;
-                if (delta > 0)
-                    tracker.AddBytes(delta);
-            });
-            await destinationFileSystem.CopyFileAsync(source.Path, plan.Destination, true, progress, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            await using var input = await source.FileSystem.OpenReadAsync(source.Path, cancellationToken).ConfigureAwait(false);
-            await using var output = await destinationFileSystem.OpenWriteAsync(plan.Destination, true,
-                source.Entry.Size > 0 ? source.Entry.Size : null, cancellationToken).ConfigureAwait(false);
-
             var buffer = new byte[128 * 1024];
             int read;
             while ((read = await input.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
             {
+                await tracker.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
                 await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                 tracker.AddBytes(read);
             }
@@ -729,6 +800,7 @@ public sealed class FileOperationService : IDisposable
         foreach (var source in sources)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            await item.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
             tracker.StartItem(source.Name);
             try
             {
@@ -775,6 +847,7 @@ public sealed class FileOperationService : IDisposable
         for (var i = 0; i < entries.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            await item.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
             var entry = entries[i];
             SetProgress(item, (double)i / entries.Count, false, L10n.Format("正在恢复 {0} / {1}", i + 1, entries.Count), entry.Entry.Name,
                 string.Empty, string.Empty);
@@ -796,7 +869,8 @@ public sealed class FileOperationService : IDisposable
         SetState(item, succeeded > 0 || errors.Count == 0 ? OperationState.Completed : OperationState.Failed);
     }
 
-    private async Task<ScanResult> ScanSourcesAsync(IReadOnlyList<OperationSource> sources, CancellationToken cancellationToken)
+    private async Task<ScanResult> ScanSourcesAsync(FileOperationItem item,
+        IReadOnlyList<OperationSource> sources, CancellationToken cancellationToken)
     {
         long totalBytes = 0;
         var totalItems = 0;
@@ -805,6 +879,7 @@ public sealed class FileOperationService : IDisposable
         foreach (var source in sources)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            await item.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
             if (!source.IsDirectory)
             {
                 totalItems++;
@@ -1003,6 +1078,8 @@ public sealed class FileOperationService : IDisposable
 
         public void StartSource(string name) => _currentItem = name;
         public void StartItem(string name) => _currentItem = name;
+        public Task WaitIfPausedAsync(CancellationToken cancellationToken)
+            => _item.WaitIfPausedAsync(cancellationToken);
         public void FailSource() { }
 
         public void SkipSource(long bytes, int items)
@@ -1064,10 +1141,4 @@ public sealed class FileOperationService : IDisposable
         }
     }
 
-    private sealed class InlineProgress<T> : IProgress<T>
-    {
-        private readonly Action<T> _action;
-        public InlineProgress(Action<T> action) => _action = action;
-        public void Report(T value) => _action(value);
-    }
 }

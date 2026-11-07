@@ -61,6 +61,8 @@
                           Fill="{DynamicResource TextTertiaryBrush}" Width="14" Height="14" Stretch="Uniform" />
                     <Path Data="{StaticResource IconSync}" IsVisible="{Binding IsRunning}"
                           Fill="{DynamicResource AccentBrush}" Width="15" Height="15" Stretch="Uniform" />
+                    <Path Data="{StaticResource IconPause}" IsVisible="{Binding IsPausedState}"
+                          Fill="{DynamicResource WarningBrush}" Width="15" Height="15" Stretch="Uniform" />
                   </Panel>
 
                   <StackPanel Grid.Column="1" Spacing="3">
@@ -84,14 +86,41 @@
                                TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding IsFailed}" />
                   </StackPanel>
 
-                  <Button Grid.Column="2" Classes="tool" Width="24" Height="24" VerticalAlignment="Top"
-                          IsVisible="{Binding CanCancel}"
-                          Command="{Binding $parent[UserControl].DataContext.CancelTransferCommand}"
-                          CommandParameter="{Binding}"
-                          ToolTip.Tip="{loc:Tr 取消}">
-                    <Path Data="{StaticResource IconClose}" Fill="{DynamicResource TextSecondaryBrush}"
-                          Width="12" Height="12" Stretch="Uniform" />
-                  </Button>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="1"
+                              VerticalAlignment="Top">
+                    <Button Classes="tool" Width="24" Height="24"
+                            IsVisible="{Binding CanPause}"
+                            Command="{Binding $parent[UserControl].DataContext.TogglePauseTransferCommand}"
+                            CommandParameter="{Binding}"
+                            ToolTip.Tip="{loc:Tr 暂停}">
+                      <Path Data="{StaticResource IconPause}" Fill="{DynamicResource TextSecondaryBrush}"
+                            Width="12" Height="12" Stretch="Uniform" />
+                    </Button>
+                    <Button Classes="tool" Width="24" Height="24"
+                            IsVisible="{Binding CanResume}"
+                            Command="{Binding $parent[UserControl].DataContext.TogglePauseTransferCommand}"
+                            CommandParameter="{Binding}"
+                            ToolTip.Tip="{loc:Tr 继续}">
+                      <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource AccentBrush}"
+                            Width="12" Height="12" Stretch="Uniform" />
+                    </Button>
+                    <Button Classes="tool" Width="24" Height="24"
+                            IsVisible="{Binding CanRetry}"
+                            Command="{Binding $parent[UserControl].DataContext.RetryTransferCommand}"
+                            CommandParameter="{Binding}"
+                            ToolTip.Tip="{loc:Tr 重试}">
+                      <Path Data="{StaticResource IconRestore}" Fill="{DynamicResource TextSecondaryBrush}"
+                            Width="12" Height="12" Stretch="Uniform" />
+                    </Button>
+                    <Button Classes="tool" Width="24" Height="24"
+                            IsVisible="{Binding CanCancel}"
+                            Command="{Binding $parent[UserControl].DataContext.CancelTransferCommand}"
+                            CommandParameter="{Binding}"
+                            ToolTip.Tip="{loc:Tr 取消}">
+                      <Path Data="{StaticResource IconClose}" Fill="{DynamicResource TextSecondaryBrush}"
+                            Width="12" Height="12" Stretch="Uniform" />
+                    </Button>
+                  </StackPanel>
                 </Grid>
               </Border>
             </DataTemplate>
