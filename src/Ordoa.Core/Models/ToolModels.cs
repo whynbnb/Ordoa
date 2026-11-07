@@ -35,6 +35,15 @@ public sealed record TerminalProfile(
     public bool SupportsCommands => !string.IsNullOrWhiteSpace(CommandArguments);
 }
 
+/// <summary>A named search expression kept in the search flyout.</summary>
+public sealed class SavedSearch
+{
+    public string Name { get; set; } = string.Empty;
+    public string Query { get; set; } = string.Empty;
+
+    public SavedSearch Clone() => new() { Name = Name, Query = Query };
+}
+
 /// <summary>A user-defined quick action executed from the context menu or command palette.</summary>
 public sealed class CustomCommand
 {

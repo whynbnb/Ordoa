@@ -90,6 +90,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(IsRemote));
             OnPropertyChanged(nameof(IsArchive));
             OnPropertyChanged(nameof(FsBadgeText));
+            OnPropertyChanged(nameof(SearchScopeText));
         }
     }
 
@@ -251,6 +252,20 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _searchStatus = string.Empty;
+
+    /// <summary>Search from the filesystem root instead of the current folder.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SearchScopeText))]
+    private bool _searchWholeDisk;
+
+    public string SearchScopeText => SearchWholeDisk
+        ? IsLocal ? L10n.T("整个磁盘") : L10n.T("整个连接")
+        : L10n.T("当前文件夹");
+
+    public IReadOnlyList<string> SearchHistory => _services.Settings.Current.SearchHistory;
+    public IReadOnlyList<SavedSearch> SavedSearches => _services.Settings.Current.SavedSearches;
+    public bool HasSearchHistory => SearchHistory.Count > 0;
+    public bool HasSavedSearches => SavedSearches.Count > 0;
 
     [ObservableProperty]
     private bool _isDropTarget;
@@ -591,34 +606,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private void ApplyGitStatus(GitRepositoryStatus? status)
     {
         _gitStatus = status;
-        var settings = _services.Settings.Current;
-        var enabled = settings.EnableGitIntegration;
-        var badges = enabled && settings.ShowGitFileBadges;
         foreach (var item in _entries)
-        {
-            item.SetGitDisplay(badges, settings.ShowGitCleanCheck,
-                settings.ShowGitRepositoryBadges, settings.ShowGitSubmoduleBadges,
-                settings.DimGitIgnored);
-
-            var itemPath = Path.TrimEndingDirectorySeparator(item.Path);
-            var change = status is not null &&
-                         status.FilesByPath.TryGetValue(itemPath, out var exact)
-                ? exact
-                : null;
-            var repository = enabled && settings.ShowGitRepositoryBadges &&
-                             item.IsDirectory && HasGitMarker(itemPath);
-            var ignored = enabled && (status?.IgnoredPaths.Contains(itemPath) == true ||
-                          status?.IgnoredDirectories.Any(directory => IsUnder(itemPath, directory)) == true);
-            var submodule = enabled && (status?.SubmodulePaths.Contains(itemPath) == true ||
-                                        change?.IsSubmodule == true);
-            var directoryDirty = enabled && item.IsDirectory && status is not null &&
-                                 status.ChangedDirectories.Contains(itemPath);
-            var trackedClean = enabled && change is null && !ignored && !submodule &&
-                               (item.IsDirectory
-                                   ? status?.TrackedDirectories.Contains(itemPath) == true && !directoryDirty
-                                   : status?.TrackedPaths.Contains(itemPath) == true);
-            item.SetGitState(change, directoryDirty, trackedClean, ignored, repository, submodule);
-        }
+            ApplyGitItem(item, status);
 
         OnPropertyChanged(nameof(GitStatus));
         OnPropertyChanged(nameof(HasGitRepository));
@@ -627,6 +616,166 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(GitStatusText));
         OnPropertyChanged(nameof(GitStatusBrush));
         OnPropertyChanged(nameof(GitTooltipText));
+    }
+
+    private void ApplyGitItem(FileItemViewModel item, GitRepositoryStatus? status)
+    {
+        var settings = _services.Settings.Current;
+        var enabled = settings.EnableGitIntegration;
+        var badges = enabled && settings.ShowGitFileBadges;
+        item.SetGitDisplay(badges, settings.ShowGitCleanCheck,
+            settings.ShowGitRepositoryBadges, settings.ShowGitSubmoduleBadges,
+            settings.DimGitIgnored);
+
+        var itemPath = Path.TrimEndingDirectorySeparator(item.Path);
+        var change = status is not null &&
+                     status.FilesByPath.TryGetValue(itemPath, out var exact)
+            ? exact
+            : null;
+        var repository = enabled && settings.ShowGitRepositoryBadges &&
+                         item.IsDirectory && HasGitMarker(itemPath);
+        var ignored = enabled && (status?.IgnoredPaths.Contains(itemPath) == true ||
+                      status?.IgnoredDirectories.Any(directory => IsUnder(itemPath, directory)) == true);
+        var submodule = enabled && (status?.SubmodulePaths.Contains(itemPath) == true ||
+                                    change?.IsSubmodule == true);
+        var directoryDirty = enabled && item.IsDirectory && status is not null &&
+                             status.ChangedDirectories.Contains(itemPath);
+        var trackedClean = enabled && change is null && !ignored && !submodule &&
+                           (item.IsDirectory
+                               ? status?.TrackedDirectories.Contains(itemPath) == true && !directoryDirty
+                               : status?.TrackedPaths.Contains(itemPath) == true);
+        item.SetGitState(change, directoryDirty, trackedClean, ignored, repository, submodule);
+    }
+
+    /// <summary>
+    /// Search results can span repositories. Resolve each repository once and
+    /// apply its status to the results that live inside it.
+    /// </summary>
+    private async Task ApplySearchGitStatusAsync(IReadOnlyList<FileItemViewModel> items,
+        CancellationToken cancellationToken)
+    {
+        var settings = _services.Settings.Current;
+        if (!settings.EnableGitIntegration || !settings.ShowGitFileBadges || !FileSystem.IsLocal)
+        {
+            foreach (var item in items)
+            {
+                item.SetGitDisplay(false, settings.ShowGitCleanCheck, settings.ShowGitRepositoryBadges,
+                    settings.ShowGitSubmoduleBadges, settings.DimGitIgnored);
+                item.SetGitState(null);
+            }
+            return;
+        }
+
+        var groups = new Dictionary<string, List<FileItemViewModel>>(
+            OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+        foreach (var item in items)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return;
+            var directory = item.IsDirectory ? item.Path : Path.GetDirectoryName(item.Path);
+            if (string.IsNullOrEmpty(directory))
+                continue;
+            var root = GitService.FindRepository(directory);
+            if (root is null)
+                continue;
+            if (!groups.TryGetValue(root, out var list))
+                groups[root] = list = [];
+            list.Add(item);
+        }
+
+        foreach (var (root, group) in groups.Take(16))
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return;
+            GitRepositoryStatus? status;
+            try
+            {
+                status = await GitService.GetStatusForRootAsync(root, cancellationToken).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("读取搜索结果 Git 状态失败", ex);
+                continue;
+            }
+
+            foreach (var item in group)
+                ApplyGitItem(item, status);
+        }
+    }
+
+    private void RememberSearch(string query)
+    {
+        var history = _services.Settings.Current.SearchHistory;
+        history.RemoveAll(entry => string.Equals(entry, query, StringComparison.Ordinal));
+        history.Insert(0, query);
+        while (history.Count > 20)
+            history.RemoveAt(history.Count - 1);
+        _services.Settings.Save();
+        OnPropertyChanged(nameof(SearchHistory));
+        OnPropertyChanged(nameof(HasSearchHistory));
+    }
+
+    public async Task SaveCurrentSearchAsync()
+    {
+        var query = FilterText.Trim();
+        if (query.Length == 0)
+        {
+            Toast(L10n.T("无法保存搜索"), L10n.T("请先输入搜索内容"), true);
+            return;
+        }
+
+        var name = await _services.Dialogs.PromptAsync(L10n.T("保存搜索"), L10n.T("名称"), query)
+            .ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        var searches = _services.Settings.Current.SavedSearches;
+        searches.RemoveAll(entry => string.Equals(entry.Name, name.Trim(), StringComparison.Ordinal));
+        searches.Insert(0, new SavedSearch { Name = name.Trim(), Query = query });
+        while (searches.Count > 50)
+            searches.RemoveAt(searches.Count - 1);
+        _services.Settings.Save();
+        OnPropertyChanged(nameof(SavedSearches));
+        OnPropertyChanged(nameof(HasSavedSearches));
+        Toast(L10n.T("已保存搜索"), name.Trim(), false);
+    }
+
+    public void RemoveSavedSearch(SavedSearch search)
+    {
+        var searches = _services.Settings.Current.SavedSearches;
+        if (!searches.Remove(search))
+            return;
+        _services.Settings.Save();
+        OnPropertyChanged(nameof(SavedSearches));
+        OnPropertyChanged(nameof(HasSavedSearches));
+    }
+
+    public void ClearSearchHistory()
+    {
+        var history = _services.Settings.Current.SearchHistory;
+        if (history.Count == 0)
+            return;
+        history.Clear();
+        _services.Settings.Save();
+        OnPropertyChanged(nameof(SearchHistory));
+        OnPropertyChanged(nameof(HasSearchHistory));
+    }
+
+    public async Task RunSearchAsync(string query)
+    {
+        FilterText = query;
+        await StartSearchAsync(query).ConfigureAwait(true);
+    }
+
+    public async Task ToggleSearchScopeAsync()
+    {
+        SearchWholeDisk = !SearchWholeDisk;
+        if (IsSearchActive)
+            await StartSearchAsync(FilterText).ConfigureAwait(true);
     }
 
     private static bool HasGitMarker(string path)
@@ -1677,11 +1826,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
         var options = new SearchOptions(query.Trim(), ShowHidden, _services.Settings.Current.MaxSearchResults,
             _services.Settings.Current.SearchDepth);
+        var rootPath = SearchWholeDisk ? FileSystem.RootPath : CurrentPath;
         var count = 0;
 
         try
         {
-            await foreach (var entry in _services.Search.SearchAsync(FileSystem, CurrentPath, options, null, cancellationToken)
+            await foreach (var entry in _services.Search.SearchAsync(FileSystem, rootPath, options, null, cancellationToken)
                                .ConfigureAwait(true))
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -1698,6 +1848,10 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             {
                 SortSearchResults();
                 SearchStatus = L10n.Format("找到 {0} 个结果", count);
+                RememberSearch(query.Trim());
+                await ApplySearchGitStatusAsync(_searchResults.ToList(), cancellationToken).ConfigureAwait(true);
+                if (!cancellationToken.IsCancellationRequested)
+                    SearchStatus = L10n.Format("找到 {0} 个结果", count);
             }
         }
         catch (OperationCanceledException)

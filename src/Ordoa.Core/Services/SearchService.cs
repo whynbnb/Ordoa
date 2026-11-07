@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
+using System.Text;
 using Ordoa.Core.Abstractions;
 using Ordoa.Core.Models;
-using Ordoa.Core.Util;
 
 namespace Ordoa.Core.Services;
 
@@ -10,7 +10,8 @@ public sealed record SearchOptions(
     bool IncludeHidden = false,
     int MaxResults = 3000,
     int MaxDepth = 12,
-    bool SkipSymlinks = true);
+    bool SkipSymlinks = true,
+    int MaxContentBytes = 8 * 1024 * 1024);
 
 public sealed record SearchProgress(int ScannedDirectories, int Results, string CurrentDirectory);
 
@@ -22,8 +23,10 @@ public sealed class SearchService
         if (string.IsNullOrWhiteSpace(options.Query))
             yield break;
 
-        var query = options.Query.Trim();
-        var isGlob = query.IndexOfAny(['*', '?']) >= 0;
+        var query = SearchQuery.Parse(options.Query);
+        if (query.IsEmpty)
+            yield break;
+
         var queue = new Queue<(string Path, int Depth)>();
         queue.Enqueue((fileSystem.NormalizePath(rootPath), 0));
 
@@ -53,9 +56,18 @@ public sealed class SearchService
                 if (!options.IncludeHidden && entry.IsHidden)
                     continue;
 
-                var matches = isGlob
-                    ? GlobMatcher.IsMatch(entry.Name, query)
-                    : entry.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+                if (entry.IsDirectory && query.ShouldPruneDirectory(entry.Name))
+                    continue;
+
+                var matches = query.MatchesMetadata(entry);
+                if (matches && query.HasContent)
+                {
+                    if (entry.IsDirectory)
+                        matches = false;
+                    else
+                        matches = await MatchesContentAsync(fileSystem, entry, query.ContentTerms,
+                            options.MaxContentBytes, cancellationToken).ConfigureAwait(false);
+                }
 
                 if (matches)
                 {
@@ -78,5 +90,48 @@ public sealed class SearchService
         }
 
         progress?.Report(new SearchProgress(directoryCount, resultCount, rootPath));
+    }
+
+    private static async Task<bool> MatchesContentAsync(IFileSystem fileSystem, FileEntry entry,
+        IReadOnlyList<string> terms, int maxBytes, CancellationToken cancellationToken)
+    {
+        if (entry.Size > maxBytes)
+            return false;
+
+        try
+        {
+            await using var stream = await fileSystem.OpenReadAsync(entry.Path, cancellationToken)
+                .ConfigureAwait(false);
+            using var buffer = new MemoryStream();
+            var chunk = new byte[64 * 1024];
+            var remaining = maxBytes;
+            while (remaining > 0)
+            {
+                var read = await stream.ReadAsync(chunk.AsMemory(0, Math.Min(chunk.Length, remaining)),
+                    cancellationToken).ConfigureAwait(false);
+                if (read <= 0)
+                    break;
+                if (Array.IndexOf(chunk, (byte)0, 0, read) >= 0)
+                    return false; // Binary file.
+                buffer.Write(chunk, 0, read);
+                remaining -= read;
+            }
+
+            buffer.Position = 0;
+            using var reader = new StreamReader(buffer, Encoding.UTF8, detectEncodingFromByteOrderMarks: true,
+                bufferSize: 64 * 1024, leaveOpen: false);
+            var text = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var term in terms)
+            {
+                if (!text.Contains(term, StringComparison.CurrentCultureIgnoreCase))
+                    return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return false;
+        }
     }
 }

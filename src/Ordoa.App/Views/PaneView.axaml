@@ -2,6 +2,7 @@
              xmlns:loc="using:Ordoa.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Ordoa.App.ViewModels"
+             xmlns:models="using:Ordoa.Core.Models"
              xmlns:views="using:Ordoa.App.Views"
              x:DataType="vm:PaneViewModel"
              x:CompileBindings="True"
@@ -84,6 +85,70 @@
       <Setter Property="Padding" Value="6,2" />
     </Style>
   </UserControl.Styles>
+  <UserControl.Resources>
+        <Flyout x:Key="SearchFlyout" Placement="BottomEdgeAlignedRight">
+          <StackPanel Width="300" Spacing="8" x:CompileBindings="True" x:DataType="vm:PaneViewModel">
+            <TextBlock Text="{loc:Tr 搜索语法}" Classes="h2" />
+            <TextBlock Text="{loc:Tr 普通词匹配文件名；多个词需同时匹配。}" Classes="fieldhint"
+                       TextWrapping="Wrap" />
+            <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="5" Padding="8,6">
+              <StackPanel Spacing="3">
+                <TextBlock Text="*.cs -node_modules size:&gt;10MB" Classes="tiny" FontFamily="monospace" />
+                <TextBlock Text="content:TODO modified:&gt;7d ext:cs,json" Classes="tiny" FontFamily="monospace" />
+                <TextBlock Text="type:image size:&lt;2MB modified:today" Classes="tiny" FontFamily="monospace" />
+              </StackPanel>
+            </Border>
+            <TextBlock Text="{loc:Tr 支持 glob、排除项 -词、ext:、type:、size:、modified: 和 content:；使用引号包含空格。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
+
+            <Border Classes="divider" />
+            <Button Content="{loc:Tr 保存当前搜索…}" Classes="ghost" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left" Click="OnSaveSearchClick" />
+            <CheckBox Content="{loc:Tr 搜索整个磁盘}" IsChecked="{Binding SearchWholeDisk, Mode=TwoWay}"
+                      ToolTip.Tip="{loc:Tr 从文件系统根目录开始搜索，可能较慢}" />
+
+            <Border Classes="divider" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{loc:Tr 最近搜索}" Classes="section" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Classes="ghost" Padding="6,2" FontSize="11"
+                      Content="{loc:Tr 清空}" Click="OnClearSearchHistoryClick"
+                      IsVisible="{Binding HasSearchHistory}" />
+            </Grid>
+            <TextBlock Text="{loc:Tr 暂无搜索历史}" Classes="fieldhint"
+                       IsVisible="{Binding !HasSearchHistory}" />
+            <ItemsControl ItemsSource="{Binding SearchHistory}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                          Padding="6,3" FontSize="12" Content="{Binding}" Tag="{Binding}"
+                          Click="OnHistorySearchClick" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Classes="divider" />
+            <TextBlock Text="{loc:Tr 保存的搜索}" Classes="section" />
+            <TextBlock Text="{loc:Tr 暂无保存的搜索}" Classes="fieldhint"
+                       IsVisible="{Binding !HasSavedSearches}" />
+            <ItemsControl ItemsSource="{Binding SavedSearches}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:SavedSearch">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Padding="6,2" FontSize="12" Content="{Binding Name}" Tag="{Binding Query}"
+                            ToolTip.Tip="{Binding Query}" Click="OnHistorySearchClick" />
+                    <Button Grid.Column="1" Classes="tool" Width="20" Height="20" Padding="0"
+                            ToolTip.Tip="{loc:Tr 删除}" Tag="{Binding}" Click="OnDeleteSavedSearchClick">
+                      <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
+                            Fill="{DynamicResource TextTertiaryBrush}" />
+                    </Button>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Flyout>
+  </UserControl.Resources>
 
   <Grid RowDefinitions="Auto,Auto,*,Auto">
     <!-- Active-pane indicator: only shown while the tab is split. -->
@@ -162,13 +227,20 @@
                 Fill="{DynamicResource TextTertiaryBrush}" />
         </Button>
 
-        <Grid Grid.Column="5" Width="140" VerticalAlignment="Center">
+        <Grid Grid.Column="5" Width="160" VerticalAlignment="Center">
           <TextBox x:Name="SearchBox" Classes="search" Text="{Binding FilterText, Mode=TwoWay}"
-                   Padding="26,4,8,4" MinHeight="28" KeyDown="OnSearchKeyDown"
+                   Padding="26,4,26,4" MinHeight="28" KeyDown="OnSearchKeyDown"
                    PlaceholderText="{loc:Tr 搜索}" ToolTip.Tip="{loc:Tr 输入以过滤；按 Enter 进行深度搜索}" />
           <Path Data="{StaticResource IconSearch}" Width="13" Height="13" Stretch="Uniform"
                 Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Left"
                 VerticalAlignment="Center" Margin="9,0,0,0" IsHitTestVisible="False" />
+          <Button Classes="tool" Width="20" Height="20" Padding="0" HorizontalAlignment="Right"
+                  VerticalAlignment="Center" Margin="0,0,2,0"
+                  Flyout="{StaticResource SearchFlyout}"
+                  ToolTip.Tip="{loc:Tr 搜索语法、历史与保存的搜索}">
+            <Path Data="{StaticResource IconChevronDown}" Width="10" Height="10" Stretch="Uniform"
+                  Fill="{DynamicResource TextTertiaryBrush}" />
+          </Button>
         </Grid>
 
         <Button Grid.Column="6" Classes="tool" Command="{Binding ToggleViewCommand}"
@@ -242,16 +314,21 @@
     <!-- Search banner -->
     <Border Grid.Row="1" Background="{DynamicResource AccentSoftBrush}" Padding="10,5"
             IsVisible="{Binding IsSearchActive}">
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
         <Path Data="{StaticResource IconSearch}" Width="12" Height="12" Stretch="Uniform"
               Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
           <TextBlock Text="{Binding SearchStatus}" FontSize="11.5" />
+          <TextBlock Text="{Binding FilterText}" FontSize="11" Classes="tiny"
+                     TextTrimming="CharacterEllipsis" MaxWidth="240" VerticalAlignment="Center" />
           <ProgressBar IsIndeterminate="True" Width="60" Height="2" IsVisible="{Binding IsSearching}" />
         </StackPanel>
-        <TextBlock Grid.Column="2" Text="{Binding DisplayPath}" Classes="tiny" VerticalAlignment="Center"
-                   MaxWidth="300" TextTrimming="CharacterEllipsis" />
-        <Button Grid.Column="3" Classes="tool" Width="22" Height="22" Click="OnExitSearchClick"
+        <Button Grid.Column="2" Content="{Binding SearchScopeText}" Classes="subtle" FontSize="11"
+                Padding="8,2" Click="OnToggleSearchScopeClick"
+                ToolTip.Tip="{loc:Tr 切换搜索范围并重新搜索}" />
+        <TextBlock Grid.Column="3" Text="{Binding DisplayPath}" Classes="tiny" VerticalAlignment="Center"
+                   MaxWidth="240" TextTrimming="CharacterEllipsis" />
+        <Button Grid.Column="4" Classes="tool" Width="22" Height="22" Click="OnExitSearchClick"
                 ToolTip.Tip="{loc:Tr 退出搜索}">
           <Path Data="{StaticResource IconClose}" Width="10" Height="10" Stretch="Uniform"
                 Fill="{DynamicResource TextSecondaryBrush}" />

@@ -773,6 +773,44 @@ public partial class PaneView : UserControl
 
     private void OnExitSearchClick(object? sender, RoutedEventArgs e) => _pane?.ExitSearch();
 
+    private async void OnToggleSearchScopeClick(object? sender, RoutedEventArgs e)
+    {
+        if (_pane is not null)
+            await _pane.ToggleSearchScopeAsync();
+    }
+
+    private async void OnSaveSearchClick(object? sender, RoutedEventArgs e)
+    {
+        if (_pane is not null)
+        {
+            HideSearchFlyout();
+            await _pane.SaveCurrentSearchAsync();
+        }
+    }
+
+    private async void OnHistorySearchClick(object? sender, RoutedEventArgs e)
+    {
+        if (_pane is null || sender is not Control { Tag: string query } || string.IsNullOrWhiteSpace(query))
+            return;
+        HideSearchFlyout();
+        await _pane.RunSearchAsync(query);
+    }
+
+    private void HideSearchFlyout()
+    {
+        if (Resources.TryGetResource("SearchFlyout", null, out var resource) &&
+            resource is FlyoutBase flyout)
+            flyout.Hide();
+    }
+
+    private void OnDeleteSavedSearchClick(object? sender, RoutedEventArgs e)
+    {
+        if (_pane is not null && sender is Control { Tag: SavedSearch search })
+            _pane.RemoveSavedSearch(search);
+    }
+
+    private void OnClearSearchHistoryClick(object? sender, RoutedEventArgs e) => _pane?.ClearSearchHistory();
+
     private void OnNewFolderClick(object? sender, RoutedEventArgs e) => Run(pane => pane.NewFolderAsync());
     private void OnNewFileClick(object? sender, RoutedEventArgs e) => Run(pane => pane.NewFileAsync());
     private void OnPasteClick(object? sender, RoutedEventArgs e) => Run(pane => pane.PasteAsync());

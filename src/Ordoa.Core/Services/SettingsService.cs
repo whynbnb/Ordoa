@@ -78,6 +78,10 @@ public sealed class AppSettings
     public PreviewPanelPlacement PreviewPanelPlacement { get; set; } = PreviewPanelPlacement.Right;
     public int SearchDepth { get; set; } = 12;
     public int MaxSearchResults { get; set; } = 3000;
+    /// <summary>Recent successful search expressions, newest first.</summary>
+    public List<string> SearchHistory { get; set; } = [];
+    /// <summary>Named search expressions shown in the search flyout.</summary>
+    public List<SavedSearch> SavedSearches { get; set; } = [];
     /// <summary>Optional path to the ffmpeg executable used for media previews.</summary>
     public string FfmpegPath { get; set; } = string.Empty;
     public double WindowWidth { get; set; } = 1200;
@@ -154,6 +158,11 @@ public sealed class AppSettings
         clone.CustomCommands = (CustomCommands ?? [])
             .Where(command => command is not null)
             .Select(command => command.Clone())
+            .ToList();
+        clone.SearchHistory = [.. SearchHistory];
+        clone.SavedSearches = (SavedSearches ?? [])
+            .Where(search => search is not null)
+            .Select(search => search.Clone())
             .ToList();
         return clone;
     }
@@ -280,6 +289,22 @@ public sealed class SettingsService
             .ToList();
         Current.SearchDepth = Math.Clamp(Current.SearchDepth, 1, 64);
         Current.MaxSearchResults = Math.Clamp(Current.MaxSearchResults, 100, 20000);
+        Current.SearchHistory = (Current.SearchHistory ?? [])
+            .Where(entry => !string.IsNullOrWhiteSpace(entry))
+            .Select(entry => entry.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .Take(20)
+            .ToList();
+        Current.SavedSearches = (Current.SavedSearches ?? [])
+            .Where(search => search is not null && !string.IsNullOrWhiteSpace(search.Query))
+            .Select(search =>
+            {
+                search.Query = search.Query.Trim();
+                search.Name = string.IsNullOrWhiteSpace(search.Name) ? search.Query : search.Name.Trim();
+                return search;
+            })
+            .Take(50)
+            .ToList();
         Current.FfmpegPath = (Current.FfmpegPath ?? string.Empty).Trim();
     }
 }
