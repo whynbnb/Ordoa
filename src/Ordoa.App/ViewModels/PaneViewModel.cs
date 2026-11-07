@@ -1645,6 +1645,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         try
         {
             await FileSystem.MoveAsync(item.Path, target).ConfigureAwait(true);
+            _services.Tags.MoveTree(FileSystem, item.Path, FileSystem, target);
             var renamedEntry = await FileSystem.GetEntryAsync(target).ConfigureAwait(true) ?? item.Entry;
             _services.Undo.RecordRename(FileSystem, item.Path, target, renamedEntry,
                 L10n.Format("重命名 {0}", item.Name));
@@ -1712,6 +1713,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             try
             {
                 var result = await BatchRenameExecutor.ExecuteAsync(FileSystem, plan).ConfigureAwait(true);
+                foreach (var operation in result.Completed)
+                {
+                    var target = FileSystem.Combine(FileSystem.GetParent(operation.Entry.Path), operation.NewName);
+                    _services.Tags.MoveTree(FileSystem, operation.Entry.Path, FileSystem, target);
+                }
                 if (result.Completed.Count > 0)
                 {
                     _services.Undo.RecordBatchRename(FileSystem, result.Completed,
@@ -1977,6 +1983,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             await ArchiveEditService.RenameAsync(archive.ArchivePath, archive.Format,
                 item.Path.Trim('/'), newPath, archive.Password).ConfigureAwait(true);
+            _services.Tags.MoveTree(FileSystem, item.Path, FileSystem, "/" + newPath.TrimStart('/'));
             await ReloadArchiveAsync(archive).ConfigureAwait(true);
             Toast(L10n.T("压缩包项目已重命名"), name.Trim(), false);
         }
@@ -2513,8 +2520,30 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         SearchStatus = L10n.T("正在搜索…");
         OnPropertyChanged(nameof(ItemCountText));
 
+        var parsed = SearchQuery.Parse(query);
+        Func<FileEntry, bool>? predicate = null;
+        if (parsed.Tags.Count > 0 || parsed.Color is not null)
+        {
+            predicate = entry =>
+            {
+                var info = _services.Tags.Get(FileSystem, entry.Path);
+                if (info is null && (parsed.Tags.Count > 0 ||
+                                     parsed.Color is not (null or Ordoa.Core.Models.FileColor.None)))
+                    return false;
+                if (parsed.Color is { } color &&
+                    (info?.Color ?? Ordoa.Core.Models.FileColor.None) != color)
+                    return false;
+                foreach (var tag in parsed.Tags)
+                {
+                    if (!info.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+                        return false;
+                }
+                return true;
+            };
+        }
+
         var options = new SearchOptions(query.Trim(), ShowHidden, _services.Settings.Current.MaxSearchResults,
-            _services.Settings.Current.SearchDepth);
+            _services.Settings.Current.SearchDepth, Predicate: predicate);
         var rootPath = SearchWholeDisk ? FileSystem.RootPath : CurrentPath;
         var count = 0;
 

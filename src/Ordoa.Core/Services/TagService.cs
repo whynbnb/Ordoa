@@ -54,6 +54,63 @@ public sealed class TagService
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    public void MoveTree(IFileSystem sourceFileSystem, string sourcePath, IFileSystem destinationFileSystem,
+        string destinationPath)
+        => TransferTree(sourceFileSystem, sourcePath, destinationFileSystem, destinationPath, copy: false);
+
+    public void CopyTree(IFileSystem sourceFileSystem, string sourcePath, IFileSystem destinationFileSystem,
+        string destinationPath)
+        => TransferTree(sourceFileSystem, sourcePath, destinationFileSystem, destinationPath, copy: true);
+
+    public void RemoveTree(IFileSystem fileSystem, string path)
+    {
+        var key = Key(fileSystem, path);
+        lock (_sync)
+        {
+            var entries = Load();
+            var removed = entries.Keys
+                .Where(candidate => IsUnder(candidate, key))
+                .ToList();
+            if (removed.Count == 0)
+                return;
+            foreach (var candidate in removed)
+                entries.Remove(candidate);
+            Persist();
+        }
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void TransferTree(IFileSystem sourceFileSystem, string sourcePath,
+        IFileSystem destinationFileSystem, string destinationPath, bool copy)
+    {
+        var sourceKey = Key(sourceFileSystem, sourcePath);
+        var destinationKey = Key(destinationFileSystem, destinationPath);
+        lock (_sync)
+        {
+            var entries = Load();
+            var matches = entries
+                .Where(pair => IsUnder(pair.Key, sourceKey))
+                .ToList();
+            if (matches.Count == 0)
+                return;
+
+            foreach (var (key, info) in matches)
+            {
+                var suffix = key[sourceKey.Length..];
+                if (!copy)
+                    entries.Remove(key);
+                entries[destinationKey + suffix] = info.Clone();
+            }
+            Persist();
+        }
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static bool IsUnder(string key, string parent)
+        => string.Equals(key, parent, StringComparison.Ordinal) ||
+           key.StartsWith(parent + "/", StringComparison.Ordinal) ||
+           key.StartsWith(parent + "\\", StringComparison.Ordinal);
+
     public IReadOnlyList<string> AllTags()
     {
         lock (_sync)

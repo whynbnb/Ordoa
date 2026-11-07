@@ -462,8 +462,9 @@ public partial class MainWindow : Window
             return;
 
         var state = payload.Source.SnapshotTab(payload.Tab);
-        payload.Source.CloseTabWithoutHistory(payload.Tab);
-        await _viewModel.AdoptTabAsync(state);
+        var adopted = await _viewModel.AdoptTabAsync(state);
+        if (adopted is not null)
+            payload.Source.CloseTabWithoutHistory(payload.Tab);
     }
 
     private void EndTabDrag(IPointer? pointer)

@@ -65,6 +65,7 @@
 - `ext:cs,json` 按扩展名过滤；`type:file|folder|image|video|audio|text|document|archive|code|config` 按类别过滤。
 - `size:>10MB`、`size:1KB..2MB` 按大小过滤；`modified:>7d`、`modified:today`、`modified:2024-01-01..2025-01-01` 按修改时间过滤。
 - `content:TODO` 或 `content:"hello world"` 搜索文件内容（grep 风格，跳过二进制文件和超过 8MB 的文件）。
+- `tag:work`、`tag:work,urgent` 和 `color:red` 可按文件标签与颜色过滤搜索结果。
 - 搜索范围可在「当前文件夹」和「整个磁盘 / 整个连接」之间切换；搜索完成后在后台为结果补充 Git 状态。
 - 最近 20 条搜索自动保存；命名搜索可长期保留，并可从搜索面板一键删除。
 

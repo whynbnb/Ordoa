@@ -42,6 +42,7 @@ public sealed class AppServices : IAsyncDisposable
         FileManager1 = new FileManager1Service((uris, action) => Windows.HandleFileManagerRequestAsync(uris, action));
         Operations = new FileOperationService(Trash, action => Dispatcher.UIThread.Post(action), Settings);
         Operations.ConflictResolver = new DialogConflictResolver(Dialogs);
+        Operations.Finished += OnOperationFinishedForTags;
         Undo = new UndoService(this);
     }
 
@@ -120,6 +121,36 @@ public sealed class AppServices : IAsyncDisposable
         try { await SingleInstanceService.StopAsync().ConfigureAwait(false); } catch { /* ignore */ }
         try { await FileManager1.DisposeAsync().ConfigureAwait(false); } catch { /* ignore */ }
         await FileSystems.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private void OnOperationFinishedForTags(object? sender, FileOperationItem item)
+    {
+        try
+        {
+            foreach (var result in item.Results)
+            {
+                if (item.Kind == OperationKind.Copy && result.DestinationFileSystem is not null &&
+                    result.Destination is not null)
+                {
+                    Tags.CopyTree(result.Source.FileSystem, result.Source.Path,
+                        result.DestinationFileSystem, result.Destination);
+                }
+                else if (item.Kind == OperationKind.Move && result.DestinationFileSystem is not null &&
+                         result.Destination is not null)
+                {
+                    Tags.MoveTree(result.Source.FileSystem, result.Source.Path,
+                        result.DestinationFileSystem, result.Destination);
+                }
+                else if (item.Kind == OperationKind.Delete)
+                {
+                    Tags.RemoveTree(result.Source.FileSystem, result.Source.Path);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("同步文件标签失败", ex);
+        }
     }
 
     private sealed class DialogConflictResolver : IConflictResolver

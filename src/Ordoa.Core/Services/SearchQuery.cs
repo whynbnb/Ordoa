@@ -37,7 +37,7 @@ public enum SearchEntryType
 public sealed record SearchQuery
 {
     private static readonly string[] KnownKeys =
-        ["ext", "type", "size", "modified", "content", "text", "name"];
+        ["ext", "type", "size", "modified", "content", "text", "name", "tag", "color"];
 
     public IReadOnlyList<string> Terms { get; init; } = [];
     public IReadOnlyList<string> Excludes { get; init; } = [];
@@ -48,13 +48,15 @@ public sealed record SearchQuery
     public DateTimeOffset? ModifiedAfter { get; init; }
     public DateTimeOffset? ModifiedBefore { get; init; }
     public IReadOnlyList<string> ContentTerms { get; init; } = [];
+    public IReadOnlyList<string> Tags { get; init; } = [];
+    public FileColor? Color { get; init; }
 
     public bool HasContent => ContentTerms.Count > 0;
     public bool HasSizeFilter => MinSize is not null || MaxSize is not null;
     public bool HasModifiedFilter => ModifiedAfter is not null || ModifiedBefore is not null;
     public bool IsEmpty => Terms.Count == 0 && Excludes.Count == 0 && Extensions.Count == 0 &&
                            Type == SearchEntryType.Any && !HasSizeFilter && !HasModifiedFilter &&
-                           !HasContent;
+                           !HasContent && Tags.Count == 0 && Color is null;
 
     /// <summary>True when a directory name should not be descended into.</summary>
     public bool ShouldPruneDirectory(string name) => Excludes.Any(exclude => GlobMatcher.IsMatch(name, exclude));
@@ -66,6 +68,8 @@ public sealed record SearchQuery
         var excludes = new List<string>();
         var extensions = new List<string>();
         var content = new List<string>();
+        var tags = new List<string>();
+        FileColor? color = null;
         var type = SearchEntryType.Any;
         long? minSize = null;
         long? maxSize = null;
@@ -120,6 +124,14 @@ public sealed record SearchQuery
                 case "text":
                     content.Add(value);
                     break;
+                case "tag":
+                    foreach (var item in value.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries))
+                        tags.Add(item.Trim());
+                    break;
+                case "color":
+                    if (Enum.TryParse<FileColor>(value, true, out var parsedColor))
+                        color = parsedColor;
+                    break;
                 default:
                     terms.Add(value);
                     break;
@@ -137,6 +149,8 @@ public sealed record SearchQuery
             ModifiedAfter = modifiedAfter,
             ModifiedBefore = modifiedBefore,
             ContentTerms = content,
+            Tags = tags.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            Color = color,
         };
     }
 

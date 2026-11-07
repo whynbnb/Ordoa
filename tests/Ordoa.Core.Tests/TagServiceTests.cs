@@ -40,6 +40,35 @@ public sealed class TagServiceTests : IDisposable
     }
 
     [Fact]
+    public void MovesAndCopiesTagTrees()
+    {
+        var store = Path.Combine(_root, "tags.json");
+        var folder = Path.Combine(_root, "folder");
+        Directory.CreateDirectory(folder);
+        var child = Path.Combine(folder, "child.txt");
+        File.WriteAllText(child, "data");
+        var tagService = new TagService(store);
+        tagService.SetColor(LocalFileSystem.Instance, folder, FileColor.Green);
+        tagService.SetTags(LocalFileSystem.Instance, child, ["nested"]);
+
+        var moved = Path.Combine(_root, "moved");
+        tagService.MoveTree(LocalFileSystem.Instance, folder, LocalFileSystem.Instance, moved);
+
+        Assert.Null(tagService.Get(LocalFileSystem.Instance, folder));
+        Assert.Equal(FileColor.Green, tagService.Get(LocalFileSystem.Instance, moved)?.Color);
+        Assert.Equal(["nested"], tagService.Get(LocalFileSystem.Instance,
+            Path.Combine(moved, "child.txt"))?.Tags);
+
+        var copy = Path.Combine(_root, "copy");
+        tagService.CopyTree(LocalFileSystem.Instance, moved, LocalFileSystem.Instance, copy);
+        Assert.NotNull(tagService.Get(LocalFileSystem.Instance, moved));
+        Assert.NotNull(tagService.Get(LocalFileSystem.Instance, copy));
+
+        tagService.RemoveTree(LocalFileSystem.Instance, copy);
+        Assert.Null(tagService.Get(LocalFileSystem.Instance, copy));
+    }
+
+    [Fact]
     public void ClearingRemovesEmptyEntries()
     {
         var store = Path.Combine(_root, "tags.json");

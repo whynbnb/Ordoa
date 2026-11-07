@@ -1004,7 +1004,6 @@
  "淡显被 Git 忽略的文件（显示 I 标记）": "Dim files ignored by Git (shown with an I marker)",
  "搜索语法": "Search syntax",
  "普通词匹配文件名；多个词需同时匹配。": "Plain words match the file name; multiple words must all match.",
- "支持 glob、排除项 -词、ext:、type:、size:、modified: 和 content:；使用引号包含空格。": "Supports globs, -word exclusions, ext:, type:, size:, modified: and content:. Use quotes for spaces.",
  "保存当前搜索…": "Save current search…",
  "搜索整个磁盘": "Search the whole disk",
  "从文件系统根目录开始搜索，可能较慢": "Start from the filesystem root; this can be slow",
@@ -1234,5 +1233,6 @@
  "按列浏览多级文件夹": "Browse multiple folder levels in columns",
  "无法打开文件夹": "Cannot open folder",
  "已重新连接": "Reconnected",
- "清除标签": "Clear tags"
+ "清除标签": "Clear tags",
+ "支持 glob、排除项 -词、ext:、type:、size:、modified:、content:、tag: 和 color:；使用引号包含空格。": "Supports globs, -word exclusions, ext:, type:, size:, modified:, content:, tag: and color:. Use quotes for spaces."
 }

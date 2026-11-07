@@ -52,6 +52,17 @@ public sealed class SearchQueryTests
     }
 
     [Fact]
+    public void ParseExtractsTagAndColorFilters()
+    {
+        var query = SearchQuery.Parse("tag:work,urgent color:red ext:txt", Now);
+
+        Assert.Equal(["work", "urgent"], query.Tags);
+        Assert.Equal(Ordoa.Core.Models.FileColor.Red, query.Color);
+        Assert.Equal(["txt"], query.Extensions);
+        Assert.False(query.IsEmpty);
+    }
+
+    [Fact]
     public void ParseIgnoresUnknownColonTokens()
     {
         var query = SearchQuery.Parse("http://example.com", Now);
@@ -149,6 +160,23 @@ public sealed class SearchServiceTests : IDisposable
 
         Assert.Single(results);
         Assert.Equal("notes.txt", results[0].Name);
+    }
+
+    [Fact]
+    public async Task PredicateFiltersResults()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_root, "a.txt"), "a");
+        await File.WriteAllTextAsync(Path.Combine(_root, "b.txt"), "b");
+
+        var service = new SearchService();
+        var results = new List<FileEntry>();
+        await foreach (var entry in service.SearchAsync(LocalFileSystem.Instance, _root,
+                           new SearchOptions("*.txt", IncludeHidden: true, MaxDepth: 2,
+                               Predicate: entry => entry.Name == "b.txt")))
+            results.Add(entry);
+
+        Assert.Single(results);
+        Assert.Equal("b.txt", results[0].Name);
     }
 
     [Fact]

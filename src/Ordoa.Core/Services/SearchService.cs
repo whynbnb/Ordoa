@@ -11,7 +11,8 @@ public sealed record SearchOptions(
     int MaxResults = 3000,
     int MaxDepth = 12,
     bool SkipSymlinks = true,
-    int MaxContentBytes = 8 * 1024 * 1024);
+    int MaxContentBytes = 8 * 1024 * 1024,
+    Func<FileEntry, bool>? Predicate = null);
 
 public sealed record SearchProgress(int ScannedDirectories, int Results, string CurrentDirectory);
 
@@ -60,6 +61,8 @@ public sealed class SearchService
                     continue;
 
                 var matches = query.MatchesMetadata(entry);
+                if (matches && options.Predicate is not null)
+                    matches = options.Predicate(entry);
                 if (matches && query.HasContent)
                 {
                     if (entry.IsDirectory)
