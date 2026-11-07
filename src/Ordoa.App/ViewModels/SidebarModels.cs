@@ -37,6 +37,11 @@ public sealed partial class SidebarEntryViewModel : ObservableObject
         : Detail ?? Label;
     public string? BookmarkId { get; init; }
     public string? VolumeMountPoint { get; init; }
+    public string? VolumeDevice { get; init; }
+    public bool VolumeMounted { get; init; } = true;
+    public bool CanMountVolume { get; init; }
+    public bool CanUnmountVolume { get; init; }
+    public bool CanEjectVolume { get; init; }
     public bool ShowUsage { get; init; }
     public double UsageFraction { get; init; }
     public Func<SidebarEntryViewModel, Task>? ActivateAsync { get; set; }

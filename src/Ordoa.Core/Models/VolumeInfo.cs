@@ -1,6 +1,8 @@
-using Ordoa.Core.Localization;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
+using Ordoa.Core.Localization;
 using Ordoa.Core.Util;
 
 namespace Ordoa.Core.Models;
@@ -15,13 +17,30 @@ public sealed record VolumeInfo(
     long? FreeBytes,
     long? TotalBytes)
 {
+    /// <summary>Block device such as /dev/sdb1, or the GIO mount path.</summary>
+    public string Device { get; init; } = string.Empty;
+    public bool IsMounted { get; init; } = true;
+    public bool IsGvfs { get; init; }
+    public bool CanMount => IsLinux && !IsMounted && Device.StartsWith("/dev/", StringComparison.Ordinal);
+    public bool CanUnmount => IsMounted && IsLinux &&
+        (IsGvfs || Device.StartsWith("/dev/", StringComparison.Ordinal) ||
+         MountPoint.StartsWith("/media/", StringComparison.Ordinal) ||
+         MountPoint.StartsWith("/run/media/", StringComparison.Ordinal));
+    public bool CanEject => IsRemovable && IsMounted && IsLinux &&
+        Device.StartsWith("/dev/", StringComparison.Ordinal);
+    public string MountStateText => IsMounted ? string.Empty : L10n.T("未挂载");
+
     public double? UsedFraction => TotalBytes is > 0 && FreeBytes.HasValue
         ? 1d - (double)FreeBytes.Value / TotalBytes.Value
         : null;
 
-    public string SizeText => TotalBytes.HasValue
-        ? L10n.Format("{0} 可用 / {1}", Humanize.Size(FreeBytes ?? 0), Humanize.Size(TotalBytes.Value))
-        : FileSystemType;
+    public string SizeText => IsMounted
+        ? TotalBytes.HasValue
+            ? L10n.Format("{0} 可用 / {1}", Humanize.Size(FreeBytes ?? 0), Humanize.Size(TotalBytes.Value))
+            : FileSystemType
+        : L10n.T("未挂载");
+
+    private static bool IsLinux => RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 }
 
 public static class VolumeService
@@ -111,14 +130,310 @@ public static class VolumeService
             }
             catch { /* no permission or pseudo drive */ }
 
-            volumes.Add(new VolumeInfo(name, mountPoint, fsType, isRemovable, isNetwork, isRoot, free, total));
+            volumes.Add(new VolumeInfo(name, mountPoint, fsType, isRemovable, isNetwork, isRoot, free, total)
+            {
+                Device = device,
+            });
         }
+
+        AddUnmountedVolumes(volumes, seenDevices);
+        AddGvfsVolumes(volumes, seen);
 
         return volumes
             .OrderBy(v => v.IsSystem ? 0 : v.IsNetwork ? 2 : v.IsRemovable ? 1 : 0)
-            .ThenBy(v => v.MountPoint, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(v => v.IsMounted ? 0 : 1)
+            .ThenBy(v => v.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
     }
+
+    public sealed record VolumeOperationResult(bool Success, string Message, string? MountPoint = null);
+
+    public static Task<VolumeOperationResult> MountAsync(VolumeInfo volume,
+        CancellationToken cancellationToken = default)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            return Task.FromResult(new VolumeOperationResult(false, L10n.T("当前平台不支持挂载操作")));
+        if (string.IsNullOrWhiteSpace(volume.Device))
+            return Task.FromResult(new VolumeOperationResult(false, L10n.T("找不到设备")));
+
+        var tool = FindExecutable("udisksctl");
+        if (tool is null)
+            return Task.FromResult(new VolumeOperationResult(false, L10n.T("未找到 udisksctl")));
+
+        return RunOperationAsync(tool, ["mount", "-b", volume.Device], cancellationToken);
+    }
+
+    public static Task<VolumeOperationResult> UnmountAsync(VolumeInfo volume,
+        CancellationToken cancellationToken = default)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            return Task.FromResult(new VolumeOperationResult(false, L10n.T("当前平台不支持卸载操作")));
+
+        if (volume.IsGvfs)
+        {
+            var gio = FindExecutable("gio");
+            return gio is null
+                ? Task.FromResult(new VolumeOperationResult(false, L10n.T("未找到 gio")))
+                : RunOperationAsync(gio, ["mount", "-u", volume.MountPoint], cancellationToken);
+        }
+
+        if (volume.Device.StartsWith("/dev/", StringComparison.Ordinal) &&
+            FindExecutable("udisksctl") is { } udisks)
+            return RunOperationAsync(udisks, ["unmount", "-b", volume.Device], cancellationToken);
+
+        var umount = FindExecutable("umount");
+        return umount is null
+            ? Task.FromResult(new VolumeOperationResult(false, L10n.T("未找到 umount")))
+            : RunOperationAsync(umount, [volume.MountPoint], cancellationToken);
+    }
+
+    public static Task<VolumeOperationResult> EjectAsync(VolumeInfo volume,
+        CancellationToken cancellationToken = default)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            return Task.FromResult(new VolumeOperationResult(false, L10n.T("当前平台不支持弹出操作")));
+        if (string.IsNullOrWhiteSpace(volume.Device))
+            return Task.FromResult(new VolumeOperationResult(false, L10n.T("找不到设备")));
+
+        var tool = FindExecutable("udisksctl");
+        if (tool is not null)
+            return RunOperationAsync(tool, ["power-off", "-b", volume.Device], cancellationToken);
+        return UnmountAsync(volume, cancellationToken);
+    }
+
+    private static async Task<VolumeOperationResult> RunOperationAsync(string executable,
+        IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var start = new ProcessStartInfo(executable)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (var argument in arguments)
+                start.ArgumentList.Add(argument);
+
+            using var process = Process.Start(start);
+            if (process is null)
+                return new VolumeOperationResult(false, L10n.T("无法启动系统工具"));
+
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(25));
+            var outputTask = process.StandardOutput.ReadToEndAsync(timeout.Token);
+            var errorTask = process.StandardError.ReadToEndAsync(timeout.Token);
+            try
+            {
+                await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { /* ignore */ }
+                throw;
+            }
+
+            var output = (await outputTask.ConfigureAwait(false)).Trim();
+            var error = (await errorTask.ConfigureAwait(false)).Trim();
+            var success = process.ExitCode == 0;
+            var message = !string.IsNullOrWhiteSpace(error)
+                ? error
+                : !string.IsNullOrWhiteSpace(output) ? output : success ? L10n.T("操作完成") : L10n.T("操作失败");
+            return new VolumeOperationResult(success, message);
+        }
+        catch (OperationCanceledException)
+        {
+            return new VolumeOperationResult(false, L10n.T("操作已取消"));
+        }
+        catch (Exception ex)
+        {
+            return new VolumeOperationResult(false, ex.Message);
+        }
+    }
+
+    private static string? FindExecutable(string name)
+    {
+        var path = Environment.GetEnvironmentVariable("PATH") ?? "/usr/local/bin:/usr/bin:/bin";
+        foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                var candidate = Path.Combine(directory, name);
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+            catch
+            {
+                // Ignore malformed PATH entries.
+            }
+        }
+        return null;
+    }
+
+    private static void AddUnmountedVolumes(List<VolumeInfo> volumes, HashSet<string> seenDevices)
+    {
+        var lsblk = FindExecutable("lsblk");
+        if (lsblk is null)
+            return;
+
+        try
+        {
+            var start = new ProcessStartInfo(lsblk)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (var argument in new[]
+                     {
+                         "-J", "-b", "-o",
+                         "NAME,PATH,TYPE,FSTYPE,LABEL,MOUNTPOINT,RM,HOTPLUG,SIZE,TRAN",
+                     })
+                start.ArgumentList.Add(argument);
+
+            using var process = Process.Start(start);
+            if (process is null)
+                return;
+            var json = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(5000);
+            if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(json))
+                return;
+
+            using var document = JsonDocument.Parse(json);
+            if (!document.RootElement.TryGetProperty("blockdevices", out var devices))
+                return;
+            foreach (var device in devices.EnumerateArray())
+                AddUnmountedDevice(device, volumes, seenDevices);
+        }
+        catch
+        {
+            // lsblk is optional.
+        }
+    }
+
+    private static void AddUnmountedDevice(JsonElement device, List<VolumeInfo> volumes,
+        HashSet<string> seenDevices)
+    {
+        if (device.TryGetProperty("children", out var children))
+        {
+            foreach (var child in children.EnumerateArray())
+                AddUnmountedDevice(child, volumes, seenDevices);
+        }
+
+        var type = GetString(device, "type");
+        var mountPoint = GetString(device, "mountpoint");
+        var fsType = GetString(device, "fstype");
+        var path = GetString(device, "path");
+        if (type is not ("part" or "disk" or "crypt") ||
+            !string.IsNullOrWhiteSpace(mountPoint) ||
+            string.IsNullOrWhiteSpace(fsType) ||
+            string.IsNullOrWhiteSpace(path))
+            return;
+
+        var removable = GetBool(device, "rm") || GetBool(device, "hotplug") ||
+                        string.Equals(GetString(device, "tran"), "usb", StringComparison.OrdinalIgnoreCase);
+        if (!removable || volumes.Any(volume => string.Equals(volume.Device, path, StringComparison.Ordinal)))
+            return;
+
+        seenDevices.Add(path);
+        var label = GetString(device, "label");
+        var name = string.IsNullOrWhiteSpace(label) ? GetString(device, "name") : label;
+        long? total = device.TryGetProperty("size", out var size) && size.TryGetInt64(out var bytes)
+            ? bytes
+            : null;
+        volumes.Add(new VolumeInfo(name ?? path, string.Empty, fsType, true, false, false, null, total)
+        {
+            Device = path,
+            IsMounted = false,
+        });
+    }
+
+    private static void AddGvfsVolumes(List<VolumeInfo> volumes, HashSet<string> seenMounts)
+    {
+        try
+        {
+            var runtime = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+            if (string.IsNullOrWhiteSpace(runtime))
+                runtime = "/run/user/" + GetUid().ToString();
+            var root = Path.Combine(runtime, "gvfs");
+            if (!Directory.Exists(root))
+                return;
+
+            foreach (var directory in Directory.EnumerateDirectories(root))
+            {
+                if (!seenMounts.Add(directory))
+                    continue;
+
+                var raw = Path.GetFileName(directory);
+                var isNetwork = raw.StartsWith("smb-share:", StringComparison.OrdinalIgnoreCase) ||
+                                raw.StartsWith("sftp:", StringComparison.OrdinalIgnoreCase) ||
+                                raw.StartsWith("ftp:", StringComparison.OrdinalIgnoreCase) ||
+                                raw.StartsWith("dav:", StringComparison.OrdinalIgnoreCase) ||
+                                raw.StartsWith("davs:", StringComparison.OrdinalIgnoreCase) ||
+                                raw.StartsWith("nfs:", StringComparison.OrdinalIgnoreCase);
+                var isRemovable = raw.StartsWith("mtp:", StringComparison.OrdinalIgnoreCase) ||
+                                  raw.StartsWith("gphoto2:", StringComparison.OrdinalIgnoreCase) ||
+                                  raw.StartsWith("afc:", StringComparison.OrdinalIgnoreCase);
+                volumes.Add(new VolumeInfo(DescribeGvfs(raw), directory, "gvfs", isRemovable,
+                    isNetwork, false, null, null)
+                {
+                    Device = directory,
+                    IsGvfs = true,
+                });
+            }
+        }
+        catch
+        {
+            // GVfs is not running or the runtime directory is restricted.
+        }
+    }
+
+    private static string DescribeGvfs(string raw)
+    {
+        try
+        {
+            var separator = raw.IndexOf(':');
+            var kind = separator > 0 ? raw[..separator] : raw;
+            var details = separator > 0 ? raw[(separator + 1)..] : string.Empty;
+            var values = details.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Split('=', 2))
+                .Where(pair => pair.Length == 2)
+                .ToDictionary(pair => pair[0], pair => Uri.UnescapeDataString(pair[1]));
+
+            string? value = null;
+            if (values.TryGetValue("host", out var host))
+                value = host;
+            else if (values.TryGetValue("server", out var server))
+                value = values.TryGetValue("share", out var share) ? $"{server} / {share}" : server;
+            else if (values.TryGetValue("volume", out var volume))
+                value = volume;
+
+            value = (value ?? kind).Replace('_', ' ').Trim();
+            return string.IsNullOrWhiteSpace(value) ? raw : value;
+        }
+        catch
+        {
+            return raw;
+        }
+    }
+
+    private static string? GetString(JsonElement element, string name)
+        => element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static bool GetBool(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value))
+            return false;
+        return value.ValueKind == JsonValueKind.True ||
+               value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) && number != 0;
+    }
+
+    [DllImport("libc", EntryPoint = "getuid")]
+    private static extern uint GetUid();
 
     private static bool IsIgnoredMount(string mountPoint)
     {

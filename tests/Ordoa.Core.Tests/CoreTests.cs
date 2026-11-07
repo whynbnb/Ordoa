@@ -50,6 +50,13 @@ public sealed class PathAndFormatTests
     }
 
     [Fact]
+    public void Volumes_EnumerateWithoutThrowing()
+    {
+        var volumes = VolumeService.GetVolumes();
+        Assert.NotNull(volumes);
+    }
+
+    [Fact]
     public void FilePermission_FormatsUnixMode()
     {
         var mode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |

@@ -895,6 +895,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public async Task ActivateSidebarEntryAsync(SidebarEntryViewModel entry)
     {
+        if (entry.Kind == SidebarEntryKind.Volume && !entry.VolumeMounted)
+        {
+            await MountVolumeAsync(entry).ConfigureAwait(true);
+            return;
+        }
+
         try
         {
             switch (entry.Kind)
@@ -995,6 +1001,100 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             AddToast(L10n.T("无法打开分屏"), ex.Message, ToastKind.Error);
+        }
+    }
+
+    public async Task MountVolumeAsync(SidebarEntryViewModel entry)
+    {
+        var volume = FindVolume(entry);
+        if (volume is null)
+        {
+            AddToast(L10n.T("无法挂载"), L10n.T("找不到设备"), ToastKind.Error);
+            return;
+        }
+
+        var result = await VolumeService.MountAsync(volume).ConfigureAwait(true);
+        await RefreshSidebarAsync().ConfigureAwait(true);
+        if (!result.Success)
+        {
+            AddToast(L10n.T("挂载失败"), result.Message, ToastKind.Error);
+            return;
+        }
+
+        AddToast(L10n.T("已挂载"), volume.Name, ToastKind.Success);
+        var mounted = FindVolume(entry);
+        if (mounted is { IsMounted: true } && !string.IsNullOrEmpty(mounted.MountPoint))
+            await NavigateActiveAsync(_services.FileSystems.Local, mounted.MountPoint).ConfigureAwait(true);
+    }
+
+    public async Task UnmountVolumeAsync(SidebarEntryViewModel entry)
+    {
+        var volume = FindVolume(entry);
+        if (volume is null || !volume.IsMounted)
+        {
+            AddToast(L10n.T("无法卸载"), L10n.T("找不到已挂载的设备"), ToastKind.Error);
+            return;
+        }
+
+        var result = await VolumeService.UnmountAsync(volume).ConfigureAwait(true);
+        if (!result.Success)
+        {
+            AddToast(L10n.T("卸载失败"), result.Message, ToastKind.Error);
+            return;
+        }
+
+        await LeaveVolumeIfNeededAsync(volume.MountPoint).ConfigureAwait(true);
+        await RefreshSidebarAsync().ConfigureAwait(true);
+        AddToast(L10n.T("已卸载"), volume.Name, ToastKind.Success);
+    }
+
+    public async Task EjectVolumeAsync(SidebarEntryViewModel entry)
+    {
+        var volume = FindVolume(entry);
+        if (volume is null || !volume.IsMounted)
+        {
+            AddToast(L10n.T("无法弹出"), L10n.T("找不到已挂载的设备"), ToastKind.Error);
+            return;
+        }
+
+        var result = await VolumeService.EjectAsync(volume).ConfigureAwait(true);
+        if (!result.Success)
+        {
+            AddToast(L10n.T("弹出失败"), result.Message, ToastKind.Error);
+            return;
+        }
+
+        await LeaveVolumeIfNeededAsync(volume.MountPoint).ConfigureAwait(true);
+        await RefreshSidebarAsync().ConfigureAwait(true);
+        AddToast(L10n.T("已弹出"), volume.Name, ToastKind.Success);
+    }
+
+    private VolumeInfo? FindVolume(SidebarEntryViewModel entry)
+        => _volumes.FirstOrDefault(volume =>
+            string.Equals(volume.Device, entry.VolumeDevice, StringComparison.Ordinal));
+
+    private async Task LeaveVolumeIfNeededAsync(string mountPoint)
+    {
+        if (string.IsNullOrEmpty(mountPoint))
+            return;
+
+        foreach (var pane in Tabs.SelectMany(tab => tab.Panes).ToList())
+        {
+            if (!pane.FileSystem.IsLocal)
+                continue;
+            var path = pane.CurrentPath;
+            if (!path.Equals(mountPoint, StringComparison.Ordinal) &&
+                !path.StartsWith(mountPoint.TrimEnd('/') + "/", StringComparison.Ordinal))
+                continue;
+            try
+            {
+                await pane.NavigateAsync(_services.FileSystems.Local,
+                    KnownFolders.DefaultStartupPath).ConfigureAwait(true);
+            }
+            catch
+            {
+                // The pane will refresh when the user navigates elsewhere.
+            }
         }
     }
 
@@ -1583,6 +1683,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     FileSystemId = "local",
                     Path = volume.MountPoint,
                     VolumeMountPoint = volume.MountPoint,
+                    VolumeDevice = volume.Device,
+                    VolumeMounted = volume.IsMounted,
+                    CanMountVolume = volume.CanMount,
+                    CanUnmountVolume = volume.CanUnmount,
+                    CanEjectVolume = volume.CanEject,
                     ShowUsage = volume.UsedFraction is not null,
                     UsageFraction = volume.UsedFraction ?? 0,
                     ActivateAsync = ActivateSidebarEntryAsync,

@@ -155,10 +155,26 @@ public partial class SidebarView : UserControl
             return;
 
         var menu = new ContextMenu();
-        menu.Items.Add(CreateItem(L10n.T("在新标签页中打开"), () => vm.OpenSidebarEntryInNewTabAsync(entry)));
-        menu.Items.Add(CreateItem(L10n.T("在分屏中打开"), () => vm.OpenSidebarEntryInSplitAsync(entry)));
+        if (entry.Kind != SidebarEntryKind.Volume || entry.VolumeMounted)
+        {
+            menu.Items.Add(CreateItem(L10n.T("在新标签页中打开"), () => vm.OpenSidebarEntryInNewTabAsync(entry)));
+            menu.Items.Add(CreateItem(L10n.T("在分屏中打开"), () => vm.OpenSidebarEntryInSplitAsync(entry)));
+        }
 
-        if (entry.Kind is SidebarEntryKind.Volume or SidebarEntryKind.Place or SidebarEntryKind.Bookmark or SidebarEntryKind.Recent)
+        if (entry.Kind == SidebarEntryKind.Volume)
+        {
+            menu.Items.Add(new Separator());
+            if (entry.CanMountVolume && !entry.VolumeMounted)
+                menu.Items.Add(CreateItem(L10n.T("挂载"), () => vm.MountVolumeAsync(entry)));
+            if (entry.CanUnmountVolume && entry.VolumeMounted)
+                menu.Items.Add(CreateItem(L10n.T("卸载"), () => vm.UnmountVolumeAsync(entry)));
+            if (entry.CanEjectVolume && entry.VolumeMounted)
+                menu.Items.Add(CreateItem(L10n.T("弹出"), () => vm.EjectVolumeAsync(entry)));
+        }
+
+        if (entry.VolumeMounted &&
+            (entry.Kind is SidebarEntryKind.Volume or SidebarEntryKind.Place or
+                SidebarEntryKind.Bookmark or SidebarEntryKind.Recent))
         {
             menu.Items.Add(new Separator());
             AddTerminalMenu(menu, vm, entry);
