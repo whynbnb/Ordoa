@@ -60,7 +60,7 @@
 
 ### 搜索与过滤
 
-- 输入即实时过滤当前文件夹；按 `Enter` 递归搜索，搜索框右侧按钮可查看语法、历史和保存的搜索。
+- 输入即实时过滤当前文件夹，且同样支持名称、glob、排除、ext/type/size/modified/tag/color 语法（content 需按 Enter 递归搜索）；按 `Enter` 递归搜索，搜索框右侧按钮可查看语法、历史和保存的搜索。
 - 名称匹配支持 `*`、`?` glob；多个词需要同时匹配，`-词` 排除匹配项并跳过同名文件夹（例如 `-node_modules`）。
 - `ext:cs,json` 按扩展名过滤；`type:file|folder|image|video|audio|text|document|archive|code|config` 按类别过滤。
 - `size:>10MB`、`size:1KB..2MB` 按大小过滤；`modified:>7d`、`modified:today`、`modified:2024-01-01..2025-01-01` 按修改时间过滤。

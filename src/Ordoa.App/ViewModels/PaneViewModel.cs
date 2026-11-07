@@ -2405,6 +2405,29 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         }));
     }
 
+    private Func<FileEntry, bool>? BuildTagPredicate(SearchQuery query)
+    {
+        if (query.Tags.Count == 0 && query.Color is null)
+            return null;
+
+        return entry =>
+        {
+            var info = _services.Tags.Get(FileSystem, entry.Path);
+            if (info is null && (query.Tags.Count > 0 ||
+                                 query.Color is not (null or Ordoa.Core.Models.FileColor.None)))
+                return false;
+            if (query.Color is { } color &&
+                (info?.Color ?? Ordoa.Core.Models.FileColor.None) != color)
+                return false;
+            foreach (var tag in query.Tags)
+            {
+                if (info?.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase) != true)
+                    return false;
+            }
+            return true;
+        };
+    }
+
     private void ApplyTagItem(FileItemViewModel item)
     {
         var info = _services.Tags.Get(FileSystem, item.Path);
@@ -2523,27 +2546,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ItemCountText));
 
         var parsed = SearchQuery.Parse(query);
-        Func<FileEntry, bool>? predicate = null;
-        if (parsed.Tags.Count > 0 || parsed.Color is not null)
-        {
-            predicate = entry =>
-            {
-                var info = _services.Tags.Get(FileSystem, entry.Path);
-                if (info is null && (parsed.Tags.Count > 0 ||
-                                     parsed.Color is not (null or Ordoa.Core.Models.FileColor.None)))
-                    return false;
-                if (parsed.Color is { } color &&
-                    (info?.Color ?? Ordoa.Core.Models.FileColor.None) != color)
-                    return false;
-                foreach (var tag in parsed.Tags)
-                {
-                    if (info?.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase) != true)
-                        return false;
-                }
-                return true;
-            };
-        }
-
+        var predicate = BuildTagPredicate(parsed);
         var options = new SearchOptions(query.Trim(), ShowHidden, _services.Settings.Current.MaxSearchResults,
             _services.Settings.Current.SearchDepth, Predicate: predicate);
         var rootPath = SearchWholeDisk ? FileSystem.RootPath : CurrentPath;
@@ -2629,7 +2632,17 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (!string.IsNullOrWhiteSpace(FilterText))
         {
             var query = FilterText.Trim();
-            items = items.Where(i => i.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+            var parsed = SearchQuery.Parse(query);
+            if (parsed.HasContent)
+            {
+                items = items.Where(i => i.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+            }
+            else
+            {
+                var tagPredicate = BuildTagPredicate(parsed);
+                items = items.Where(item => parsed.MatchesMetadata(item.Entry) &&
+                                            (tagPredicate?.Invoke(item.Entry) ?? true));
+            }
         }
 
         var comparer = new FileEntryComparer(SortColumn, SortDescending, FoldersFirst);
