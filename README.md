@@ -80,7 +80,7 @@
 - 操作队列：进度、速度、预计剩余时间、取消、错误汇总；跨文件系统流式复制。
 - 传输面板仅在耗时操作时自动展开，小文件的快速移动/删除不会打断浏览；传输支持暂停、继续、取消和失败重试。
 - 冲突处理：替换、跳过、保留两者（自动改名）、对全部应用。
-- 回收站：完整实现 freedesktop.org Trash 规范（home trash 与 `.Trash-$uid` / `.Trash/$uid`），支持恢复、永久删除、清空。
+- 回收站：Linux 完整实现 freedesktop.org Trash 规范（home trash 与 `.Trash-$uid` / `.Trash/$uid`），支持恢复、永久删除、清空；macOS 使用 `~/.Trash` 并保留恢复信息；Windows 使用系统回收站。
 - 压缩：ZIP、tar、tar.gz；解压时校验路径，拒绝 zip-slip 与压缩包内链接。
 - SHA-256 校验和，支持多文件批量计算与复制。
 - 属性：类型、路径、大小、时间、MIME、Unix 权限（rwx 与八进制）、所有者/组（远程）、符号链接目标、回收站原始位置、文件夹内容统计。
@@ -348,7 +348,7 @@ chmod +x scripts/install-arch.sh scripts/uninstall-arch.sh
 | 书签 / 会话 / 最近 | `~/.config/ordoa/{bookmarks,session,recent}.json` |
 | 缩略图 / 临时下载 | `~/.cache/ordoa` |
 | 日志 | `~/.local/state/ordoa/ordoa.log` |
-| 回收站 | `~/.local/share/Trash`（见 XDG Trash 规范） |
+| 回收站 | Linux: `~/.local/share/Trash`（见 XDG Trash 规范）；macOS: `~/.Trash` |
 | 发布/打包产物 | `artifacts/`（gitignored） |
 
 macOS 使用 `~/Library/Application Support/Ordoa` 与 `~/Library/Caches/Ordoa`；Windows 使用 `%APPDATA%\Ordoa` 与 `%LOCALAPPDATA%\Ordoa`。
@@ -400,7 +400,7 @@ tests/Ordoa.Core.Tests
 
 ## 已知限制
 
-- 回收站目前只在 Linux 上完整实现。macOS/Windows 上删除会走永久删除并请求确认。
+- 回收站：Linux 完整支持浏览、恢复与清空；macOS 使用 Finder 回收站并保留 Ordoa 的恢复信息；Windows 使用系统回收站，浏览和恢复依赖 Shell，可能在受限会话中不可用。
 - SMB 使用 445 端口，暂不支持 SMB over QUIC、强制加密共享或 DFS 重定向。
 - SFTP 的 known_hosts 只用于读取校验，不会自动写回 `~/.ssh/known_hosts`；未记录的主机会把指纹保存在 Ordoa 的连接配置中。
 - WebDAV 目前只支持 Basic 认证；未实现 Digest、OAuth、分块上传。

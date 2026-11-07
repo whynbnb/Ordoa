@@ -16,9 +16,23 @@ public sealed partial class TrashService
 {
     private const string InfoHeader = "[Trash Info]";
 
-    public bool IsSupported => RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+    public bool IsSupported => OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() ||
+                               OperatingSystem.IsWindows();
 
-    public string HomeTrashDirectory => AppPaths.TrashDirectory;
+    public string HomeTrashDirectory => OperatingSystem.IsMacOS()
+        ? Path.Combine(AppPaths.Home, ".Trash")
+        : AppPaths.TrashDirectory;
+
+    private string HomeFilesDirectory => OperatingSystem.IsMacOS()
+        ? HomeTrashDirectory
+        : Path.Combine(HomeTrashDirectory, "files");
+
+    private string HomeInfoDirectory => OperatingSystem.IsMacOS()
+        ? Path.Combine(AppPaths.DataDirectory, "TrashInfo")
+        : Path.Combine(HomeTrashDirectory, "info");
+
+    private TrashLocation HomeLocation => new(L10n.T("主目录"), AppPaths.Home,
+        HomeFilesDirectory, HomeInfoDirectory);
 
     public sealed record TrashLocation(string Name, string MountPoint, string FilesDirectory, string InfoDirectory);
 
@@ -26,6 +40,8 @@ public sealed partial class TrashService
     {
         if (!IsSupported)
             return [];
+        if (OperatingSystem.IsWindows())
+            return await GetWindowsEntriesAsync(cancellationToken).ConfigureAwait(false);
 
         var result = new List<TrashEntry>();
         foreach (var location in GetTrashLocations())
@@ -79,6 +95,8 @@ public sealed partial class TrashService
     {
         if (!IsSupported)
             throw new NotSupportedException(L10n.T("当前平台不支持回收站"));
+        if (OperatingSystem.IsWindows())
+            return MoveToWindowsTrashAsync(path, cancellationToken);
 
         return Task.Run(() =>
         {
@@ -134,6 +152,8 @@ public sealed partial class TrashService
     {
         if (!IsSupported)
             throw new NotSupportedException(L10n.T("当前平台不支持回收站"));
+        if (OperatingSystem.IsWindows())
+            return RestoreWindowsEntryAsync(trashPath, cancellationToken);
 
         return Task.Run(() =>
         {
@@ -178,6 +198,9 @@ public sealed partial class TrashService
 
     public Task EmptyAsync(CancellationToken cancellationToken = default)
     {
+        if (OperatingSystem.IsWindows())
+            return Task.Run(() => EmptyWindowsTrash(), cancellationToken);
+
         return Task.Run(() =>
         {
             foreach (var location in GetTrashLocations())
@@ -214,17 +237,24 @@ public sealed partial class TrashService
     {
         var filesDir = Path.GetDirectoryName(trashPath) ?? string.Empty;
         var name = Path.GetFileName(trashPath);
+        var location = GetTrashLocations().FirstOrDefault(item =>
+            string.Equals(Path.TrimEndingDirectorySeparator(item.FilesDirectory),
+                Path.TrimEndingDirectorySeparator(filesDir), StringComparison.Ordinal));
+        if (location is not null)
+            return Path.Combine(location.InfoDirectory, name + ".trashinfo");
+
         var parent = Path.GetDirectoryName(filesDir);
         return Path.Combine(parent ?? filesDir, "info", name + ".trashinfo");
     }
 
     public IReadOnlyList<TrashLocation> GetTrashLocations()
     {
-        var locations = new List<TrashLocation>
-        {
-            new(L10n.T("主目录"), AppPaths.Home, Path.Combine(HomeTrashDirectory, "files"), Path.Combine(HomeTrashDirectory, "info")),
-        };
+        var locations = new List<TrashLocation> { HomeLocation };
 
+        // macOS uses the Finder trash for the home volume. External-volume
+        // entries are ultimately moved into the home trash as a best effort.
+        if (OperatingSystem.IsMacOS())
+            return locations;
         if (!IsSupported)
             return locations;
 
@@ -255,14 +285,16 @@ public sealed partial class TrashService
 
     private TrashLocation ResolveTrashLocation(string path)
     {
+        if (OperatingSystem.IsMacOS())
+            return HomeLocation;
+
         var uid = GetUid();
         var mounts = GetMountPoints();
         var targetMount = LongestPrefix(mounts, path);
         var homeMount = LongestPrefix(mounts, AppPaths.Home);
 
         if (string.Equals(targetMount, homeMount, StringComparison.Ordinal))
-            return new TrashLocation(L10n.T("主目录"), AppPaths.Home,
-                Path.Combine(HomeTrashDirectory, "files"), Path.Combine(HomeTrashDirectory, "info"));
+            return HomeLocation;
 
         if (!string.IsNullOrEmpty(targetMount) && targetMount != "/")
         {
@@ -287,8 +319,7 @@ public sealed partial class TrashService
                     Path.Combine(privateDir, "files"), Path.Combine(privateDir, "info"));
         }
 
-        return new TrashLocation(L10n.T("主目录"), AppPaths.Home,
-            Path.Combine(HomeTrashDirectory, "files"), Path.Combine(HomeTrashDirectory, "info"));
+        return HomeLocation;
     }
 
     private static List<KeyValuePair<int, string>> GetMountPoints()
