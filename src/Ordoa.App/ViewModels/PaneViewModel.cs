@@ -516,8 +516,15 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanCreateFolder => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.CreateDirectory);
     public bool CanCreateFile => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Write);
     public bool CanPaste => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Write);
-    public bool CanDelete => HasSelection && FileSystem.Capabilities.Has(FileSystemCapabilities.Delete);
-    public bool CanRename => HasSelection && SelectedCount == 1 && !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Rename);
+    public bool CanEditArchive => IsArchive && FileSystem is ArchiveFileSystem writable &&
+                                  ArchiveEditService.CanWrite(writable.Format) && HasSelection;
+    public bool CanAddToArchive => IsArchive && FileSystem is ArchiveFileSystem writable &&
+                                   ArchiveEditService.CanWrite(writable.Format);
+    public bool CanDelete => HasSelection && (FileSystem.Capabilities.Has(FileSystemCapabilities.Delete) ||
+                                              CanEditArchive);
+    public bool CanRename => HasSelection && SelectedCount == 1 && !IsTrash &&
+                             (FileSystem.Capabilities.Has(FileSystemCapabilities.Rename) ||
+                              CanEditArchive);
     public bool CanBatchRename => !_isBatchRenaming && !_isBatchRenameDialogOpen && HasSelection &&
                                   !IsTrash && !IsSearchActive &&
                                   FileSystem.Capabilities.Has(FileSystemCapabilities.Rename);
@@ -1024,6 +1031,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanCompare));
         OnPropertyChanged(nameof(CanTag));
+        OnPropertyChanged(nameof(CanEditArchive));
+        OnPropertyChanged(nameof(CanAddToArchive));
         OnPropertyChanged(nameof(CanConvertImages));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
@@ -1418,6 +1427,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanCompare));
         OnPropertyChanged(nameof(CanTag));
+        OnPropertyChanged(nameof(CanEditArchive));
+        OnPropertyChanged(nameof(CanAddToArchive));
         OnPropertyChanged(nameof(CanConvertImages));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
@@ -1501,6 +1512,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     {
         if (!HasSelection)
             return;
+        if (IsArchive)
+        {
+            await DeleteArchiveSelectionAsync().ConfigureAwait(true);
+            return;
+        }
 
         var sources = _selected.Select(i => new OperationSource(FileSystem, i.Entry)).ToList();
         var forcePermanent = permanent || IsTrash || !FileSystem.IsLocal || !_services.Trash.IsSupported;
@@ -1556,6 +1572,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     public async Task RenameAsync()
     {
+        if (IsArchive)
+        {
+            await RenameArchiveSelectionAsync().ConfigureAwait(true);
+            return;
+        }
         if (!CanRename || PrimarySelection is null)
             return;
 
@@ -1856,6 +1877,114 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return false;
         var path = Path.Combine(CurrentPath, name.Trim());
         return !File.Exists(path) && !Directory.Exists(path);
+    }
+
+    public async Task DeleteArchiveSelectionAsync()
+    {
+        if (!CanEditArchive || FileSystem is not ArchiveFileSystem archive)
+            return;
+
+        var entries = _selected
+            .Select(item => item.IsDirectory
+                ? item.Path.TrimEnd('/') + "/*"
+                : item.Path.Trim('/'))
+            .ToList();
+        var confirmed = await _services.Dialogs.ConfirmAsync(
+            L10n.T("从压缩包删除？"),
+            L10n.Format("将从压缩包中删除 {0} 个项目，此操作无法撤销。", entries.Count),
+            L10n.T("删除"), destructive: true).ConfigureAwait(true);
+        if (!confirmed)
+            return;
+
+        try
+        {
+            await ArchiveEditService.DeleteAsync(archive.ArchivePath, archive.Format, entries,
+                archive.Password).ConfigureAwait(true);
+            await ReloadArchiveAsync(archive).ConfigureAwait(true);
+            Toast(L10n.T("已从压缩包删除"), L10n.Format("{0} 个项目", entries.Count), false);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("无法修改压缩包"), ex.Message, true);
+        }
+    }
+
+    public async Task RenameArchiveSelectionAsync()
+    {
+        if (!CanEditArchive || PrimarySelection is not { } item ||
+            FileSystem is not ArchiveFileSystem archive)
+            return;
+
+        var name = await _services.Dialogs.PromptAsync(L10n.T("重命名压缩包内项目"),
+            L10n.T("新名称"), item.Name,
+            value => !string.IsNullOrWhiteSpace(value) &&
+                     value.IndexOfAny(['/', '\\']) < 0 &&
+                     !string.Equals(value.Trim(), item.Name, StringComparison.Ordinal)
+                ? null
+                : L10n.T("名称不能为空、包含斜杠或保持不变")).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        var parent = FileSystem.GetParent(item.Path);
+        var newPath = ArchiveEditService.CombineArchivePath(parent, name.Trim());
+        try
+        {
+            await ArchiveEditService.RenameAsync(archive.ArchivePath, archive.Format,
+                item.Path.Trim('/'), newPath, archive.Password).ConfigureAwait(true);
+            await ReloadArchiveAsync(archive).ConfigureAwait(true);
+            Toast(L10n.T("压缩包项目已重命名"), name.Trim(), false);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("无法修改压缩包"), ex.Message, true);
+        }
+    }
+
+    public async Task AddFilesToArchiveAsync()
+    {
+        if (!CanAddToArchive || FileSystem is not ArchiveFileSystem archive)
+            return;
+
+        var files = await _services.Dialogs.PickFilesAsync(L10n.T("添加文件到压缩包"))
+            .ConfigureAwait(true);
+        if (files.Count == 0)
+            return;
+
+        var existing = await FileSystem.ListAsync(CurrentPath).ConfigureAwait(true);
+        var names = existing.Select(entry => entry.Name)
+            .ToHashSet(OperatingSystem.IsLinux()
+                ? StringComparer.Ordinal
+                : StringComparer.OrdinalIgnoreCase);
+        var list = new List<(string LocalPath, string Name)>();
+        foreach (var file in files)
+        {
+            var name = Path.GetFileName(file);
+            if (names.Contains(name))
+                name = GlobMatcher.SuggestFileName(name, candidate => names.Contains(candidate));
+            names.Add(name);
+            list.Add((file, name));
+        }
+
+        try
+        {
+            await ArchiveEditService.AddAsync(archive.ArchivePath, archive.Format, CurrentPath, list,
+                archive.Password).ConfigureAwait(true);
+            await ReloadArchiveAsync(archive).ConfigureAwait(true);
+            Toast(L10n.T("已添加到压缩包"), L10n.Format("{0} 个文件", list.Count), false);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("无法修改压缩包"), ex.Message, true);
+        }
+    }
+
+    private async Task ReloadArchiveAsync(ArchiveFileSystem archive)
+    {
+        await archive.ReloadAsync().ConfigureAwait(true);
+        if (!await archive.ExistsAsync(CurrentPath).ConfigureAwait(true))
+            await NavigateAsync(archive, "/").ConfigureAwait(true);
+        else
+            await RefreshAsync().ConfigureAwait(true);
     }
 
     public async Task Compress7zAsync()
@@ -2614,6 +2743,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanCompare));
         OnPropertyChanged(nameof(CanTag));
+        OnPropertyChanged(nameof(CanEditArchive));
+        OnPropertyChanged(nameof(CanAddToArchive));
         OnPropertyChanged(nameof(CanConvertImages));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));

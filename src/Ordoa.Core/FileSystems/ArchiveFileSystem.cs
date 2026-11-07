@@ -39,6 +39,33 @@ public sealed class ArchiveFileSystem : FileSystemBase
     public string ArchivePath { get; }
     public ArchiveFormat Format { get; }
     public string? Password => _password;
+
+    /// <summary>Re-reads the archive index after it has been modified on disk.</summary>
+    public Task ReloadAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.Run(() =>
+        {
+            lock (_extractLock)
+            {
+                try
+                {
+                    if (Directory.Exists(_tempRoot))
+                        Directory.Delete(_tempRoot, true);
+                }
+                catch
+                {
+                    // Extracted cache can be removed on the next launch.
+                }
+
+                _nodes.Clear();
+                _nodes["/"] = new ArchiveNode("/", DisplayName, true, 0, null);
+                _entryNames.Clear();
+                _extracted.Clear();
+                _hasEncryptedEntries = false;
+                BuildIndex(cancellationToken);
+            }
+        }, cancellationToken);
+    }
     public override bool IsCaseSensitive => true;
     public override FileSystemCapabilities Capabilities =>
         FileSystemCapabilities.List | FileSystemCapabilities.Read | FileSystemCapabilities.Copy;

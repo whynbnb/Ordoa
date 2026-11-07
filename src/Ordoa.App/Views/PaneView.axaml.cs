@@ -934,10 +934,21 @@ public partial class PaneView : UserControl
             menu.Items.Add(new Separator());
             menu.Items.Add(MenuItem(L10n.T("清空回收站"), pane.EmptyTrashAsync, pane.CanEmptyTrash));
         }
-        else
+        else if (!pane.IsArchive)
         {
             var label = pane.FileSystem.IsLocal ? L10n.T("移到回收站") : L10n.T("永久删除");
             menu.Items.Add(MenuItem(label, () => pane.DeleteSelectionAsync(!pane.FileSystem.IsLocal), pane.CanDelete));
+        }
+
+        if (pane.IsArchive)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuItem(L10n.T("添加文件到压缩包…"), pane.AddFilesToArchiveAsync,
+                pane.CanAddToArchive));
+            menu.Items.Add(MenuItem(L10n.T("重命名压缩包内项目"), pane.RenameArchiveSelectionAsync,
+                pane.CanEditArchive && pane.SelectedCount == 1));
+            menu.Items.Add(MenuItem(L10n.T("从压缩包删除"), pane.DeleteArchiveSelectionAsync,
+                pane.CanEditArchive));
         }
 
         menu.Items.Add(new Separator());

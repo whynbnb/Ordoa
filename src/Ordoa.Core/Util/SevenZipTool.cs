@@ -145,6 +145,43 @@ public static class SevenZipTool
         }
     }
 
+    public static void Add(string archivePath, string workingDirectory, IReadOnlyList<string> relativePaths,
+        CancellationToken cancellationToken, string? password = null)
+    {
+        var arguments = new List<string> { "a", "-y", "-bd" };
+        if (!string.IsNullOrEmpty(password))
+            arguments.Add("-p" + password);
+        arguments.Add("--");
+        arguments.Add(archivePath);
+        arguments.AddRange(relativePaths);
+        _ = Run(workingDirectory, arguments, cancellationToken);
+    }
+
+    public static void Delete(string archivePath, IReadOnlyList<string> entryPaths,
+        CancellationToken cancellationToken, string? password = null)
+    {
+        var arguments = new List<string> { "d", "-y", "-bd" };
+        if (!string.IsNullOrEmpty(password))
+            arguments.Add("-p" + password);
+        arguments.Add("--");
+        arguments.Add(archivePath);
+        arguments.AddRange(entryPaths.Select(path => path.Replace('\\', '/').TrimStart('/')));
+        _ = Run(null, arguments, cancellationToken);
+    }
+
+    public static void Rename(string archivePath, string oldPath, string newPath,
+        CancellationToken cancellationToken, string? password = null)
+    {
+        var arguments = new List<string> { "rn", "-y", "-bd" };
+        if (!string.IsNullOrEmpty(password))
+            arguments.Add("-p" + password);
+        arguments.Add("--");
+        arguments.Add(archivePath);
+        arguments.Add(oldPath.Replace('\\', '/').TrimStart('/'));
+        arguments.Add(newPath.Replace('\\', '/').TrimStart('/'));
+        _ = Run(null, arguments, cancellationToken);
+    }
+
     public static void Extract(string archivePath, string destination,
         IReadOnlyList<string>? entryPaths, CancellationToken cancellationToken, string? password = null)
     {

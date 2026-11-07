@@ -1214,5 +1214,19 @@
  "上次关闭的窗口已重新打开": "The last closed window was reopened",
  "关闭一个窗口后可以在这里恢复": "Close a window first, then reopen it here",
  "重新打开关闭的窗口": "Reopen closed window",
- "恢复上次关闭窗口中的标签页": "Restore the tabs from the last closed window"
+ "恢复上次关闭窗口中的标签页": "Restore the tabs from the last closed window",
+ "此压缩包格式不支持写入": "This archive format does not support writing",
+ "需要安装 7z 命令行工具才能修改此压缩包": "Install the 7z command-line tool to modify this archive",
+ "从压缩包删除？": "Delete from archive?",
+ "将从压缩包中删除 {0} 个项目，此操作无法撤销。": "{0} items will be deleted from the archive; this cannot be undone.",
+ "已从压缩包删除": "Deleted from archive",
+ "无法修改压缩包": "Cannot modify archive",
+ "重命名压缩包内项目": "Rename archive item",
+ "名称不能为空、包含斜杠或保持不变": "The name cannot be empty, contain slashes, or stay unchanged",
+ "压缩包项目已重命名": "Archive item renamed",
+ "添加文件到压缩包": "Add files to archive",
+ "添加文件到压缩包…": "Add files to archive…",
+ "已添加到压缩包": "Added to archive",
+ "{0} 个文件": "{0} files",
+ "从压缩包删除": "Delete from archive"
 }

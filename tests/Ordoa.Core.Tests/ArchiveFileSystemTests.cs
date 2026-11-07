@@ -50,6 +50,78 @@ public sealed class ArchiveFileSystemTests : IDisposable
     }
 
     [Fact]
+    public async Task EditsSevenZipArchiveInPlace()
+    {
+        if (!SevenZipTool.IsAvailable)
+            return;
+
+        var source = Path.Combine(_root, "edit");
+        Directory.CreateDirectory(source);
+        await File.WriteAllTextAsync(Path.Combine(source, "a.txt"), "a");
+        await File.WriteAllTextAsync(Path.Combine(source, "b.txt"), "b");
+        var archivePath = Path.Combine(_root, "edit.7z");
+        RunSevenZip("a", "-t7z", archivePath, Path.Combine(source, "a.txt"),
+            Path.Combine(source, "b.txt"));
+
+        await ArchiveEditService.DeleteAsync(archivePath, ArchiveFormat.SevenZip, ["a.txt"]);
+        await ArchiveEditService.RenameAsync(archivePath, ArchiveFormat.SevenZip, "b.txt", "c.txt");
+        var addFile = Path.Combine(source, "d.txt");
+        await File.WriteAllTextAsync(addFile, "d");
+        await ArchiveEditService.AddAsync(archivePath, ArchiveFormat.SevenZip, "/sub",
+        [
+            (addFile, "d.txt"),
+        ]);
+
+        var archive = await ArchiveFileSystem.OpenAsync(archivePath);
+        try
+        {
+            var root = await archive.ListAsync("/");
+            Assert.DoesNotContain(root, entry => entry.Name == "a.txt");
+            Assert.Contains(root, entry => entry.Name == "c.txt");
+            var sub = await archive.ListAsync("/sub");
+            Assert.Contains(sub, entry => entry.Name == "d.txt");
+        }
+        finally
+        {
+            await archive.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task EditsZipArchiveInPlace()
+    {
+        var source = Path.Combine(_root, "zipedit");
+        Directory.CreateDirectory(source);
+        await File.WriteAllTextAsync(Path.Combine(source, "a.txt"), "a");
+        await File.WriteAllTextAsync(Path.Combine(source, "b.txt"), "b");
+        var archivePath = Path.Combine(_root, "edit.zip");
+        await ArchiveService.CreateAsync([source], archivePath);
+
+        await ArchiveEditService.DeleteAsync(archivePath, ArchiveFormat.Zip, ["zipedit/a.txt"]);
+        await ArchiveEditService.RenameAsync(archivePath, ArchiveFormat.Zip, "zipedit/b.txt",
+            "zipedit/c.txt");
+        var addFile = Path.Combine(source, "d.txt");
+        await File.WriteAllTextAsync(addFile, "d");
+        await ArchiveEditService.AddAsync(archivePath, ArchiveFormat.Zip, "/zipedit",
+        [
+            (addFile, "d.txt"),
+        ]);
+
+        var archive = await ArchiveFileSystem.OpenAsync(archivePath);
+        try
+        {
+            var entries = await archive.ListAsync("/zipedit");
+            Assert.DoesNotContain(entries, entry => entry.Name == "a.txt");
+            Assert.Contains(entries, entry => entry.Name == "c.txt");
+            Assert.Contains(entries, entry => entry.Name == "d.txt");
+        }
+        finally
+        {
+            await archive.DisposeAsync();
+        }
+    }
+
+    [Fact]
     public async Task CreatesSevenZipArchive()
     {
         if (!SevenZipTool.IsAvailable)

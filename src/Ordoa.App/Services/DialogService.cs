@@ -295,6 +295,24 @@ public sealed class DialogService : IDialogService
         await ShowDialogAsync("imageconvert", window, owner).ConfigureAwait(true);
     }
 
+    public async Task<IReadOnlyList<string>> PickFilesAsync(string title)
+    {
+        var owner = _ownerProvider();
+        if (owner?.StorageProvider is not { } storage)
+            return [];
+
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = true,
+        }).ConfigureAwait(true);
+        return files
+            .Select(file => file.TryGetLocalPath())
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Cast<string>()
+            .ToList();
+    }
+
     public async Task ShowErrorAsync(string title, string message)
     {
         var kind = "error:" + title;
