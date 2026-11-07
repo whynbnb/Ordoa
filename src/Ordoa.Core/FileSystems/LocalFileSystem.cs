@@ -338,6 +338,8 @@ public sealed class LocalFileSystem : FileSystemBase
             catch { /* ignore */ }
         }
 
+        var (owner, group) = UnixIdentity.Read(info.FullName);
+
         DateTimeOffset? created = SafeTime(() => info.CreationTimeUtc);
         DateTimeOffset? modified = SafeTime(() => info.LastWriteTimeUtc);
         DateTimeOffset? accessed = SafeTime(() => info.LastAccessTimeUtc);
@@ -356,6 +358,8 @@ public sealed class LocalFileSystem : FileSystemBase
             IsSymlink = isSymlink,
             LinkTarget = linkTarget,
             UnixMode = mode,
+            Owner = owner,
+            Group = group,
             MimeType = isDirectory ? null : MimeTypes.FromExtension(GetExtension(name)),
         };
     }

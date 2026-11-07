@@ -50,6 +50,36 @@ public sealed class PathAndFormatTests
     }
 
     [Fact]
+    public void FilePermission_FormatsUnixMode()
+    {
+        var mode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                   UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                   UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
+        Assert.Equal("rwxr-xr-x", FilePermission.Format(mode));
+        Assert.Equal("—", FilePermission.Format(null));
+    }
+
+    [Fact]
+    public void UnixIdentity_ReadsCurrentUserOnLinux()
+    {
+        if (!OperatingSystem.IsLinux())
+            return;
+
+        var path = Path.Combine(Path.GetTempPath(), "ordoa-identity-" + Guid.NewGuid().ToString("N"));
+        File.WriteAllText(path, "identity");
+        try
+        {
+            var (owner, group) = UnixIdentity.Read(path);
+            Assert.False(string.IsNullOrWhiteSpace(owner));
+            Assert.False(string.IsNullOrWhiteSpace(group));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void GlobMatcher_Works()
     {
         Assert.True(GlobMatcher.IsMatch("photo.png", "*.png"));

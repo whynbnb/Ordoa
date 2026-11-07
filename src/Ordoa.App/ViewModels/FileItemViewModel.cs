@@ -41,6 +41,11 @@ public sealed partial class FileItemViewModel : ObservableObject
     public string SizeText => Entry.IsDirectory ? "—" : Humanize.Size(Entry.Size);
     public string ModifiedText => Humanize.Date(Entry.Modified);
     public string TypeText => Entry.TypeDescription;
+    public string PermissionText => FilePermission.Format(Entry.UnixMode);
+    public string OwnerText => Entry.Owner ?? "—";
+    public string OwnershipText => Entry.Owner is null && Entry.Group is null
+        ? L10n.T("未知所有者")
+        : $"{Entry.Owner ?? "—"}:{Entry.Group ?? "—"}";
     public string GridSubtitle => Entry.IsDirectory ? L10n.T("文件夹") : Humanize.Size(Entry.Size);
     public string? OriginalPath => Entry.OriginalPath;
     public string? LinkTarget => Entry.LinkTarget;
@@ -52,6 +57,10 @@ public sealed partial class FileItemViewModel : ObservableObject
             var text = $"{Name}\n{DisplayLocation}";
             if (!string.IsNullOrEmpty(LinkTarget))
                 text += $"\n→ {LinkTarget}";
+            if (Entry.UnixMode is not null)
+                text += $"\n{L10n.T("权限")}: {PermissionText}";
+            if (Entry.Owner is not null || Entry.Group is not null)
+                text += $"\n{L10n.T("所有者")}: {OwnershipText}";
             if (Entry.IsDirectory && Entry.OriginalPath is not null)
                 text += "\n" + L10n.Format("原位置: {0}", Entry.OriginalPath);
             return text;

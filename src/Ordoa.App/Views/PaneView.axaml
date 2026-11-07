@@ -251,7 +251,7 @@
         <Border Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1" Padding="16,0,14,0" Height="27">
           <Grid>
-          <Grid Classes="headerwide" IsVisible="{Binding !IsNarrow}" ColumnDefinitions="*,74,116,88" ColumnSpacing="0">
+          <Grid Classes="headerwide" IsVisible="{Binding !IsNarrow}" ColumnDefinitions="*,74,116,88,86,92" ColumnSpacing="0">
             <Button Classes="header" Tag="Name" Click="OnSortHeaderClick">
               <StackPanel Orientation="Horizontal" Spacing="3">
                 <TextBlock Text="{loc:Tr 名称}" Classes="columnvalue" />
@@ -289,6 +289,8 @@
                       IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Type}" />
               </StackPanel>
             </Button>
+            <TextBlock Grid.Column="4" Text="{loc:Tr 权限}" Classes="columnvalue" Margin="0,0,8,0" />
+            <TextBlock Grid.Column="5" Text="{loc:Tr 所有者}" Classes="columnvalue" />
           </Grid>
           <Grid Classes="headernarrow" IsVisible="{Binding IsNarrow}" ColumnDefinitions="*,74" ColumnSpacing="0">
             <Button Classes="header" Tag="Name" Click="OnSortHeaderClick">
@@ -327,7 +329,7 @@
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:FileItemViewModel">
               <Panel Classes="fileitem" Classes.dim="{Binding IsHidden}" ToolTip.Tip="{Binding TooltipText}" Background="Transparent">
-                <Grid Classes="rowwide" ColumnDefinitions="*,74,116,88">
+                <Grid Classes="rowwide" ColumnDefinitions="*,74,116,88,86,92">
                   <Grid ColumnDefinitions="Auto,*" Margin="2,0,0,0">
                     <Panel Width="22" Height="22" VerticalAlignment="Center">
                       <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="17" Height="17"
@@ -347,6 +349,10 @@
                              Margin="0,0,8,0" />
                   <TextBlock Grid.Column="3" Text="{Binding TypeText}" Classes="columnvalue"
                              TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="4" Text="{Binding PermissionText}" Classes="columnvalue"
+                             FontFamily="{DynamicResource MonoFontFamily}" Margin="0,0,8,0" />
+                  <TextBlock Grid.Column="5" Text="{Binding OwnerText}" Classes="columnvalue"
+                             ToolTip.Tip="{Binding OwnershipText}" TextTrimming="CharacterEllipsis" />
                 </Grid>
                 <Grid Classes="rownarrow" ColumnDefinitions="*,74">
                   <Grid ColumnDefinitions="Auto,*" Margin="2,0,0,0">

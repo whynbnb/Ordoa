@@ -915,5 +915,6 @@
  "暂停": "Pause",
  "继续": "Resume",
  "无法重试": "Could not retry",
- "只有失败或已取消的传输可以重试": "Only failed or cancelled transfers can be retried."
+ "只有失败或已取消的传输可以重试": "Only failed or cancelled transfers can be retried.",
+ "未知所有者": "Unknown owner"
 }
