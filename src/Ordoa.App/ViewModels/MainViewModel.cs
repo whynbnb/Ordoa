@@ -2319,6 +2319,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             Add(L10n.T("Git 状态"), L10n.T("查看当前仓库的分支与未提交变更"), null, "IconCode",
                 () => PaneAction(p => p.ShowGitStatusAsync()));
         }
+        Add(L10n.T("创建符号链接"), L10n.T("在当前位置创建指向选中项目的链接"), null, "IconLink",
+            () => PaneAction(p => p.CreateSymbolicLinkAsync(false)));
         Add(L10n.T("计算文件夹大小"), L10n.T("计算选中文件夹的递归大小"), null, "IconFolder",
             () => PaneAction(p => p.CalculateFolderSizesAsync()));
         Add(L10n.T("操作历史"), L10n.T("查看本次会话的复制、移动与删除记录"), null, "IconRestore",

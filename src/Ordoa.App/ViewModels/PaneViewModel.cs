@@ -546,6 +546,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanRestore => IsTrash && HasSelection;
     public bool CanCalculateFolderSize => FileSystem.IsLocal && !IsTrash &&
                                           _selected.Any(item => item.IsDirectory);
+    public bool CanCreateLink => FileSystem.IsLocal && !IsTrash && SelectedCount == 1 &&
+                                 PrimarySelection is not null;
     public bool CanEmptyTrash => IsTrash;
     public bool CanSelectAll => VisibleItems.Count > 0;
     public bool CanGoHome => true;
@@ -1762,6 +1764,69 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             Toast(L10n.T("压缩失败"), ex.Message, true);
         }
+    }
+
+    public async Task CreateSymbolicLinkAsync(bool relative)
+    {
+        if (!CanCreateLink || PrimarySelection is not { } item)
+            return;
+
+        var suggested = LinkService.SuggestLinkName(item.Name);
+        var name = await _services.Dialogs.PromptAsync(L10n.T("创建符号链接"), L10n.T("链接名称"), suggested,
+            value => IsValidLinkName(value) ? null : L10n.T("名称不能为空或已存在")).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        try
+        {
+            var linkPath = Path.Combine(CurrentPath, name.Trim());
+            LinkService.CreateSymbolicLink(item.Path, linkPath, relative);
+            await RefreshAsync().ConfigureAwait(true);
+            Toast(L10n.T("已创建符号链接"), name.Trim(), false);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("无法创建链接"), ex.Message, true);
+        }
+    }
+
+    public async Task CreateHardLinkAsync()
+    {
+        if (!CanCreateLink || PrimarySelection is not { } item)
+            return;
+        if (item.IsDirectory)
+        {
+            Toast(L10n.T("无法创建链接"), L10n.T("不能为文件夹创建硬链接"), true);
+            return;
+        }
+
+        var suggested = LinkService.SuggestLinkName(item.Name);
+        var name = await _services.Dialogs.PromptAsync(L10n.T("创建硬链接"), L10n.T("链接名称"), suggested,
+            value => IsValidLinkName(value) ? null : L10n.T("名称不能为空或已存在")).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        try
+        {
+            var linkPath = Path.Combine(CurrentPath, name.Trim());
+            LinkService.CreateHardLink(item.Path, linkPath);
+            await RefreshAsync().ConfigureAwait(true);
+            Toast(L10n.T("已创建硬链接"), name.Trim(), false);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("无法创建链接"), ex.Message, true);
+        }
+    }
+
+    private bool IsValidLinkName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            return false;
+        var path = Path.Combine(CurrentPath, name.Trim());
+        return !File.Exists(path) && !Directory.Exists(path);
     }
 
     public async Task Compress7zAsync()

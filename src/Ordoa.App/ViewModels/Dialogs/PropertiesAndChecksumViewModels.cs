@@ -39,6 +39,9 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
         HasOwner = !string.IsNullOrWhiteSpace(entry.Owner);
         HasGroup = !string.IsNullOrWhiteSpace(entry.Group);
         CanEditPermissions = fileSystem.Capabilities.Has(FileSystemCapabilities.UnixPermissions) && entry.UnixMode is not null;
+        CanEditOwnership = fileSystem.IsLocal && !IsTrash && entry.UnixMode is not null;
+        _ownerInput = entry.Owner ?? string.Empty;
+        _groupInput = entry.Group ?? string.Empty;
         BuildItems();
     }
 
@@ -99,6 +102,8 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
     public bool IsRemote { get; }
     public bool CanMeasure { get; }
     public bool CanEditPermissions { get; }
+    public bool CanEditOwnership { get; }
+    public ObservableCollection<PropertyItem> ExtendedItems { get; } = [];
     public bool HasUnixMode { get; }
     public bool HasLink { get; }
     public bool HasOriginalPath { get; }
@@ -116,6 +121,83 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
 
     [ObservableProperty]
     private string? _permissionStatus;
+
+    [ObservableProperty]
+    private string _ownerInput = string.Empty;
+
+    [ObservableProperty]
+    private string _groupInput = string.Empty;
+
+    [ObservableProperty]
+    private string? _ownershipStatus;
+
+    [ObservableProperty]
+    private bool _isApplyingOwnership;
+
+    [ObservableProperty]
+    private bool _isLoadingMetadata;
+
+    [ObservableProperty]
+    private string? _aclText;
+
+    public bool HasAcl => !string.IsNullOrWhiteSpace(AclText);
+    public bool HasExtendedMetadata => ExtendedItems.Count > 0 || HasAcl;
+    public bool ShowExtendedMetadata => !IsRemote && !IsTrash;
+    public bool ShowNoExtendedMetadata => !IsLoadingMetadata && !HasExtendedMetadata;
+
+    public async Task LoadMetadataAsync()
+    {
+        if (!_fileSystem.IsLocal || IsTrash)
+            return;
+
+        IsLoadingMetadata = true;
+        try
+        {
+            var attributes = await Task.Run(() => ExtendedMetadata.ReadAttributes(Entry.Path)).ConfigureAwait(true);
+            ExtendedItems.Clear();
+            foreach (var attribute in attributes)
+                ExtendedItems.Add(new PropertyItem(attribute.Name, attribute.Value, true));
+            AclText = await ExtendedMetadata.ReadAclAsync(Entry.Path, _cts.Token).ConfigureAwait(true);
+        }
+        finally
+        {
+            IsLoadingMetadata = false;
+            OnPropertyChanged(nameof(HasAcl));
+            OnPropertyChanged(nameof(HasExtendedMetadata));
+            OnPropertyChanged(nameof(ShowNoExtendedMetadata));
+        }
+    }
+
+    [RelayCommand]
+    private async Task ApplyOwnershipAsync()
+    {
+        if (!CanEditOwnership)
+            return;
+
+        IsApplyingOwnership = true;
+        OwnershipStatus = null;
+        try
+        {
+            await ExtendedMetadata.SetOwnershipAsync(Entry.Path, OwnerInput, GroupInput, _cts.Token)
+                .ConfigureAwait(true);
+            Entry = await _fileSystem.GetEntryAsync(Entry.Path, _cts.Token).ConfigureAwait(true) ?? Entry;
+            OwnerInput = Entry.Owner ?? OwnerInput;
+            GroupInput = Entry.Group ?? GroupInput;
+            OwnershipStatus = L10n.T("所有者已更新");
+            Items.Clear();
+            BuildItems();
+            OnPropertyChanged(nameof(OwnerText));
+            OnPropertyChanged(nameof(GroupText));
+        }
+        catch (Exception ex)
+        {
+            OwnershipStatus = ex.Message;
+        }
+        finally
+        {
+            IsApplyingOwnership = false;
+        }
+    }
 
     [RelayCommand]
     private async Task ApplyPermissionsAsync()

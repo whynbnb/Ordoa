@@ -63,6 +63,51 @@
           </StackPanel>
         </Border>
 
+        <Border Classes="card" Padding="14,10" IsVisible="{Binding CanEditOwnership}">
+          <StackPanel Spacing="8">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 所有者和用户组}" FontWeight="SemiBold" FontSize="12" />
+              <TextBlock Text="{loc:Tr 使用 chown 修改；通常需要管理员权限。}" Classes="tiny" />
+            </StackPanel>
+            <Grid ColumnDefinitions="Auto,*,Auto,*,Auto" ColumnSpacing="8">
+              <TextBlock Text="{loc:Tr 所有者}" Classes="fieldlabel" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding OwnerInput, Mode=TwoWay}" />
+              <TextBlock Grid.Column="2" Text="{loc:Tr 用户组}" Classes="fieldlabel" VerticalAlignment="Center" />
+              <TextBox Grid.Column="3" Text="{Binding GroupInput, Mode=TwoWay}" />
+              <Button Grid.Column="4" Content="{loc:Tr 应用}" Classes="subtle"
+                      Command="{Binding ApplyOwnershipCommand}"
+                      IsEnabled="{Binding IsApplyingOwnership, Converter={StaticResource InverseBoolConverter}}" />
+            </Grid>
+            <TextBlock Text="{Binding OwnershipStatus}" Classes="tiny" TextWrapping="Wrap"
+                       IsVisible="{Binding OwnershipStatus, Converter={StaticResource NotNullConverter}}" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Padding="14,10" IsVisible="{Binding ShowExtendedMetadata}">
+          <StackPanel Spacing="8">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 扩展属性与 ACL}" FontWeight="SemiBold" FontSize="12" />
+              <TextBlock Text="{loc:Tr 读取扩展属性和 POSIX ACL；只读。}" Classes="tiny" />
+            </StackPanel>
+            <ProgressBar IsIndeterminate="True" Height="3" IsVisible="{Binding IsLoadingMetadata}" />
+            <ItemsControl ItemsSource="{Binding ExtendedItems}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PropertyItem">
+                  <Grid ColumnDefinitions="140,*" Margin="0,3">
+                    <TextBlock Text="{Binding Label}" Classes="caption" FontFamily="{DynamicResource MonoFontFamily}" />
+                    <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11.5"
+                                         FontFamily="{DynamicResource MonoFontFamily}" TextWrapping="Wrap" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <SelectableTextBlock Text="{Binding AclText}" FontSize="11" FontFamily="{DynamicResource MonoFontFamily}"
+                                 TextWrapping="Wrap" IsVisible="{Binding HasAcl}" />
+            <TextBlock Text="{loc:Tr 没有扩展属性或 ACL}" Classes="tiny"
+                       IsVisible="{Binding ShowNoExtendedMetadata}" />
+          </StackPanel>
+        </Border>
+
         <Border Classes="card" Padding="14,10" IsVisible="{Binding IsDirectory}">
           <StackPanel Spacing="8">
             <Grid ColumnDefinitions="*,Auto">

@@ -900,6 +900,14 @@ public partial class PaneView : UserControl
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem(L10n.T("重命名"), pane.RenameAsync, pane.CanRename));
         menu.Items.Add(MenuItem(L10n.T("批量重命名"), pane.BatchRenameAsync, pane.CanBatchRename));
+        var linkMenu = new MenuItem { Header = L10n.T("创建链接") };
+        linkMenu.Items.Add(MenuItem(L10n.T("符号链接"), () => pane.CreateSymbolicLinkAsync(false),
+            pane.CanCreateLink));
+        linkMenu.Items.Add(MenuItem(L10n.T("相对符号链接"), () => pane.CreateSymbolicLinkAsync(true),
+            pane.CanCreateLink));
+        linkMenu.Items.Add(MenuItem(L10n.T("硬链接"), pane.CreateHardLinkAsync,
+            pane.CanCreateLink && pane.PrimarySelection is { IsDirectory: false }));
+        menu.Items.Add(linkMenu);
 
         if (pane.IsTrash)
         {

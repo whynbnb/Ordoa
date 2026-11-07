@@ -766,6 +766,18 @@ public sealed class FileOperationService : IDisposable
 
         await VerifyCopyAsync(source, plan, destinationFileSystem, cancellationToken).ConfigureAwait(false);
 
+        if (source.FileSystem.IsLocal && destinationFileSystem.IsLocal && !source.Entry.IsSymlink)
+        {
+            try
+            {
+                ExtendedMetadata.CopyAttributes(source.Path, plan.Destination);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"复制扩展属性失败: {plan.Destination}", ex);
+            }
+        }
+
         if (source.Entry.Modified is { } modified)
         {
             try

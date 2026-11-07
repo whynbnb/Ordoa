@@ -11,6 +11,11 @@ public partial class PropertiesWindow : Window
     {
         InitializeComponent();
         WindowAppearance.Apply(this);
+        Opened += async (_, _) =>
+        {
+            if (DataContext is PropertiesDialogViewModel vm)
+                await vm.LoadMetadataAsync();
+        };
         Closed += (_, _) => (DataContext as PropertiesDialogViewModel)?.Dispose();
     }
 
