@@ -2434,6 +2434,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             () => PaneAction(p => p.CalculateFolderSizesAsync()));
         Add(L10n.T("操作历史"), L10n.T("查看本次会话的复制、移动与删除记录"), null, "IconRestore",
             () => _services.Dialogs.ShowOperationHistoryAsync(_services.Operations));
+        Add(L10n.T("撤销历史"), L10n.T("查看并执行可撤销和可重做的操作"), null, "IconUndo",
+            () => _services.Dialogs.ShowUndoHistoryAsync(_services.Undo));
         Add(L10n.T("压缩为 ZIP"), L10n.T("将选中的项目压缩为 zip"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(false)));
         Add(L10n.T("压缩为 tar.gz"), L10n.T("将选中的项目压缩为 tar.gz"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(true)));
         Add(L10n.T("压缩为 7z"), L10n.T("使用 7z 压缩选中的项目"), null, "IconArchive", () => PaneAction(p => p.Compress7zAsync()));

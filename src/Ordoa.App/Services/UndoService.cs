@@ -21,9 +21,12 @@ public sealed class UndoEntry
 {
     public required UndoEntryKind Kind { get; init; }
     public required string Title { get; init; }
+    public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.Now;
     public required Func<Task<bool>> Undo { get; init; }
     public required Func<Task<bool>> Redo { get; init; }
 }
+
+public sealed record UndoHistoryItem(string Title, UndoEntryKind Kind, DateTimeOffset Timestamp);
 
 /// <summary>
 /// Session-scoped file operation history. The history is intentionally not
@@ -47,6 +50,16 @@ public sealed class UndoService
 
     public int Count => _undo.Count;
     public int RedoCount => _redo.Count;
+    public IReadOnlyList<UndoHistoryItem> UndoHistory => _undo
+        .AsEnumerable()
+        .Reverse()
+        .Select(entry => new UndoHistoryItem(entry.Title, entry.Kind, entry.Timestamp))
+        .ToList();
+    public IReadOnlyList<UndoHistoryItem> RedoHistory => _redo
+        .AsEnumerable()
+        .Reverse()
+        .Select(entry => new UndoHistoryItem(entry.Title, entry.Kind, entry.Timestamp))
+        .ToList();
     public string? UndoTitle => _undo.Count == 0 ? null : _undo[^1].Title;
     public string? RedoTitle => _redo.Count == 0 ? null : _redo[^1].Title;
     public bool CanUndo => !_applying && EffectiveBehavior != UndoBehavior.Disabled && _undo.Count > 0;

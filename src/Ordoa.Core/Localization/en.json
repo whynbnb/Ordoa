@@ -1156,5 +1156,12 @@
  "比较选中文件": "Compare selected files",
  "并排查看两个文本或二进制文件的差异": "Compare two text or binary files side by side",
  "两个文件相同，或其中一个不是文本文件；详情见上方摘要。": "The files are identical, or one is not a text file; see the summary above.",
- "红色为左侧差异，绿色为右侧差异。": "Red marks differences on the left; green on the right."
+ "红色为左侧差异，绿色为右侧差异。": "Red marks differences on the left; green on the right.",
+ "撤销历史": "Undo history",
+ "可撤销 {0} 步，可重做 {1} 步": "{0} undo steps, {1} redo steps",
+ "本次会话还没有可撤销的操作": "No undoable operations in this session",
+ "可撤销": "Undoable",
+ "可重做": "Redoable",
+ "查看并执行可撤销和可重做的操作": "View and run undoable and redoable operations",
+ "移动": "Move"
 }

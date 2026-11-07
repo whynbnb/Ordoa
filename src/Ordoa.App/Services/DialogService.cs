@@ -274,6 +274,15 @@ public sealed class DialogService : IDialogService
         await ShowDialogAsync("compare", window, owner).ConfigureAwait(true);
     }
 
+    public async Task ShowUndoHistoryAsync(UndoService undo)
+    {
+        if (!TryPrepareDialog("undohistory", out var owner))
+            return;
+
+        var window = new UndoHistoryWindow { DataContext = new UndoHistoryDialogViewModel(undo) };
+        await ShowDialogAsync("undohistory", window, owner).ConfigureAwait(true);
+    }
+
     public async Task ShowErrorAsync(string title, string message)
     {
         var kind = "error:" + title;

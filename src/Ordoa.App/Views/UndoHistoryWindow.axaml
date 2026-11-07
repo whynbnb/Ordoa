@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:UndoHistoryDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.UndoHistoryWindow"
+        Title="{loc:Tr 撤销历史}"
+        Width="620" Height="560" MinWidth="440" MinHeight="320" CanResize="True"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,15" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{loc:Tr 撤销历史}" Classes="h2" />
+          <TextBlock Text="{Binding SummaryText}" Classes="caption" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="{loc:Tr 关闭}" Click="OnCloseClick" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <TextBlock Grid.Row="1" Text="{loc:Tr 本次会话还没有可撤销的操作}" Classes="caption"
+               HorizontalAlignment="Center" VerticalAlignment="Center"
+               IsVisible="{Binding IsEmpty}" />
+
+    <ScrollViewer Grid.Row="1" Padding="14,10" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="10">
+        <TextBlock Text="{loc:Tr 可撤销}" Classes="section" />
+        <ItemsControl ItemsSource="{Binding UndoRows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:UndoHistoryRowViewModel">
+              <Border Classes="card" Padding="10,7" Margin="0,0,0,4">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                  <TextBlock Text="{Binding Kind}" Classes="tiny" />
+                  <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Text="{Binding Time}" Classes="tiny" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="{loc:Tr 可重做}" Classes="section" IsVisible="{Binding HasRedo}" />
+        <ItemsControl ItemsSource="{Binding RedoRows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:UndoHistoryRowViewModel">
+              <Border Classes="card" Padding="10,7" Margin="0,0,0,4" Opacity="0.7">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                  <TextBlock Text="{Binding Kind}" Classes="tiny" />
+                  <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Text="{Binding Time}" Classes="tiny" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Padding="18,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+        <Button Content="{loc:Tr 撤销}" Click="OnUndoClick" IsEnabled="{Binding HasUndo}" />
+        <Button Content="{loc:Tr 重做}" Classes="accent" Click="OnRedoClick" IsEnabled="{Binding HasRedo}" />
+        <Button Content="{loc:Tr 关闭}" Click="OnCloseClick" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>
