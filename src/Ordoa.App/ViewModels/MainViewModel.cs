@@ -493,7 +493,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public void CloseTab(TabViewModel? tab)
+    public void CloseTab(TabViewModel? tab) => CloseTabCore(tab, remember: true);
+
+    /// <summary>Removes a tab without adding it to the reopen history.</summary>
+    public void CloseTabWithoutHistory(TabViewModel tab) => CloseTabCore(tab, remember: false);
+
+    private void CloseTabCore(TabViewModel? tab, bool remember)
     {
         tab ??= ActiveTab;
         if (tab is null)
@@ -503,7 +508,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (index < 0)
             return;
 
-        if (Tabs.Count > 1 && !_disposed)
+        if (remember && Tabs.Count > 1 && !_disposed)
             RememberClosedTab(tab, index);
 
         foreach (var pane in tab.Panes.ToList())
@@ -1545,6 +1550,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var tab = await CreateTabFromSessionAsync(state, Tabs.Count).ConfigureAwait(true);
         if (tab is not null)
         {
+            if (tab.IsPinned)
+                MoveTab(tab, Math.Max(0, PinnedTabCount - 1));
             ActivateTab(tab);
             UpdateWindowTitle();
         }

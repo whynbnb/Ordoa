@@ -88,6 +88,44 @@ public sealed class ArchiveFileSystemTests : IDisposable
     }
 
     [Fact]
+    public async Task RenamesAndDeletesArchiveDirectories()
+    {
+        if (!SevenZipTool.IsAvailable)
+            return;
+
+        var source = Path.Combine(_root, "tree");
+        Directory.CreateDirectory(Path.Combine(source, "sub"));
+        await File.WriteAllTextAsync(Path.Combine(source, "sub", "a.txt"), "a");
+        await File.WriteAllTextAsync(Path.Combine(source, "sub", "b.txt"), "b");
+        var archivePath = Path.Combine(_root, "tree.7z");
+        RunSevenZip("a", "-t7z", archivePath, Path.Combine(source, "sub"));
+
+        await ArchiveEditService.RenameAsync(archivePath, ArchiveFormat.SevenZip, "sub", "renamed");
+        var archive = await ArchiveFileSystem.OpenAsync(archivePath);
+        try
+        {
+            var renamed = await archive.ListAsync("/renamed");
+            Assert.Equal(2, renamed.Count);
+        }
+        finally
+        {
+            await archive.DisposeAsync();
+        }
+
+        await ArchiveEditService.DeleteAsync(archivePath, ArchiveFormat.SevenZip, ["renamed/*"]);
+        archive = await ArchiveFileSystem.OpenAsync(archivePath);
+        try
+        {
+            var root = await archive.ListAsync("/");
+            Assert.DoesNotContain(root, entry => entry.Name == "renamed");
+        }
+        finally
+        {
+            await archive.DisposeAsync();
+        }
+    }
+
+    [Fact]
     public async Task EditsZipArchiveInPlace()
     {
         var source = Path.Combine(_root, "zipedit");

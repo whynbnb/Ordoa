@@ -605,6 +605,7 @@
                              SelectionChanged="OnMillerSelectionChanged"
                              PointerPressed="OnMillerPointerPressed"
                              DoubleTapped="OnMillerDoubleTapped"
+                             KeyDown="OnMillerKeyDown"
                              ContextRequested="OnMillerContextRequested"
                              Background="Transparent" SelectionMode="Single"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"

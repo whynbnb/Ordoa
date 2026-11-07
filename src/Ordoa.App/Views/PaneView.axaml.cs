@@ -870,6 +870,19 @@ public partial class PaneView : UserControl
         ScrollMillerToEnd();
     }
 
+    private async void OnMillerKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_pane is null || e.Key != Key.Enter || sender is not ListBox list ||
+            list.SelectedItem is not FileItemViewModel item)
+            return;
+
+        e.Handled = true;
+        if (item.IsDirectory && list.DataContext is MillerColumnViewModel column)
+            await _pane.SetMillerSelectionAsync(column, item);
+        else
+            await _pane.OpenEntryAsync(item);
+    }
+
     private async void OnMillerDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
         if (_pane is null || sender is not ListBox list || list.SelectedItem is not FileItemViewModel item ||
@@ -959,6 +972,11 @@ public partial class PaneView : UserControl
         AddColorItem(tagMenu, pane, L10n.T("灰色"), Ordoa.Core.Models.FileColor.Gray, TagBrushes.Gray);
         tagMenu.Items.Add(new Separator());
         tagMenu.Items.Add(MenuItem(L10n.T("编辑标签…"), pane.EditTagsAsync, pane.CanTag));
+        tagMenu.Items.Add(MenuItem(L10n.T("清除标签"), () =>
+        {
+            pane.ClearSelectionTags();
+            return Task.CompletedTask;
+        }, pane.CanTag));
         menu.Items.Add(tagMenu);
 
         var linkMenu = new MenuItem { Header = L10n.T("创建链接") };

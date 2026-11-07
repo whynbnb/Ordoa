@@ -49,6 +49,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private string? _appliedFolderViewKey;
     private readonly Dictionary<string, List<FileEntry>> _treeChildren = new(StringComparer.Ordinal);
     private readonly Dictionary<string, IReadOnlyList<FileItemViewModel>> _millerCache = new(StringComparer.Ordinal);
+    private List<string> _millerSelectionChain = [];
     private readonly HashSet<string> _expandedTreePaths = new(StringComparer.Ordinal);
     private bool _isReconnecting;
     private bool _disposed;
@@ -103,6 +104,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             _treeChildren.Clear();
             _expandedTreePaths.Clear();
             _millerCache.Clear();
+            _millerSelectionChain.Clear();
         }
     }
 
@@ -661,7 +663,10 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             if (IsMiller)
                 _millerCache.Clear();
 
+            var millerChain = IsMiller ? _millerSelectionChain.ToList() : [];
             ApplySortAndFilter();
+            if (millerChain.Count > 0)
+                await RestoreMillerSelectionAsync(millerChain, cancellationToken).ConfigureAwait(true);
             UpdateBreadcrumbs();
             UpdateTitle();
             UpdateLocationText();
@@ -687,7 +692,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 RemoteLatencyText = L10n.T("离线");
                 RemoteLatencyBrush = new SolidColorBrush(Color.Parse("#D9534F"));
             }
-            if (IsRemote && !_isReconnecting && ex is not OperationCanceledException)
+            if (IsRemote && !_isReconnecting && IsConnectionFailure(ex))
             {
                 _isReconnecting = true;
                 try
@@ -2336,6 +2341,18 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return total;
         }, cancellationToken);
 
+    private static bool IsConnectionFailure(Exception ex)
+    {
+        if (ex is OperationCanceledException or DirectoryNotFoundException or FileNotFoundException or
+            UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            return false;
+
+        var type = ex.GetType().Name;
+        return !type.Contains("PathNotFound", StringComparison.OrdinalIgnoreCase) &&
+               !type.Contains("PermissionDenied", StringComparison.OrdinalIgnoreCase) &&
+               !type.Contains("NotExist", StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task<bool> TryReconnectAsync(CancellationToken cancellationToken)
     {
         try
@@ -2411,6 +2428,16 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         var selected = _selected.ToList();
         foreach (var item in selected)
             _services.Tags.SetColor(FileSystem, item.Path, color);
+        ApplyTagsToItems(selected);
+    }
+
+    public void ClearSelectionTags()
+    {
+        if (!CanTag)
+            return;
+        var selected = _selected.ToList();
+        foreach (var item in selected)
+            _services.Tags.SetTags(FileSystem, item.Path, []);
         ApplyTagsToItems(selected);
     }
 
@@ -2639,6 +2666,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         }
         UpdateSelectionDependentProperties();
 
+        _millerSelectionChain = MillerColumns
+            .Select(existing => existing.SelectedItem?.Path)
+            .Where(path => !string.IsNullOrEmpty(path))
+            .Cast<string>()
+            .ToList();
+
         if (item is null || !item.IsDirectory)
             return;
 
@@ -2670,6 +2703,25 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             Toast(L10n.T("无法打开文件夹"), ex.Message, true);
+        }
+    }
+
+    private async Task RestoreMillerSelectionAsync(IReadOnlyList<string> chain,
+        CancellationToken cancellationToken)
+    {
+        var column = MillerColumns.FirstOrDefault();
+        foreach (var path in chain)
+        {
+            if (cancellationToken.IsCancellationRequested || column is null)
+                return;
+            var item = column.Items.FirstOrDefault(candidate =>
+                string.Equals(candidate.Path, path, StringComparison.Ordinal));
+            if (item is null)
+                return;
+            await SetMillerSelectionAsync(column, item).ConfigureAwait(true);
+            column = MillerColumns.LastOrDefault();
+            if (item is not { IsDirectory: true })
+                return;
         }
     }
 

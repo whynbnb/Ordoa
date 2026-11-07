@@ -171,6 +171,8 @@ public static class ArchiveEditService
             var directory = trimmed.EndsWith("/*", StringComparison.Ordinal) ? trimmed[..^2] : trimmed;
             if (string.Equals(name, trimmed, StringComparison.Ordinal))
                 return true;
+            if (string.Equals(name, directory, StringComparison.Ordinal))
+                return true;
             if (name.StartsWith(directory + "/", StringComparison.Ordinal))
                 return true;
         }

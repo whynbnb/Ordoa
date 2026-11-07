@@ -462,7 +462,7 @@ public partial class MainWindow : Window
             return;
 
         var state = payload.Source.SnapshotTab(payload.Tab);
-        payload.Source.CloseTab(payload.Tab);
+        payload.Source.CloseTabWithoutHistory(payload.Tab);
         await _viewModel.AdoptTabAsync(state);
     }
 

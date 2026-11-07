@@ -165,7 +165,13 @@ public static class SevenZipTool
             arguments.Add("-p" + password);
         arguments.Add("--");
         arguments.Add(archivePath);
-        arguments.AddRange(entryPaths.Select(path => path.Replace('\\', '/').TrimStart('/')));
+        foreach (var entry in entryPaths)
+        {
+            var clean = entry.Replace('\\', '/').TrimStart('/');
+            if (clean.EndsWith("/*", StringComparison.Ordinal))
+                arguments.Add(clean[..^2]);
+            arguments.Add(clean);
+        }
         _ = Run(null, arguments, cancellationToken);
     }
 
