@@ -2423,6 +2423,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             ActivePane?.ToggleTreeCommand.Execute(null);
             return Task.CompletedTask;
         });
+        Add(L10n.T("Miller 列视图"), L10n.T("按列浏览多级文件夹"), null, "IconPanel", () =>
+        {
+            ActivePane?.ToggleMillerCommand.Execute(null);
+            return Task.CompletedTask;
+        });
         Add(L10n.T("显示/隐藏隐藏文件"), L10n.T("切换点文件与隐藏属性"), _services.Shortcuts.GetGesture("toggleHidden"), "IconEye", () =>
         {
             ToggleHidden();

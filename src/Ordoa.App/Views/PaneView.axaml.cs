@@ -851,6 +851,49 @@ public partial class PaneView : UserControl
     private void OnPropertiesClick(object? sender, RoutedEventArgs e) => Run(pane => pane.PropertiesAsync());
     private void OnToggleViewClick(object? sender, RoutedEventArgs e) => _pane?.ToggleViewCommand.Execute(null);
     private void OnToggleTreeClick(object? sender, RoutedEventArgs e) => _pane?.ToggleTreeCommand.Execute(null);
+    private void OnToggleMillerClick(object? sender, RoutedEventArgs e) => _pane?.ToggleMillerCommand.Execute(null);
+
+    private async void OnMillerPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_pane is null || sender is not ListBox { DataContext: MillerColumnViewModel column } list)
+            return;
+        var item = GetItemAtPoint(list, e.GetPosition(list));
+        if (item is not null)
+            await _pane.SetMillerSelectionAsync(column, item);
+    }
+
+    private async void OnMillerSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_pane is null || sender is not ListBox { DataContext: MillerColumnViewModel column } list)
+            return;
+        await _pane.SetMillerSelectionAsync(column, list.SelectedItem as FileItemViewModel);
+        ScrollMillerToEnd();
+    }
+
+    private async void OnMillerDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (_pane is null || sender is not ListBox list || list.SelectedItem is not FileItemViewModel item ||
+            item.IsDirectory)
+            return;
+        await _pane.OpenEntryAsync(item);
+    }
+
+    private async void OnMillerContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (_pane is null || sender is not ListBox { DataContext: MillerColumnViewModel column } list)
+            return;
+        await _pane.SetMillerSelectionAsync(column, column.SelectedItem);
+        OnFileContextRequested(sender, e);
+    }
+
+    private void ScrollMillerToEnd()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var max = Math.Max(0, MillerScroller.Extent.Width - MillerScroller.Viewport.Width);
+            MillerScroller.Offset = new Vector(max, 0);
+        }, DispatcherPriority.Background);
+    }
 
     private async void OnTreeExpanderClick(object? sender, RoutedEventArgs e)
     {

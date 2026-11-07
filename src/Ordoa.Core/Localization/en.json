@@ -1228,5 +1228,9 @@
  "添加文件到压缩包…": "Add files to archive…",
  "已添加到压缩包": "Added to archive",
  "{0} 个文件": "{0} files",
- "从压缩包删除": "Delete from archive"
+ "从压缩包删除": "Delete from archive",
+ "切换 Miller 列视图": "Toggle Miller columns",
+ "Miller 列视图": "Miller columns",
+ "按列浏览多级文件夹": "Browse multiple folder levels in columns",
+ "无法打开文件夹": "Cannot open folder"
 }

@@ -287,6 +287,7 @@
               <Separator />
               <MenuItem Header="{loc:Tr 切换列表 / 网格}" Click="OnToggleViewClick" />
               <MenuItem Header="{loc:Tr 切换树视图}" Click="OnToggleTreeClick" />
+              <MenuItem Header="{loc:Tr 切换 Miller 列视图}" Click="OnToggleMillerClick" />
               <MenuItem Header="{loc:Tr 切换分屏}" Click="OnToggleSplitClick" />
               <MenuItem Header="{loc:Tr 刷新}" Click="OnRefreshClick" />
               <MenuItem Header="{loc:Tr 在终端中打开}" Click="OnOpenTerminalClick" />
@@ -580,6 +581,63 @@
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
+
+      <Grid IsVisible="{Binding ShowMiller}" Background="{DynamicResource SurfaceBrush}">
+        <ScrollViewer x:Name="MillerScroller" HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding MillerColumns}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:MillerColumnViewModel">
+                <Border Width="270" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0"
+                        Background="{DynamicResource SurfaceBrush}">
+                  <Grid RowDefinitions="Auto,*">
+                    <Border Padding="11,5" Background="{DynamicResource SurfaceAltBrush}">
+                      <TextBlock Text="{Binding Header}" FontSize="11.5" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Border>
+                    <ListBox Grid.Row="1" ItemsSource="{Binding Items}"
+                             SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                             SelectionChanged="OnMillerSelectionChanged"
+                             PointerPressed="OnMillerPointerPressed"
+                             DoubleTapped="OnMillerDoubleTapped"
+                             ContextRequested="OnMillerContextRequested"
+                             Background="Transparent" SelectionMode="Single"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:FileItemViewModel">
+                          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7" Margin="2,0">
+                            <Panel Width="20" Height="20" VerticalAlignment="Center">
+                              <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="15" Height="15"
+                                    Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                              <Border Width="6" Height="6" CornerRadius="3" Background="{Binding TagBrush}"
+                                      IsVisible="{Binding HasTagColor}" HorizontalAlignment="Right"
+                                      VerticalAlignment="Top" />
+                            </Panel>
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <Border Grid.Column="2" IsVisible="{Binding ShowGitBadge}"
+                                    Background="{Binding GitBadgeBrush}" CornerRadius="3"
+                                    Padding="3,1" MinWidth="13" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding GitBadgeText}" FontSize="8" FontWeight="SemiBold"
+                                         Foreground="White" HorizontalAlignment="Center" />
+                            </Border>
+                          </Grid>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
 
       <!-- Rubber-band selection -->
       <Canvas x:Name="MarqueeLayer" Grid.Row="1" IsHitTestVisible="False"

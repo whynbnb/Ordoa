@@ -48,6 +48,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private string _wideColumnLayout = "*";
     private string? _appliedFolderViewKey;
     private readonly Dictionary<string, List<FileEntry>> _treeChildren = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, IReadOnlyList<FileItemViewModel>> _millerCache = new(StringComparer.Ordinal);
     private readonly HashSet<string> _expandedTreePaths = new(StringComparer.Ordinal);
     private bool _disposed;
 
@@ -100,6 +101,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(SearchScopeText));
             _treeChildren.Clear();
             _expandedTreePaths.Clear();
+            _millerCache.Clear();
         }
     }
 
@@ -150,10 +152,19 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         get => _viewMode;
         set
         {
+            var previous = _viewMode;
             if (!SetProperty(ref _viewMode, value))
                 return;
+            if (previous == ViewKind.Miller && value != ViewKind.Miller)
+            {
+                _selected.Clear();
+                PrimarySelection = null;
+                UpdateSelectionDependentProperties();
+            }
             OnPropertyChanged(nameof(IsGrid));
             OnPropertyChanged(nameof(IsTree));
+            OnPropertyChanged(nameof(IsMiller));
+            OnPropertyChanged(nameof(ShowMiller));
             OnPropertyChanged(nameof(ViewIcon));
             OnPropertyChanged(nameof(ViewTooltip));
             SaveFolderViewState();
@@ -236,8 +247,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     public bool IsGrid => ViewMode == ViewKind.Grid;
     public bool IsTree => ViewMode == ViewKind.Tree;
+    public bool IsMiller => ViewMode == ViewKind.Miller;
+    public bool ShowMiller => IsMiller && !HasFilter && !IsSearchActive;
+    public System.Collections.ObjectModel.ObservableCollection<MillerColumnViewModel> MillerColumns { get; } = [];
     public Geometry? ViewIcon => FileIconCatalog.Resource(
-        IsGrid || IsTree ? "IconList" : "IconGrid");
+        IsGrid || IsTree || IsMiller ? "IconList" : "IconGrid");
     public string ViewTooltip => ViewMode switch
     {
         ViewKind.Grid => L10n.T("切换为列表视图"),
@@ -643,6 +657,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
             if (IsTree)
                 await ReloadExpandedTreeAsync(cancellationToken).ConfigureAwait(true);
+            if (IsMiller)
+                _millerCache.Clear();
 
             ApplySortAndFilter();
             UpdateBreadcrumbs();
@@ -736,7 +752,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private void ApplyGitStatus(GitRepositoryStatus? status)
     {
         _gitStatus = status;
-        var items = IsTree ? VisibleItems : _entries;
+        var items = IsTree
+            ? VisibleItems
+            : IsMiller
+                ? MillerColumns.SelectMany(column => column.Items).ToList()
+                : _entries;
         foreach (var item in items)
             ApplyGitItem(item, status);
 
@@ -959,6 +979,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void ToggleTree() => ViewMode = IsTree ? ViewKind.List : ViewKind.Tree;
+
+    [RelayCommand]
+    private void ToggleMiller() => ViewMode = IsMiller ? ViewKind.List : ViewKind.Miller;
 
     [RelayCommand]
     private async Task SortByAsync(string? columnName)
@@ -2331,6 +2354,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
         ApplyTagsToItems(_entries);
         ApplyTagsToItems(VisibleItems);
+        ApplyTagsToItems(MillerColumns.SelectMany(column => column.Items));
     }
 
     public void SetSelectionColor(FileColor color)
@@ -2367,6 +2391,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     {
         CancelSearch();
         IsSearchActive = false;
+        OnPropertyChanged(nameof(ShowMiller));
         OnPropertyChanged(nameof(CanBatchRename));
         IsSearching = false;
         SearchStatus = string.Empty;
@@ -2404,6 +2429,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         var cancellationToken = _searchCts.Token;
 
         IsSearchActive = true;
+        OnPropertyChanged(nameof(ShowMiller));
         OnPropertyChanged(nameof(CanBatchRename));
         IsSearching = true;
         HasError = false;
@@ -2481,6 +2507,13 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     private void ApplySortAndFilter()
     {
+        OnPropertyChanged(nameof(ShowMiller));
+        if (IsMiller && !HasFilter && !IsSearchActive)
+        {
+            BuildMillerColumns();
+            return;
+        }
+
         if (IsTree && !HasFilter && !IsSearchActive)
         {
             BuildTreeRows();
@@ -2506,6 +2539,91 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         VisibleItems = list;
         OnPropertyChanged(nameof(ItemCountText));
         UpdateEmptyState();
+    }
+
+    private void BuildMillerColumns()
+    {
+        var comparer = new FileEntryComparer(SortColumn, SortDescending, FoldersFirst);
+        var first = _entries
+            .Where(item => ShowHidden || !item.IsHidden)
+            .OrderBy(item => item.Entry, comparer)
+            .ToList();
+        foreach (var item in first)
+        {
+            item.Depth = 0;
+            item.ShowTreeExpander = false;
+        }
+
+        MillerColumns.Clear();
+        var column = new MillerColumnViewModel(CurrentPath, Title, first) { IsActive = true };
+        MillerColumns.Add(column);
+        VisibleItems = first;
+        OnPropertyChanged(nameof(ItemCountText));
+        UpdateEmptyState();
+        ApplyGitStatus(_gitStatus);
+    }
+
+    public async Task SetMillerSelectionAsync(MillerColumnViewModel column, FileItemViewModel? item)
+    {
+        if (!IsMiller)
+            return;
+
+        var index = MillerColumns.IndexOf(column);
+        if (index < 0)
+            return;
+
+        while (MillerColumns.Count > index + 1)
+            MillerColumns.RemoveAt(MillerColumns.Count - 1);
+
+        foreach (var existing in MillerColumns)
+            existing.IsActive = false;
+        column.SelectedItem = item;
+        column.IsActive = true;
+
+        _selected.Clear();
+        if (item is not null)
+        {
+            _selected.Add(item);
+            PrimarySelection = item;
+        }
+        else
+        {
+            PrimarySelection = null;
+        }
+        UpdateSelectionDependentProperties();
+
+        if (item is null || !item.IsDirectory)
+            return;
+
+        try
+        {
+            if (!_millerCache.TryGetValue(item.Path, out var children))
+            {
+                var entries = await FileSystem.ListAsync(item.Path).ConfigureAwait(true);
+                var comparer = new FileEntryComparer(SortColumn, SortDescending, FoldersFirst);
+                var list = entries
+                    .Where(entry => ShowHidden || !entry.IsHidden)
+                    .OrderBy(entry => entry, comparer)
+                    .Select(entry =>
+                    {
+                        var child = new FileItemViewModel(entry, FileSystem.GetDisplayPath(item.Path));
+                        ApplyTagItem(child);
+                        return child;
+                    })
+                    .ToList();
+                _millerCache[item.Path] = children = list;
+            }
+
+            var next = new MillerColumnViewModel(item.Path, item.Name, children) { IsActive = true };
+            column.IsActive = false;
+            MillerColumns.Add(next);
+            ApplyTagsToItems(children);
+            ApplyGitStatus(_gitStatus);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("无法打开文件夹"), ex.Message, true);
+        }
     }
 
     private void BuildTreeRows()

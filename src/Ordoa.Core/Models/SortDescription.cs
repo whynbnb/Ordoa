@@ -16,6 +16,7 @@ public enum ViewKind
     List,
     Grid,
     Tree,
+    Miller,
 }
 
 public sealed class SortDescription
