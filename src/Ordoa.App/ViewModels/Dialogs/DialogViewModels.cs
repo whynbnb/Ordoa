@@ -478,6 +478,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _transferSpeedLimit = settings.TransferSpeedLimitMb;
         _copyVerificationIndex = (int)settings.CopyVerification;
         _showTransferPreview = settings.ShowTransferPreview;
+        _archiveCompressionLevel = settings.ArchiveCompressionLevel;
+        _archiveSplitMb = settings.ArchiveSplitMb;
         _ffmpegPath = settings.FfmpegPath;
         _useSystemWindowFrame = settings.UseSystemWindowFrame;
         _windowButtonMode = settings.WindowButtonMode;
@@ -735,6 +737,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _showTransferPreview;
+
+    [ObservableProperty]
+    private decimal _archiveCompressionLevel = 5;
+
+    [ObservableProperty]
+    private decimal _archiveSplitMb;
 
     [ObservableProperty]
     private string _ffmpegPath = string.Empty;
@@ -1031,6 +1039,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.TransferSpeedLimitMb = Math.Clamp((int)TransferSpeedLimit, 0, 100_000);
         settings.CopyVerification = (CopyVerificationMode)Math.Clamp(CopyVerificationIndex, 0, 2);
         settings.ShowTransferPreview = ShowTransferPreview;
+        settings.ArchiveCompressionLevel = Math.Clamp((int)ArchiveCompressionLevel, 0, 9);
+        settings.ArchiveSplitMb = Math.Clamp((int)ArchiveSplitMb, 0, 100_000);
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
         settings.UseSystemWindowFrame = UseSystemWindowFrame;
         settings.WindowButtonMode = WindowButtonMode;
@@ -1127,6 +1137,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         TransferSpeedLimit = defaults.TransferSpeedLimitMb;
         CopyVerificationIndex = (int)defaults.CopyVerification;
         ShowTransferPreview = defaults.ShowTransferPreview;
+        ArchiveCompressionLevel = defaults.ArchiveCompressionLevel;
+        ArchiveSplitMb = defaults.ArchiveSplitMb;
         FfmpegPath = defaults.FfmpegPath;
         UseSystemWindowFrame = defaults.UseSystemWindowFrame;
         WindowButtonMode = defaults.WindowButtonMode;

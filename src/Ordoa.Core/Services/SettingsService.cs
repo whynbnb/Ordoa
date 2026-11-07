@@ -122,6 +122,10 @@ public sealed class AppSettings
     public int TransferConcurrency { get; set; } = 1;
     /// <summary>Global transfer speed limit in MB/s. Zero means unlimited.</summary>
     public int TransferSpeedLimitMb { get; set; }
+    /// <summary>7z compression level (0-9).</summary>
+    public int ArchiveCompressionLevel { get; set; } = 5;
+    /// <summary>Split 7z archives into volumes of this size in MB. Zero disables splitting.</summary>
+    public int ArchiveSplitMb { get; set; }
     /// <summary>Optional path to the ffmpeg executable used for media previews.</summary>
     public string FfmpegPath { get; set; } = string.Empty;
     public double WindowWidth { get; set; } = 1200;
@@ -355,6 +359,8 @@ public sealed class SettingsService
             Current.CopyVerification = CopyVerificationMode.Size;
         Current.TransferConcurrency = Math.Clamp(Current.TransferConcurrency, 1, 4);
         Current.TransferSpeedLimitMb = Math.Clamp(Current.TransferSpeedLimitMb, 0, 100_000);
+        Current.ArchiveCompressionLevel = Math.Clamp(Current.ArchiveCompressionLevel, 0, 9);
+        Current.ArchiveSplitMb = Math.Clamp(Current.ArchiveSplitMb, 0, 100_000);
         Current.SavedSearches = (Current.SavedSearches ?? [])
             .Where(search => search is not null && !string.IsNullOrWhiteSpace(search.Query))
             .Select(search =>

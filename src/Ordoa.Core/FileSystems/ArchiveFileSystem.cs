@@ -21,13 +21,16 @@ public sealed class ArchiveFileSystem : FileSystemBase
     private readonly Dictionary<string, string> _extracted = new(StringComparer.Ordinal);
     private readonly object _extractLock = new();
     private readonly string _tempRoot;
+    private readonly string? _password;
     private bool _disposed;
+    private bool _hasEncryptedEntries;
 
-    private ArchiveFileSystem(string archivePath, ArchiveFormat format)
+    private ArchiveFileSystem(string archivePath, ArchiveFormat format, string? password)
         : base("archive:" + HashPath(archivePath), "archive", Path.GetFileName(archivePath))
     {
         ArchivePath = archivePath;
         Format = format;
+        _password = password;
         _tempRoot = Path.Combine(AppPaths.CacheDirectory, "archives",
             HashPath(archivePath)[..16] + "-" + Guid.NewGuid().ToString("N")[..8]);
         _nodes["/"] = new ArchiveNode("/", DisplayName, true, 0, null);
@@ -35,6 +38,7 @@ public sealed class ArchiveFileSystem : FileSystemBase
 
     public string ArchivePath { get; }
     public ArchiveFormat Format { get; }
+    public string? Password => _password;
     public override bool IsCaseSensitive => true;
     public override FileSystemCapabilities Capabilities =>
         FileSystemCapabilities.List | FileSystemCapabilities.Read | FileSystemCapabilities.Copy;
@@ -70,16 +74,23 @@ public sealed class ArchiveFileSystem : FileSystemBase
     }
 
     public static Task<ArchiveFileSystem> OpenAsync(string archivePath,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, string? password = null)
     {
         return Task.Run(() =>
         {
             var format = DetectFormat(archivePath);
             if (format == ArchiveFormat.None)
-                throw new NotSupportedException(L10n.T("仅支持 zip、tar 和 tar.gz 格式"));
+                throw new NotSupportedException(L10n.T("仅支持 zip、tar、tar.gz、7z 和 rar 格式"));
+            if (format is ArchiveFormat.SevenZip or ArchiveFormat.Rar && !SevenZipTool.IsAvailable)
+                throw new NotSupportedException(L10n.T("需要安装 7z 命令行工具才能读取此压缩包"));
 
-            var fileSystem = new ArchiveFileSystem(Path.GetFullPath(archivePath), format);
+            var fileSystem = new ArchiveFileSystem(Path.GetFullPath(archivePath), format, password);
             fileSystem.BuildIndex(cancellationToken);
+            if (fileSystem._hasEncryptedEntries && string.IsNullOrEmpty(password) &&
+                format is ArchiveFormat.SevenZip or ArchiveFormat.Rar)
+            {
+                throw new ArchivePasswordRequiredException(Path.GetFullPath(archivePath));
+            }
             return fileSystem;
         }, cancellationToken);
     }
@@ -117,19 +128,22 @@ public sealed class ArchiveFileSystem : FileSystemBase
         if (!_nodes.TryGetValue(path, out var node) || node.IsDirectory)
             throw new FileNotFoundException(L10n.T("文件不存在"), path);
 
-        lock (_extractLock)
+        return Task.Run(() =>
         {
-            if (_extracted.TryGetValue(path, out var cached) && File.Exists(cached))
-                return Task.FromResult<Stream>(new FileStream(cached, FileMode.Open, FileAccess.Read,
-                    FileShare.ReadWrite, 128 * 1024, FileOptions.SequentialScan));
+            lock (_extractLock)
+            {
+                if (_extracted.TryGetValue(path, out var cached) && File.Exists(cached))
+                    return new FileStream(cached, FileMode.Open, FileAccess.Read,
+                        FileShare.ReadWrite, 128 * 1024, FileOptions.SequentialScan) as Stream;
 
-            Directory.CreateDirectory(_tempRoot);
-            var tempPath = Path.Combine(_tempRoot, HashPath(path) + ".bin");
-            ExtractEntry(path, tempPath, cancellationToken);
-            _extracted[path] = tempPath;
-            return Task.FromResult<Stream>(new FileStream(tempPath, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite, 128 * 1024, FileOptions.SequentialScan));
-        }
+                Directory.CreateDirectory(_tempRoot);
+                var tempPath = Path.Combine(_tempRoot, HashPath(path) + ".bin");
+                ExtractEntry(path, tempPath, cancellationToken);
+                _extracted[path] = tempPath;
+                return new FileStream(tempPath, FileMode.Open, FileAccess.Read,
+                    FileShare.ReadWrite, 128 * 1024, FileOptions.SequentialScan);
+            }
+        }, cancellationToken);
     }
 
     public override Task<Stream> OpenWriteAsync(string path, bool overwrite, long? expectedLength = null,
@@ -173,7 +187,9 @@ public sealed class ArchiveFileSystem : FileSystemBase
 
     private void BuildIndex(CancellationToken cancellationToken)
     {
-        if (Format == ArchiveFormat.Zip)
+        if (Format is ArchiveFormat.SevenZip or ArchiveFormat.Rar)
+            BuildSevenZipIndex(cancellationToken);
+        else if (Format == ArchiveFormat.Zip)
             BuildZipIndex(cancellationToken);
         else
             BuildTarIndex(cancellationToken);
@@ -207,6 +223,23 @@ public sealed class ArchiveFileSystem : FileSystemBase
             AddNode(name, isDirectory, isDirectory ? 0 : entry.Length, entry.LastWriteTime);
             if (!isDirectory)
                 _entryNames[name] = entry.FullName;
+        }
+    }
+
+    private void BuildSevenZipIndex(CancellationToken cancellationToken)
+    {
+        foreach (var entry in SevenZipTool.List(ArchivePath, cancellationToken, _password))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (entry.IsEncrypted)
+                _hasEncryptedEntries = true;
+            var name = NormalizeEntryName(entry.Path);
+            if (name.Length == 0 || name == "/")
+                continue;
+
+            AddNode(name, entry.IsDirectory, entry.Size, entry.Modified);
+            if (!entry.IsDirectory)
+                _entryNames[name] = entry.Path;
         }
     }
 
@@ -245,7 +278,7 @@ public sealed class ArchiveFileSystem : FileSystemBase
         }
     }
 
-    private void AddNode(string path, bool isDirectory, long size, DateTimeOffset modified)
+    private void AddNode(string path, bool isDirectory, long size, DateTimeOffset? modified)
     {
         path = PosixPath.Normalize(path);
         if (path == "/")
@@ -269,6 +302,13 @@ public sealed class ArchiveFileSystem : FileSystemBase
 
         using var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None,
             128 * 1024);
+        if (Format is ArchiveFormat.SevenZip or ArchiveFormat.Rar)
+        {
+            output.Dispose();
+            SevenZipTool.ExtractEntry(ArchivePath, entryName, destination, cancellationToken, _password);
+            return;
+        }
+
         if (Format == ArchiveFormat.Zip)
         {
             using var archive = ZipFile.OpenRead(ArchivePath);
@@ -345,11 +385,21 @@ public sealed class ArchiveFileSystem : FileSystemBase
             return ArchiveFormat.TarGz;
         if (lower.EndsWith(".tar", StringComparison.Ordinal))
             return ArchiveFormat.Tar;
+        if (lower.EndsWith(".7z", StringComparison.Ordinal))
+            return ArchiveFormat.SevenZip;
+        if (lower.EndsWith(".rar", StringComparison.Ordinal))
+            return ArchiveFormat.Rar;
         return ArchiveFormat.None;
     }
 
     private sealed record ArchiveNode(string Path, string Name, bool IsDirectory, long Size,
         DateTimeOffset? Modified);
+}
+
+public sealed class ArchivePasswordRequiredException(string archivePath)
+    : Exception(L10n.T("压缩包已加密，需要密码"))
+{
+    public string ArchivePath { get; } = archivePath;
 }
 
 public enum ArchiveFormat
@@ -358,4 +408,6 @@ public enum ArchiveFormat
     Zip,
     Tar,
     TarGz,
+    SevenZip,
+    Rar,
 }

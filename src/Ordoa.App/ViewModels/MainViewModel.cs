@@ -2325,7 +2325,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             () => _services.Dialogs.ShowOperationHistoryAsync(_services.Operations));
         Add(L10n.T("压缩为 ZIP"), L10n.T("将选中的项目压缩为 zip"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(false)));
         Add(L10n.T("压缩为 tar.gz"), L10n.T("将选中的项目压缩为 tar.gz"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(true)));
+        Add(L10n.T("压缩为 7z"), L10n.T("使用 7z 压缩选中的项目"), null, "IconArchive", () => PaneAction(p => p.Compress7zAsync()));
         Add(L10n.T("解压到此处"), L10n.T("解压选中的压缩包"), null, "IconDownload", () => PaneAction(p => p.ExtractAsync()));
+        Add(L10n.T("解压到…"), L10n.T("选择目标文件夹后解压"), null, "IconDownload", () => PaneAction(p => p.ExtractSelectionToAsync()));
         Add(L10n.T("以压缩包浏览"), L10n.T("像文件夹一样打开选中的压缩包"), null, "IconArchive", () => PaneAction(p => p.OpenArchiveAsync()));
         Add(L10n.T("在终端中打开"), L10n.T("在当前位置或选中的文件夹中启动终端"), null, "IconTerminal", () => PaneAction(p => p.OpenTerminalAsync()));
         if (_services.Terminals.GetEnabledHerdr() is not null)

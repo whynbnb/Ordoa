@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using Ordoa.App.ViewModels.Dialogs;
 using Ordoa.App.Views;
 using Ordoa.Core.Abstractions;
@@ -237,6 +238,28 @@ public sealed class DialogService : IDialogService
             DataContext = new OperationHistoryDialogViewModel(operations),
         };
         await ShowDialogAsync("history", window, owner).ConfigureAwait(true);
+    }
+
+    public async Task<string?> PickFolderAsync(string title, string? initialPath = null)
+    {
+        var owner = _ownerProvider();
+        if (owner?.StorageProvider is not { } storage)
+            return null;
+
+        IStorageFolder? start = null;
+        if (!string.IsNullOrWhiteSpace(initialPath))
+        {
+            try { start = await storage.TryGetFolderFromPathAsync(initialPath); }
+            catch { /* ignore invalid start folder */ }
+        }
+
+        var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = false,
+            SuggestedStartLocation = start,
+        }).ConfigureAwait(true);
+        return folders.Count == 0 ? null : folders[0].TryGetLocalPath();
     }
 
     public async Task ShowErrorAsync(string title, string message)

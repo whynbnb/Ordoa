@@ -839,6 +839,7 @@ public partial class PaneView : UserControl
     private void OnSelectAllClick(object? sender, RoutedEventArgs e) => _pane?.RequestSelectAll();
     private void OnCompressZipClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CompressAsync(false));
     private void OnCompressTarClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CompressAsync(true));
+    private void OnCompress7zClick(object? sender, RoutedEventArgs e) => Run(pane => pane.Compress7zAsync());
     private void OnExtractClick(object? sender, RoutedEventArgs e) => Run(pane => pane.ExtractAsync());
     private void OnChecksumClick(object? sender, RoutedEventArgs e) => Run(pane => pane.ChecksumAsync());
     private void OnDiskUsageClick(object? sender, RoutedEventArgs e) => Run(pane => pane.AnalyzeDiskUsageAsync());
@@ -917,6 +918,7 @@ public partial class PaneView : UserControl
         menu.Items.Add(MenuItem(L10n.T("压缩为 ZIP"), () => pane.CompressAsync(false), pane.CanCompress));
         menu.Items.Add(MenuItem(L10n.T("压缩为 tar.gz"), () => pane.CompressAsync(true), pane.CanCompress));
         menu.Items.Add(MenuItem(L10n.T("解压到此处"), pane.ExtractAsync, pane.CanExtract));
+        menu.Items.Add(MenuItem(L10n.T("解压到…"), pane.ExtractSelectionToAsync, pane.CanExtractTo));
         menu.Items.Add(MenuItem(L10n.T("计算 SHA-256"), pane.ChecksumAsync, pane.CanChecksum));
         menu.Items.Add(MenuItem(L10n.T("计算文件夹大小"), pane.CalculateFolderSizesAsync,
             pane.CanCalculateFolderSize));

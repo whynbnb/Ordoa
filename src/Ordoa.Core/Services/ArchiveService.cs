@@ -19,6 +19,8 @@ public static class ArchiveService
         Zip,
         Tar,
         TarGz,
+        SevenZip,
+        Rar,
     }
 
     private static ArchiveKind GetArchiveKind(string fileName)
@@ -30,6 +32,10 @@ public static class ArchiveService
             return ArchiveKind.TarGz;
         if (lower.EndsWith(".tar", StringComparison.Ordinal))
             return ArchiveKind.Tar;
+        if (lower.EndsWith(".7z", StringComparison.Ordinal))
+            return ArchiveKind.SevenZip;
+        if (lower.EndsWith(".rar", StringComparison.Ordinal))
+            return ArchiveKind.Rar;
         return ArchiveKind.None;
     }
 
@@ -48,7 +54,7 @@ public static class ArchiveService
         return Task.Run(() =>
         {
             var kind = GetArchiveKind(destinationArchive);
-            if (kind == ArchiveKind.None)
+            if (kind is ArchiveKind.None or ArchiveKind.SevenZip or ArchiveKind.Rar)
                 throw new NotSupportedException(L10n.T("仅支持 zip、tar 和 tar.gz 格式"));
 
             var items = Scan(paths, destinationArchive, cancellationToken);
@@ -62,6 +68,17 @@ public static class ArchiveService
         }, cancellationToken);
     }
 
+    public static Task Create7zAsync(IReadOnlyList<string> paths, string destinationArchive, int level = 5,
+        int splitMb = 0, CancellationToken cancellationToken = default)
+    {
+        return Task.Run(() =>
+        {
+            if (!SevenZipTool.IsAvailable)
+                throw new NotSupportedException(L10n.T("需要安装 7z 命令行工具才能创建 7z 压缩包"));
+            SevenZipTool.Create(destinationArchive, paths, level, splitMb, cancellationToken);
+        }, cancellationToken);
+    }
+
     public static Task<string> ExtractAsync(string archivePath, string destinationParent, bool createSubfolder = true,
         IProgress<ArchiveProgress>? progress = null, CancellationToken cancellationToken = default)
     {
@@ -69,7 +86,7 @@ public static class ArchiveService
         {
             var kind = GetArchiveKind(archivePath);
             if (kind == ArchiveKind.None)
-                throw new NotSupportedException(L10n.T("仅支持 zip、tar 和 tar.gz 格式"));
+                throw new NotSupportedException(L10n.T("仅支持 zip、tar、tar.gz、7z 和 rar 格式"));
 
             var stem = GetArchiveStem(Path.GetFileName(archivePath));
             var destination = createSubfolder
@@ -78,9 +95,50 @@ public static class ArchiveService
             Directory.CreateDirectory(destination);
 
             if (kind == ArchiveKind.Zip)
-                ExtractZip(archivePath, destination, progress, cancellationToken);
+                ExtractZip(archivePath, destination, null, progress, cancellationToken);
+            else if (kind is ArchiveKind.SevenZip or ArchiveKind.Rar)
+            {
+                Directory.CreateDirectory(destination);
+                SevenZipTool.Extract(archivePath, destination, null, cancellationToken);
+            }
             else
-                ExtractTar(archivePath, destination, kind == ArchiveKind.TarGz, progress, cancellationToken);
+                ExtractTar(archivePath, destination, kind == ArchiveKind.TarGz, null, progress, cancellationToken);
+
+            return destination;
+        }, cancellationToken);
+    }
+
+    /// <summary>Extract selected archive entries (or all when the list is empty) to a folder.</summary>
+    public static Task<string> ExtractSelectionAsync(string archivePath, string destinationParent,
+        IReadOnlyList<string> entryPaths, bool createSubfolder = false, string? password = null,
+        IProgress<ArchiveProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        return Task.Run(() =>
+        {
+            var kind = GetArchiveKind(archivePath);
+            if (kind == ArchiveKind.None)
+                throw new NotSupportedException(L10n.T("仅支持 zip、tar、tar.gz、7z 和 rar 格式"));
+
+            var destination = createSubfolder
+                ? MakeUniqueDirectory(destinationParent, GetArchiveStem(Path.GetFileName(archivePath)))
+                : destinationParent;
+            Directory.CreateDirectory(destination);
+
+            var selected = entryPaths
+                .Select(path => path.Replace('\\', '/').TrimStart('/'))
+                .Where(path => path.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            var selection = selected.Count == 0 ? null : selected;
+
+            if (kind == ArchiveKind.Zip)
+                ExtractZip(archivePath, destination, selection, progress, cancellationToken);
+            else if (kind is ArchiveKind.SevenZip or ArchiveKind.Rar)
+                SevenZipTool.Extract(archivePath, destination, selected.Count == 0 ? null : selected,
+                    cancellationToken, password);
+            else
+                ExtractTar(archivePath, destination, kind == ArchiveKind.TarGz, selection, progress,
+                    cancellationToken);
 
             return destination;
         }, cancellationToken);
@@ -214,7 +272,8 @@ public static class ArchiveService
     }
 
     private static void ExtractZip(string archivePath, string destination,
-        IProgress<ArchiveProgress>? progress, CancellationToken cancellationToken)
+        IReadOnlyList<string>? selection, IProgress<ArchiveProgress>? progress,
+        CancellationToken cancellationToken)
     {
         using var file = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         using var archive = new ZipArchive(file, ZipArchiveMode.Read);
@@ -226,6 +285,8 @@ public static class ArchiveService
         {
             cancellationToken.ThrowIfCancellationRequested();
             processed++;
+            if (!IsSelected(entry.FullName, selection))
+                continue;
             var target = SafeCombine(destinationFull, entry.FullName);
             if (target is null)
             {
@@ -249,7 +310,8 @@ public static class ArchiveService
     }
 
     private static void ExtractTar(string archivePath, string destination, bool gzip,
-        IProgress<ArchiveProgress>? progress, CancellationToken cancellationToken)
+        IReadOnlyList<string>? selection, IProgress<ArchiveProgress>? progress,
+        CancellationToken cancellationToken)
     {
         using var file = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         Stream sourceStream = gzip ? new GZipStream(file, CompressionMode.Decompress, leaveOpen: true) : file;
@@ -264,6 +326,8 @@ public static class ArchiveService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 processed++;
+                if (!IsSelected(entry.Name, selection))
+                    continue;
                 var target = SafeCombine(destinationFull, entry.Name);
                 if (target is null)
                 {
@@ -298,6 +362,26 @@ public static class ArchiveService
             if (gzip)
                 sourceStream.Dispose();
         }
+    }
+
+    private static bool IsSelected(string entryName, IReadOnlyList<string>? selection)
+    {
+        if (selection is null || selection.Count == 0)
+            return true;
+
+        var name = entryName.Replace('\\', '/').TrimStart('/');
+        foreach (var selected in selection)
+        {
+            var trimmed = selected.TrimStart('/');
+            var directory = trimmed.EndsWith("/*", StringComparison.Ordinal) ? trimmed[..^2] : null;
+            if (string.Equals(name, trimmed, StringComparison.Ordinal))
+                return true;
+            if (directory is not null &&
+                name.StartsWith(directory + "/", StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
     }
 
     private static string? SafeCombine(string destinationRoot, string entryName)

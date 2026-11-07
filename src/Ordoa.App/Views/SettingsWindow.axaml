@@ -276,6 +276,23 @@
               <TextBlock Grid.Row="2" Grid.Column="2" Text="{loc:Tr 校验失败的文件会标记为失败，可单独重试}"
                          Classes="fieldhint" VerticalAlignment="Center" Margin="10,0,0,0" />
             </Grid>
+
+            <Border Classes="divider" />
+
+            <TextBlock Text="{loc:Tr 压缩}" Classes="section" />
+            <Grid ColumnDefinitions="120,140,*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
+              <TextBlock Text="{loc:Tr 7z 压缩级别}" Classes="fieldlabel" />
+              <NumericUpDown Grid.Column="1" Minimum="0" Maximum="9" Increment="1" FormatString="0"
+                             Value="{Binding ArchiveCompressionLevel, Mode=TwoWay}" />
+              <TextBlock Grid.Column="2" Text="{loc:Tr 0 最快，9 最小；默认 5}" Classes="fieldhint"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
+
+              <TextBlock Grid.Row="1" Text="{loc:Tr 分卷大小}" Classes="fieldlabel" />
+              <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100000" Increment="10"
+                             FormatString="0" Value="{Binding ArchiveSplitMb, Mode=TwoWay}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Text="{loc:Tr 单位 MB；0 表示不分卷}" Classes="fieldhint"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
+            </Grid>
           </StackPanel>
 
           <!-- Sidebar -->

@@ -518,6 +518,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanCompress => HasSelection && FileSystem.IsLocal && !IsTrash;
     public bool CanExtract => HasSelection && SelectedCount == 1 && FileSystem.IsLocal && !IsTrash &&
                               PrimarySelection is { IsDirectory: false } p && ArchiveService.IsSupportedArchive(p.Name);
+    public bool CanExtractTo => IsArchive && HasSelection ||
+                                CanExtract;
     public bool CanChecksum => HasSelection && _selected.Any(i => !i.IsDirectory);
     public bool CanOpenArchive => HasSelection && SelectedCount == 1 && FileSystem.IsLocal && !IsTrash &&
                                   PrimarySelection is { IsDirectory: false } item &&
@@ -993,6 +995,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanBatchRename));
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
+        OnPropertyChanged(nameof(CanExtractTo));
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
@@ -1067,7 +1070,22 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         try
         {
             IsLoading = true;
-            var archive = await ArchiveFileSystem.OpenAsync(item.Path).ConfigureAwait(true);
+            ArchiveFileSystem archive;
+            try
+            {
+                archive = await ArchiveFileSystem.OpenAsync(item.Path).ConfigureAwait(true);
+            }
+            catch (ArchivePasswordRequiredException)
+            {
+                var password = await _services.Dialogs.PromptAsync(
+                    L10n.T("压缩包需要密码"), L10n.T("密码"), string.Empty).ConfigureAwait(true);
+                if (string.IsNullOrEmpty(password))
+                {
+                    Toast(L10n.T("已取消"), item.Name, false);
+                    return;
+                }
+                archive = await ArchiveFileSystem.OpenAsync(item.Path, default, password).ConfigureAwait(true);
+            }
             await NavigateAsync(archive, "/").ConfigureAwait(true);
             Toast(L10n.T("已打开压缩包"), item.Name, false);
         }
@@ -1368,6 +1386,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCopy));
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
+        OnPropertyChanged(nameof(CanExtractTo));
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
@@ -1745,6 +1764,44 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         }
     }
 
+    public async Task Compress7zAsync()
+    {
+        if (!CanCompress)
+            return;
+        if (!SevenZipTool.IsAvailable)
+        {
+            Toast(L10n.T("无法创建 7z"), L10n.T("需要安装 7z 命令行工具"), true);
+            return;
+        }
+
+        var paths = _selected.Where(i => i.Entry.Path.Length > 0).Select(i => i.Entry.Path).ToList();
+        if (paths.Count == 0)
+            return;
+
+        var baseName = paths.Count == 1
+            ? Path.GetFileName(paths[0].TrimEnd(Path.DirectorySeparatorChar))
+            : L10n.T("压缩包");
+        var candidateName = baseName + ".7z";
+        if (!IsNameFree(candidateName))
+            candidateName = GlobMatcher.SuggestFileName(candidateName, IsNameTaken);
+        var destination = Path.Combine(CurrentPath, candidateName);
+        var settings = _services.Settings.Current;
+        var displayName = settings.ArchiveSplitMb > 0 ? candidateName + ".001" : candidateName;
+
+        Toast(L10n.T("正在压缩"), displayName, false);
+        try
+        {
+            await ArchiveService.Create7zAsync(paths, destination, settings.ArchiveCompressionLevel,
+                settings.ArchiveSplitMb).ConfigureAwait(true);
+            await RefreshAsync().ConfigureAwait(true);
+            Toast(L10n.T("压缩完成"), displayName, false);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("压缩失败"), ex.Message, true);
+        }
+    }
+
     public async Task ExtractAsync()
     {
         if (!CanExtract || PrimarySelection is null)
@@ -1757,6 +1814,45 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             var destination = await ArchiveService.ExtractAsync(archive.Path, CurrentPath).ConfigureAwait(true);
             await RefreshAsync().ConfigureAwait(true);
             Toast(L10n.T("解压完成"), Path.GetFileName(destination), false);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("解压失败"), ex.Message, true);
+        }
+    }
+
+    public async Task ExtractSelectionToAsync()
+    {
+        if (!CanExtractTo)
+            return;
+
+        var initial = IsArchive && FileSystem is ArchiveFileSystem archiveFs
+            ? Path.GetDirectoryName(archiveFs.ArchivePath)
+            : CurrentPath;
+        var destination = await _services.Dialogs.PickFolderAsync(L10n.T("解压到文件夹"), initial)
+            .ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(destination))
+            return;
+
+        try
+        {
+            if (FileSystem is ArchiveFileSystem archive)
+            {
+                var entries = _selected
+                    .Select(item => item.IsDirectory ? item.Path.TrimEnd('/') + "/*" : item.Path)
+                    .ToList();
+                await ArchiveService.ExtractSelectionAsync(archive.ArchivePath, destination, entries,
+                    createSubfolder: false, password: archive.Password).ConfigureAwait(true);
+                Toast(L10n.T("解压完成"), destination, false);
+            }
+            else if (PrimarySelection is { IsDirectory: false } item &&
+                     ArchiveService.IsSupportedArchive(item.Name))
+            {
+                await ArchiveService.ExtractAsync(item.Path, destination, createSubfolder: true)
+                    .ConfigureAwait(true);
+                await RefreshAsync().ConfigureAwait(true);
+                Toast(L10n.T("解压完成"), destination, false);
+            }
         }
         catch (Exception ex)
         {
@@ -2327,6 +2423,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanBatchRename));
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
+        OnPropertyChanged(nameof(CanExtractTo));
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));

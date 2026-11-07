@@ -34,4 +34,5 @@ public interface IDialogService
     Task<string?> ShowGitStatusAsync(string path);
     Task<ConflictChoice?> ShowTransferPreviewAsync(TransferPreviewRequest request);
     Task ShowOperationHistoryAsync(FileOperationService operations);
+    Task<string?> PickFolderAsync(string title, string? initialPath = null);
 }
