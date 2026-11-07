@@ -1,0 +1,80 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:FileCompareDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.FileCompareWindow"
+        Title="{loc:Tr 文件比较}"
+        Width="1040" Height="680" MinWidth="720" MinHeight="420" CanResize="True"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,15" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{loc:Tr 文件比较}" Classes="h2" />
+          <TextBlock Text="{Binding SummaryText}" Classes="caption" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="{loc:Tr 关闭}" Click="OnCloseClick" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Padding="16,8" Background="{DynamicResource SurfaceAltBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+        <TextBlock Text="{Binding LeftHeader}" FontSize="12" FontWeight="SemiBold"
+                   TextTrimming="CharacterEllipsis" />
+        <TextBlock Grid.Column="1" Text="{Binding RightHeader}" FontSize="12" FontWeight="SemiBold"
+                   TextTrimming="CharacterEllipsis" />
+      </Grid>
+    </Border>
+
+    <ProgressBar Grid.Row="2" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                 IsVisible="{Binding IsLoading}" />
+
+    <TextBlock Grid.Row="2" Text="{Binding Error}" Foreground="{DynamicResource ErrorBrush}"
+               Classes="caption" Margin="22,16" IsVisible="{Binding HasError}" TextWrapping="Wrap" />
+
+    <TextBlock Grid.Row="2" Text="{loc:Tr 两个文件相同，或其中一个不是文本文件；详情见上方摘要。}"
+               Classes="caption" HorizontalAlignment="Center" VerticalAlignment="Center"
+               IsVisible="{Binding !IsTextResult}" />
+
+    <ListBox Grid.Row="2" x:Name="CompareList" ItemsSource="{Binding Rows}"
+             IsVisible="{Binding IsTextResult}" Background="Transparent" SelectionMode="Single"
+             ScrollViewer.VerticalScrollBarVisibility="Auto"
+             ScrollViewer.HorizontalScrollBarVisibility="Auto">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:FileCompareRowViewModel">
+          <Grid ColumnDefinitions="48,*,48,*" ColumnSpacing="0" MinHeight="20">
+            <Border Background="{Binding LeftBackground}" Padding="6,1">
+              <TextBlock Text="{Binding LeftNumber}" Classes="tiny" HorizontalAlignment="Right"
+                         FontFamily="{DynamicResource MonoFontFamily}" Foreground="{DynamicResource TextTertiaryBrush}" />
+            </Border>
+            <Border Grid.Column="1" Background="{Binding LeftBackground}" Padding="8,1">
+              <TextBlock Text="{Binding LeftText}" FontSize="11.5"
+                         FontFamily="{DynamicResource MonoFontFamily}" />
+            </Border>
+            <Border Grid.Column="2" Background="{Binding RightBackground}" Padding="6,1">
+              <TextBlock Text="{Binding RightNumber}" Classes="tiny" HorizontalAlignment="Right"
+                         FontFamily="{DynamicResource MonoFontFamily}" Foreground="{DynamicResource TextTertiaryBrush}" />
+            </Border>
+            <Border Grid.Column="3" Background="{Binding RightBackground}" Padding="8,1">
+              <TextBlock Text="{Binding RightText}" FontSize="11.5"
+                         FontFamily="{DynamicResource MonoFontFamily}" />
+            </Border>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <Border Grid.Row="3" Padding="18,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{loc:Tr 红色为左侧差异，绿色为右侧差异。}" Classes="tiny" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Content="{loc:Tr 关闭}" Classes="accent" Click="OnCloseClick" IsDefault="True" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

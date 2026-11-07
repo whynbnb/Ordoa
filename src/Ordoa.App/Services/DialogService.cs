@@ -262,6 +262,18 @@ public sealed class DialogService : IDialogService
         return folders.Count == 0 ? null : folders[0].TryGetLocalPath();
     }
 
+    public async Task ShowFileCompareAsync(IFileSystem fileSystem, FileEntry left, FileEntry right)
+    {
+        if (!TryPrepareDialog("compare", out var owner))
+            return;
+
+        var window = new FileCompareWindow
+        {
+            DataContext = new FileCompareDialogViewModel(fileSystem, left, right),
+        };
+        await ShowDialogAsync("compare", window, owner).ConfigureAwait(true);
+    }
+
     public async Task ShowErrorAsync(string title, string message)
     {
         var kind = "error:" + title;

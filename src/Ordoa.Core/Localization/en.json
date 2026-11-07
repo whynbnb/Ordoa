@@ -1144,5 +1144,17 @@
  "工作区：{0}": "Workspace: {0}",
  "{0} · 恢复标签页": "{0} · restore tabs",
  "删除工作区：{0}": "Delete workspace: {0}",
- "删除已保存的工作区": "Delete a saved workspace"
+ "删除已保存的工作区": "Delete a saved workspace",
+ "文件比较": "File comparison",
+ "只能比较文件": "Only files can be compared",
+ "两个文本文件内容相同": "The two text files are identical",
+ "文本差异：+{0} 行，-{1} 行": "Text differences: +{0} lines, -{1} lines",
+ "两个文件内容相同": "The two files are identical",
+ "二进制文件不同，首个差异位于偏移 {0}": "The binary files differ; first difference at offset {0}",
+ "二进制文件不同": "The binary files differ",
+ "比较失败": "Comparison failed",
+ "比较选中文件": "Compare selected files",
+ "并排查看两个文本或二进制文件的差异": "Compare two text or binary files side by side",
+ "两个文件相同，或其中一个不是文本文件；详情见上方摘要。": "The files are identical, or one is not a text file; see the summary above.",
+ "红色为左侧差异，绿色为右侧差异。": "Red marks differences on the left; green on the right."
 }

@@ -935,6 +935,7 @@ public partial class PaneView : UserControl
         analysisMenu.Items.Add(MenuItem(L10n.T("查找重复文件"), pane.FindDuplicateFilesAsync, pane.CanAnalyze));
         menu.Items.Add(analysisMenu);
         menu.Items.Add(MenuItem(L10n.T("Git 状态"), pane.ShowGitStatusAsync, pane.CanShowGitStatus));
+        menu.Items.Add(MenuItem(L10n.T("比较选中文件"), pane.CompareSelectionAsync, pane.CanCompare));
         menu.Items.Add(new Separator());
         AddTerminalMenuItems(menu, pane);
         AddCustomCommandMenuItems(menu, pane);

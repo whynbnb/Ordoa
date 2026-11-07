@@ -521,6 +521,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanExtractTo => IsArchive && HasSelection ||
                                 CanExtract;
     public bool CanChecksum => HasSelection && _selected.Any(i => !i.IsDirectory);
+    public bool CanCompare => !IsTrash && SelectedCount == 2 && _selected.All(item => !item.IsDirectory);
     public bool CanOpenArchive => HasSelection && SelectedCount == 1 && FileSystem.IsLocal && !IsTrash &&
                                   PrimarySelection is { IsDirectory: false } item &&
                                   ArchiveService.IsSupportedArchive(item.Name);
@@ -1000,6 +1001,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanExtractTo));
         OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanCompare));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -1391,6 +1393,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanExtractTo));
         OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanCompare));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -2044,6 +2047,15 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         UpdateSelectionDependentProperties();
     }
 
+    public async Task CompareSelectionAsync()
+    {
+        var files = _selected.Where(item => !item.IsDirectory).Take(2).ToList();
+        if (files.Count != 2)
+            return;
+        await _services.Dialogs.ShowFileCompareAsync(FileSystem, files[0].Entry, files[1].Entry)
+            .ConfigureAwait(true);
+    }
+
     public async Task CalculateFolderSizesAsync()
     {
         var directories = _selected.Where(item => item.IsDirectory).ToList();
@@ -2490,6 +2502,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanExtractTo));
         OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanCompare));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));

@@ -35,4 +35,5 @@ public interface IDialogService
     Task<ConflictChoice?> ShowTransferPreviewAsync(TransferPreviewRequest request);
     Task ShowOperationHistoryAsync(FileOperationService operations);
     Task<string?> PickFolderAsync(string title, string? initialPath = null);
+    Task ShowFileCompareAsync(IFileSystem fileSystem, FileEntry left, FileEntry right);
 }
