@@ -1130,5 +1130,19 @@
  "环境变量": "Environment variables",
  "固定的自定义动作": "Pinned custom actions",
  "运行自定义命令？": "Run custom command?",
- "运行": "Run"
+ "运行": "Run",
+ "工作区 {0}": "Workspace {0}",
+ "保存工作区": "Save workspace",
+ "保存工作区…": "Save workspace…",
+ "保存当前标签页和分屏布局": "Save the current tabs and split layout",
+ "工作区已保存": "Workspace saved",
+ "恢复工作区？": "Restore workspace?",
+ "将把 {0} 个标签页追加到当前窗口。": "{0} tabs will be appended to the current window.",
+ "工作区已恢复": "Workspace restored",
+ "删除工作区？": "Delete workspace?",
+ "工作区已删除": "Workspace deleted",
+ "工作区：{0}": "Workspace: {0}",
+ "{0} · 恢复标签页": "{0} · restore tabs",
+ "删除工作区：{0}": "Delete workspace: {0}",
+ "删除已保存的工作区": "Delete a saved workspace"
 }

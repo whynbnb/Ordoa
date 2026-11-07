@@ -1388,6 +1388,49 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Dispatcher.UIThread.Post(() => Toasts.Remove(toast));
     }
 
+    public IReadOnlyList<SavedWorkspace> Workspaces => _services.Workspaces.All;
+
+    public async Task SaveWorkspaceAsync()
+    {
+        var suggested = L10n.Format("工作区 {0}", DateTime.Now.ToString("MM-dd HH:mm"));
+        var name = await _services.Dialogs.PromptAsync(L10n.T("保存工作区"), L10n.T("名称"), suggested)
+            .ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        _services.Workspaces.Save(name.Trim(), CreateSessionState());
+        BuildPaletteCommands();
+        AddToast(L10n.T("工作区已保存"), name.Trim(), ToastKind.Success);
+    }
+
+    public async Task RestoreWorkspaceAsync(SavedWorkspace workspace)
+    {
+        if (workspace.State.Tabs.Count == 0)
+            return;
+        var confirmed = await _services.Dialogs.ConfirmAsync(
+            L10n.T("恢复工作区？"),
+            L10n.Format("将把 {0} 个标签页追加到当前窗口。", workspace.State.Tabs.Count),
+            L10n.T("恢复")).ConfigureAwait(true);
+        if (!confirmed)
+            return;
+
+        await RestoreSessionStateAsync(workspace.State, activateFirstNew: true).ConfigureAwait(true);
+        AddToast(L10n.T("工作区已恢复"), workspace.Name, ToastKind.Success);
+    }
+
+    public async Task DeleteWorkspaceAsync(SavedWorkspace workspace)
+    {
+        var confirmed = await _services.Dialogs.ConfirmAsync(
+            L10n.T("删除工作区？"), workspace.Name, L10n.T("删除"), destructive: true).ConfigureAwait(true);
+        if (!confirmed)
+            return;
+        if (_services.Workspaces.Delete(workspace.Name))
+        {
+            BuildPaletteCommands();
+            AddToast(L10n.T("工作区已删除"), workspace.Name, ToastKind.Info);
+        }
+    }
+
     public SessionState CreateSessionState()
     {
         var state = new SessionState
@@ -1529,9 +1572,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private async Task<bool> RestoreSessionAsync()
     {
         var session = _services.Session.Load();
-        if (session is null)
-            return false;
+        return session is not null && await RestoreSessionStateAsync(session).ConfigureAwait(true);
+    }
 
+    private async Task<bool> RestoreSessionStateAsync(SessionState session, bool activateFirstNew = false)
+    {
+        var firstNew = Tabs.Count;
         var restoredAny = false;
 
         foreach (var tabState in session.Tabs)
@@ -1555,7 +1601,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (!restoredAny)
             return false;
 
-        ActiveTab = session.ActiveTab > 0 && session.ActiveTab < Tabs.Count ? Tabs[session.ActiveTab] : Tabs[0];
+        ActiveTab = activateFirstNew && firstNew < Tabs.Count
+            ? Tabs[firstNew]
+            : session.ActiveTab > 0 && session.ActiveTab < Tabs.Count
+                ? Tabs[session.ActiveTab]
+                : Tabs[0];
         OnPropertyChanged(nameof(HasTabs));
         OnPropertyChanged(nameof(CanCloseActiveTab));
         UpdateWindowTitle();
@@ -2364,6 +2414,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             Add(L10n.T("Git 状态"), L10n.T("查看当前仓库的分支与未提交变更"), null, "IconCode",
                 () => PaneAction(p => p.ShowGitStatusAsync()));
+        }
+        Add(L10n.T("保存工作区…"), L10n.T("保存当前标签页和分屏布局"), null, "IconBookmark",
+            SaveWorkspaceAsync);
+        foreach (var workspace in Workspaces)
+        {
+            var saved = workspace;
+            Add(L10n.Format("工作区：{0}", saved.Name),
+                L10n.Format("{0} · 恢复标签页", saved.SavedAt.ToLocalTime().ToString("MM-dd HH:mm")),
+                null, "IconBookmark", () => RestoreWorkspaceAsync(saved));
+            Add(L10n.Format("删除工作区：{0}", saved.Name), L10n.T("删除已保存的工作区"),
+                null, "IconDelete", () => DeleteWorkspaceAsync(saved));
         }
         Add(L10n.T("创建符号链接"), L10n.T("在当前位置创建指向选中项目的链接"), null, "IconLink",
             () => PaneAction(p => p.CreateSymbolicLinkAsync(false)));
