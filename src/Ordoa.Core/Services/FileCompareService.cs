@@ -49,6 +49,9 @@ public static class FileCompareService
         if (left.IsDirectory || right.IsDirectory)
             throw new NotSupportedException(L10n.T("只能比较文件"));
 
+        if (left.Size > MaxTextBytes || right.Size > MaxTextBytes)
+            return await CompareBinaryAsync(fileSystem, left, right, cancellationToken).ConfigureAwait(false);
+
         var leftBytes = await ReadAllAsync(fileSystem, left, MaxTextBytes, cancellationToken).ConfigureAwait(false);
         var rightBytes = await ReadAllAsync(fileSystem, right, MaxTextBytes, cancellationToken).ConfigureAwait(false);
 
@@ -243,6 +246,19 @@ public static class FileCompareService
     private static string[] SplitLines(string text)
         => text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
 
+    private static async Task<int> FillAsync(Stream stream, byte[] buffer, CancellationToken cancellationToken)
+    {
+        var total = 0;
+        while (total < buffer.Length)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(total), cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+                break;
+            total += read;
+        }
+        return total;
+    }
+
     private static async Task<string> HashAsync(IFileSystem fileSystem, FileEntry entry,
         CancellationToken cancellationToken)
     {
@@ -261,8 +277,8 @@ public static class FileCompareService
         long offset = 0;
         while (true)
         {
-            var leftRead = await leftStream.ReadAsync(leftBuffer, cancellationToken).ConfigureAwait(false);
-            var rightRead = await rightStream.ReadAsync(rightBuffer, cancellationToken).ConfigureAwait(false);
+            var leftRead = await FillAsync(leftStream, leftBuffer, cancellationToken).ConfigureAwait(false);
+            var rightRead = await FillAsync(rightStream, rightBuffer, cancellationToken).ConfigureAwait(false);
             if (leftRead == 0 && rightRead == 0)
                 return null;
             var common = Math.Min(leftRead, rightRead);

@@ -1952,6 +1952,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             await ArchiveEditService.DeleteAsync(archive.ArchivePath, archive.Format, entries,
                 archive.Password).ConfigureAwait(true);
+            foreach (var selected in _selected.ToList())
+                _services.Tags.RemoveTree(FileSystem, selected.Path);
             await ReloadArchiveAsync(archive).ConfigureAwait(true);
             Toast(L10n.T("已从压缩包删除"), L10n.Format("{0} 个项目", entries.Count), false);
         }
@@ -2535,7 +2537,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                     return false;
                 foreach (var tag in parsed.Tags)
                 {
-                    if (!info.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+                    if (info?.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase) != true)
                         return false;
                 }
                 return true;

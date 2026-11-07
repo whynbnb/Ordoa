@@ -48,6 +48,28 @@ public sealed class FileCompareTests : IDisposable
     }
 
     [Fact]
+    public async Task LargeTextIsComparedAsBinaryWithoutTruncation()
+    {
+        var leftPath = Path.Combine(_root, "large-left.txt");
+        var rightPath = Path.Combine(_root, "large-right.txt");
+        var leftData = new byte[9 * 1024 * 1024];
+        var rightData = new byte[9 * 1024 * 1024];
+        Array.Fill(leftData, (byte)'a');
+        Array.Fill(rightData, (byte)'a');
+        rightData[^1] = (byte)'b';
+        await File.WriteAllBytesAsync(leftPath, leftData);
+        await File.WriteAllBytesAsync(rightPath, rightData);
+        var left = (await LocalFileSystem.Instance.GetEntryAsync(leftPath))!;
+        var right = (await LocalFileSystem.Instance.GetEntryAsync(rightPath))!;
+
+        var result = await FileCompareService.CompareAsync(LocalFileSystem.Instance, left, right);
+
+        Assert.Equal(FileCompareKind.Binary, result.Kind);
+        Assert.False(result.Identical);
+        Assert.Equal(leftData.Length - 1, result.FirstDifferenceOffset);
+    }
+
+    [Fact]
     public async Task BinaryDifferenceReportsFirstOffset()
     {
         var left = await WriteBytesAsync("left.bin", [1, 2, 3, 4]);
