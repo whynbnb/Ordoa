@@ -47,6 +47,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private bool _lastGitStatusBar;
     private string _wideColumnLayout = "*";
     private string? _appliedFolderViewKey;
+    private readonly Dictionary<string, List<FileEntry>> _treeChildren = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _expandedTreePaths = new(StringComparer.Ordinal);
     private bool _disposed;
 
     public PaneViewModel(AppServices services, IFileSystem fileSystem, string path)
@@ -95,6 +97,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(IsArchive));
             OnPropertyChanged(nameof(FsBadgeText));
             OnPropertyChanged(nameof(SearchScopeText));
+            _treeChildren.Clear();
+            _expandedTreePaths.Clear();
         }
     }
 
@@ -148,9 +152,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             if (!SetProperty(ref _viewMode, value))
                 return;
             OnPropertyChanged(nameof(IsGrid));
+            OnPropertyChanged(nameof(IsTree));
             OnPropertyChanged(nameof(ViewIcon));
             OnPropertyChanged(nameof(ViewTooltip));
             SaveFolderViewState();
+            ApplySortAndFilter();
             if (IsGrid)
                 StartThumbnailLoading();
         }
@@ -228,8 +234,15 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     }
 
     public bool IsGrid => ViewMode == ViewKind.Grid;
-    public Geometry? ViewIcon => FileIconCatalog.Resource(IsGrid ? "IconList" : "IconGrid");
-    public string ViewTooltip => IsGrid ? L10n.T("切换为列表视图") : L10n.T("切换为网格视图");
+    public bool IsTree => ViewMode == ViewKind.Tree;
+    public Geometry? ViewIcon => FileIconCatalog.Resource(
+        IsGrid || IsTree ? "IconList" : "IconGrid");
+    public string ViewTooltip => ViewMode switch
+    {
+        ViewKind.Grid => L10n.T("切换为列表视图"),
+        ViewKind.Tree => L10n.T("切换为列表视图"),
+        _ => L10n.T("切换为网格视图"),
+    };
 
     private SortColumn _sortColumn;
     public SortColumn SortColumn
@@ -410,6 +423,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             if (IsSearchActive)
                 return L10n.Format("{0} 个结果", VisibleItems.Count);
+            if (IsTree && !HasFilter)
+                return L10n.Format("{0} 项", VisibleItems.Count);
             if (HasFilter)
                 return L10n.Format("{0} / {1} 项", VisibleItems.Count, _entries.Count);
             return L10n.Format("{0} 项", _entries.Count);
@@ -597,6 +612,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 _entries.Add(new FileItemViewModel(entry));
             }
 
+            if (IsTree)
+                await ReloadExpandedTreeAsync(cancellationToken).ConfigureAwait(true);
+
             ApplySortAndFilter();
             UpdateBreadcrumbs();
             UpdateTitle();
@@ -684,7 +702,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private void ApplyGitStatus(GitRepositoryStatus? status)
     {
         _gitStatus = status;
-        foreach (var item in _entries)
+        var items = IsTree ? VisibleItems : _entries;
+        foreach (var item in items)
             ApplyGitItem(item, status);
 
         OnPropertyChanged(nameof(GitStatus));
@@ -898,7 +917,14 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private Task Refresh() => RefreshAsync();
 
     [RelayCommand]
-    private void ToggleView() => ViewMode = ViewMode == ViewKind.List ? ViewKind.Grid : ViewKind.List;
+    private void ToggleView() => ViewMode = ViewMode == ViewKind.Grid
+        ? ViewKind.List
+        : ViewMode == ViewKind.Tree
+            ? ViewKind.List
+            : ViewKind.Grid;
+
+    [RelayCommand]
+    private void ToggleTree() => ViewMode = IsTree ? ViewKind.List : ViewKind.Tree;
 
     [RelayCommand]
     private async Task SortByAsync(string? columnName)
@@ -2048,6 +2074,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     private void ApplySortAndFilter()
     {
+        if (IsTree && !HasFilter && !IsSearchActive)
+        {
+            BuildTreeRows();
+            return;
+        }
+
         IEnumerable<FileItemViewModel> items = _entries;
         if (!string.IsNullOrWhiteSpace(FilterText))
         {
@@ -2058,10 +2090,101 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         var comparer = new FileEntryComparer(SortColumn, SortDescending, FoldersFirst);
         var list = items.ToList();
         list.Sort((a, b) => comparer.Compare(a.Entry, b.Entry));
+        foreach (var item in list)
+        {
+            item.Depth = 0;
+            item.ShowTreeExpander = false;
+        }
+
         VisibleItems = list;
         OnPropertyChanged(nameof(ItemCountText));
         UpdateEmptyState();
     }
+
+    private void BuildTreeRows()
+    {
+        var comparer = new FileEntryComparer(SortColumn, SortDescending, FoldersFirst);
+        var rows = new List<FileItemViewModel>();
+        AddTreeRows(_entries.OrderBy(item => item.Entry, comparer), 0, rows, comparer);
+        VisibleItems = rows;
+        OnPropertyChanged(nameof(ItemCountText));
+        UpdateEmptyState();
+        ApplyGitStatus(_gitStatus);
+    }
+
+    private void AddTreeRows(IEnumerable<FileItemViewModel> items, int depth, List<FileItemViewModel> rows,
+        FileEntryComparer comparer)
+    {
+        foreach (var item in items)
+        {
+            item.Depth = depth;
+            item.ShowTreeExpander = item.IsDirectory;
+            var key = TreeKey(item.Path);
+            item.IsTreeExpanded = item.IsDirectory && _expandedTreePaths.Contains(key);
+            rows.Add(item);
+
+            if (!item.IsTreeExpanded || !_treeChildren.TryGetValue(key, out var children))
+                continue;
+
+            var childItems = children
+                .Where(child => ShowHidden || !child.IsHidden)
+                .OrderBy(child => child, comparer)
+                .Select(child => new FileItemViewModel(child, FileSystem.GetDisplayPath(item.Path)));
+            AddTreeRows(childItems, depth + 1, rows, comparer);
+        }
+    }
+
+    public async Task ToggleTreeExpansionAsync(FileItemViewModel item)
+    {
+        if (!IsTree || !item.IsDirectory)
+            return;
+
+        var key = TreeKey(item.Path);
+        if (_expandedTreePaths.Remove(key))
+        {
+            ApplySortAndFilter();
+            return;
+        }
+
+        try
+        {
+            var children = await FileSystem.ListAsync(item.Path).ConfigureAwait(true);
+            _treeChildren[key] = children.ToList();
+            _expandedTreePaths.Add(key);
+            item.IsTreeExpanded = true;
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("无法展开文件夹"), ex.Message, true);
+            return;
+        }
+
+        ApplySortAndFilter();
+    }
+
+    private async Task ReloadExpandedTreeAsync(CancellationToken cancellationToken)
+    {
+        _treeChildren.Clear();
+        foreach (var path in _expandedTreePaths.ToList())
+        {
+            try
+            {
+                var children = await FileSystem.ListAsync(path, cancellationToken).ConfigureAwait(true);
+                _treeChildren[path] = children.ToList();
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch
+            {
+                _expandedTreePaths.Remove(path);
+            }
+        }
+    }
+
+    private string TreeKey(string path)
+        => FileSystem.NormalizePath(path).TrimEnd('/', '\\');
 
     private void UpdateEmptyState()
     {

@@ -1072,5 +1072,10 @@
  "计算选中文件夹的递归大小": "Calculate the recursive size of selected folders",
  "没有选中文件夹": "No folder selected",
  "请选择一个或多个文件夹": "Select one or more folders",
- "无法计算": "Cannot calculate"
+ "无法计算": "Cannot calculate",
+ "切换树视图": "Toggle tree view",
+ "展开或收起文件夹": "Expand or collapse folder",
+ "无法展开文件夹": "Cannot expand folder",
+ "树视图": "Tree view",
+ "在当前文件夹中展开子文件夹": "Expand subfolders inside the current folder"
 }

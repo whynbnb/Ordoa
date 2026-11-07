@@ -848,6 +848,14 @@ public partial class PaneView : UserControl
     private void OnCopyPathClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CopyPathAsync());
     private void OnPropertiesClick(object? sender, RoutedEventArgs e) => Run(pane => pane.PropertiesAsync());
     private void OnToggleViewClick(object? sender, RoutedEventArgs e) => _pane?.ToggleViewCommand.Execute(null);
+    private void OnToggleTreeClick(object? sender, RoutedEventArgs e) => _pane?.ToggleTreeCommand.Execute(null);
+
+    private async void OnTreeExpanderClick(object? sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (_pane is not null && sender is Control { DataContext: FileItemViewModel item })
+            await _pane.ToggleTreeExpansionAsync(item);
+    }
     private void OnToggleSplitClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is PaneViewModel && TopLevel.GetTopLevel(this)?.DataContext is MainViewModel main)

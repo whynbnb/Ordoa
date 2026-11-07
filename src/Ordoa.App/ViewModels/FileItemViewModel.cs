@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -47,6 +48,18 @@ public sealed partial class FileItemViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SizeText))]
     private bool _isCalculatingFolderSize;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Indent))]
+    private int _depth;
+
+    [ObservableProperty]
+    private bool _isTreeExpanded;
+
+    [ObservableProperty]
+    private bool _showTreeExpander;
+
+    public Thickness Indent => new(Depth * 16 + 2, 0, 0, 0);
 
     public string SizeText => Entry.IsDirectory
         ? FolderSizeText ?? (IsCalculatingFolderSize ? "…" : "—")

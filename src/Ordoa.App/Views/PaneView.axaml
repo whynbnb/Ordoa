@@ -285,6 +285,7 @@
               </MenuItem>
               <Separator />
               <MenuItem Header="{loc:Tr 切换列表 / 网格}" Click="OnToggleViewClick" />
+              <MenuItem Header="{loc:Tr 切换树视图}" Click="OnToggleTreeClick" />
               <MenuItem Header="{loc:Tr 切换分屏}" Click="OnToggleSplitClick" />
               <MenuItem Header="{loc:Tr 刷新}" Click="OnRefreshClick" />
               <MenuItem Header="{loc:Tr 在终端中打开}" Click="OnOpenTerminalClick" />
@@ -441,8 +442,20 @@
             <DataTemplate x:DataType="vm:FileItemViewModel">
               <Panel Classes="fileitem" Classes.dim="{Binding IsHidden}" Classes.gitignored="{Binding IsGitIgnoredDimmed}" ToolTip.Tip="{Binding TooltipText}" Background="Transparent">
                 <Grid Classes="rowwide" ColumnDefinitions="*,74,116,88,86,92" AttachedToVisualTree="OnWideRowAttached">
-                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,0,0,0">
-                    <Panel Width="22" Height="22" VerticalAlignment="Center">
+                  <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="{Binding Indent}">
+                    <Button Classes="tool" Width="14" Height="14" Padding="0" Margin="0,0,1,0"
+                            IsVisible="{Binding ShowTreeExpander}" Click="OnTreeExpanderClick"
+                            ToolTip.Tip="{loc:Tr 展开或收起文件夹}">
+                      <Panel Width="9" Height="9">
+                        <Path Data="{StaticResource IconChevronRight}" Width="9" Height="9" Stretch="Uniform"
+                              Fill="{DynamicResource TextSecondaryBrush}"
+                              IsVisible="{Binding !IsTreeExpanded}" />
+                        <Path Data="{StaticResource IconChevronDown}" Width="9" Height="9" Stretch="Uniform"
+                              Fill="{DynamicResource TextSecondaryBrush}"
+                              IsVisible="{Binding IsTreeExpanded}" />
+                      </Panel>
+                    </Button>
+                    <Panel Grid.Column="1" Width="22" Height="22" VerticalAlignment="Center">
                       <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="17" Height="17"
                             Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center" />
                       <Image Source="{Binding Thumbnail}" Width="20" Height="20" Stretch="UniformToFill"
@@ -451,9 +464,9 @@
                             Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Right"
                             VerticalAlignment="Bottom" IsVisible="{Binding IsSymlink}" />
                     </Panel>
-                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
+                    <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Border Grid.Column="2" IsVisible="{Binding ShowGitBadge}"
+                    <Border Grid.Column="3" IsVisible="{Binding ShowGitBadge}"
                             Background="{Binding GitBadgeBrush}" CornerRadius="4"
                             Padding="4,1" Margin="5,0,4,0" MinWidth="15" VerticalAlignment="Center"
                             ToolTip.Tip="{Binding GitTooltip}">
@@ -478,8 +491,20 @@
                              ToolTip.Tip="{Binding OwnershipText}" TextTrimming="CharacterEllipsis" />
                 </Grid>
                 <Grid Classes="rownarrow" ColumnDefinitions="*,74">
-                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,0,0,0">
-                    <Panel Width="22" Height="22" VerticalAlignment="Center">
+                  <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="{Binding Indent}">
+                    <Button Classes="tool" Width="14" Height="14" Padding="0" Margin="0,0,1,0"
+                            IsVisible="{Binding ShowTreeExpander}" Click="OnTreeExpanderClick"
+                            ToolTip.Tip="{loc:Tr 展开或收起文件夹}">
+                      <Panel Width="9" Height="9">
+                        <Path Data="{StaticResource IconChevronRight}" Width="9" Height="9" Stretch="Uniform"
+                              Fill="{DynamicResource TextSecondaryBrush}"
+                              IsVisible="{Binding !IsTreeExpanded}" />
+                        <Path Data="{StaticResource IconChevronDown}" Width="9" Height="9" Stretch="Uniform"
+                              Fill="{DynamicResource TextSecondaryBrush}"
+                              IsVisible="{Binding IsTreeExpanded}" />
+                      </Panel>
+                    </Button>
+                    <Panel Grid.Column="1" Width="22" Height="22" VerticalAlignment="Center">
                       <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="17" Height="17"
                             Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center" />
                       <Image Source="{Binding Thumbnail}" Width="20" Height="20" Stretch="UniformToFill"
@@ -488,9 +513,9 @@
                             Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Right"
                             VerticalAlignment="Bottom" IsVisible="{Binding IsSymlink}" />
                     </Panel>
-                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
+                    <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Border Grid.Column="2" IsVisible="{Binding ShowGitBadge}"
+                    <Border Grid.Column="3" IsVisible="{Binding ShowGitBadge}"
                             Background="{Binding GitBadgeBrush}" CornerRadius="4"
                             Padding="4,1" Margin="5,0,4,0" MinWidth="15" VerticalAlignment="Center"
                             ToolTip.Tip="{Binding GitTooltip}">

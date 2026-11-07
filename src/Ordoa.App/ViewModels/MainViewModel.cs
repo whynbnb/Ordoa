@@ -2294,6 +2294,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             SetView(ViewKind.Grid);
             return Task.CompletedTask;
         });
+        Add(L10n.T("树视图"), L10n.T("在当前文件夹中展开子文件夹"), null, "IconList", () =>
+        {
+            ActivePane?.ToggleTreeCommand.Execute(null);
+            return Task.CompletedTask;
+        });
         Add(L10n.T("显示/隐藏隐藏文件"), L10n.T("切换点文件与隐藏属性"), _services.Shortcuts.GetGesture("toggleHidden"), "IconEye", () =>
         {
             ToggleHidden();
