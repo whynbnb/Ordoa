@@ -128,10 +128,8 @@ public sealed partial class TrashService
         }
         finally
         {
-            if (bin is not null)
-                Marshal.FinalReleaseComObject(bin);
-            if (shell is not null)
-                Marshal.FinalReleaseComObject(shell);
+            ReleaseComObject(bin);
+            ReleaseComObject(shell);
         }
 
         return result.OrderByDescending(entry => entry.DeletedAt).ToList();
@@ -198,10 +196,8 @@ public sealed partial class TrashService
             }
             finally
             {
-                if (bin is not null)
-                    Marshal.FinalReleaseComObject(bin);
-                if (shell is not null)
-                    Marshal.FinalReleaseComObject(shell);
+                ReleaseComObject(bin);
+                ReleaseComObject(shell);
             }
         }, cancellationToken);
     }
@@ -212,6 +208,13 @@ public sealed partial class TrashService
             SherbNoConfirmation | SherbNoProgressUi | SherbNoSound);
         if (result < 0)
             throw new IOException(L10n.T("清空回收站失败"));
+    }
+
+    private static void ReleaseComObject(object? value)
+    {
+        if (value is null)
+            return;
+        try { Marshal.FinalReleaseComObject(value); } catch { /* ignore */ }
     }
 
     private static DateTimeOffset ReadWindowsDate(dynamic item, string property)
