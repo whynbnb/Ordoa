@@ -1,6 +1,7 @@
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using Avalonia;
 using Avalonia.Media;
@@ -62,6 +63,34 @@ public sealed class PreviewService
 
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
+    /// <summary>Removes cached remote preview downloads left behind by older sessions.</summary>
+    public static void CleanupStaleCache(TimeSpan? olderThan = null)
+    {
+        try
+        {
+            var root = Path.Combine(AppPaths.CacheDirectory, "preview");
+            if (!Directory.Exists(root))
+                return;
+            var cutoff = DateTime.UtcNow - (olderThan ?? TimeSpan.FromDays(1));
+            foreach (var file in Directory.EnumerateFiles(root))
+            {
+                try
+                {
+                    if (File.GetLastWriteTimeUtc(file) < cutoff)
+                        File.Delete(file);
+                }
+                catch
+                {
+                    // Another instance may still be reading this file.
+                }
+            }
+        }
+        catch
+        {
+            // Cache cleanup is best effort.
+        }
+    }
+
     public async Task<PreviewContent> LoadAsync(IFileSystem fileSystem, FileEntry entry,
         string? ffmpegPath, CancellationToken cancellationToken)
     {
@@ -78,6 +107,25 @@ public sealed class PreviewService
 
         var extension = entry.Extension;
         var localPath = LocalPathOf(entry);
+
+        if (localPath is null && !fileSystem.IsLocal)
+        {
+            var maxBytes = IsVideoExtension(extension) ||
+                           entry.MimeType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true ||
+                           IsAudioExtension(extension) ||
+                           entry.MimeType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true
+                ? 512L * 1024 * 1024
+                : extension == "pdf"
+                    ? 128L * 1024 * 1024
+                    : IsOfficeExtension(extension)
+                        ? 128L * 1024 * 1024
+                        : MimeTypes.IsArchive(extension)
+                            ? 256L * 1024 * 1024
+                            : 0;
+            if (maxBytes > 0)
+                localPath = await MaterializeRemoteAsync(fileSystem, entry, maxBytes, cancellationToken)
+                    .ConfigureAwait(true);
+        }
 
         if (extension == "svg")
             return await PreviewTextAsync(fileSystem, entry, details, forceText: true, cancellationToken)
@@ -122,7 +170,11 @@ public sealed class PreviewService
             return await PreviewImageAsync(fileSystem, entry, details, localPath, ffmpegPath, cancellationToken)
                 .ConfigureAwait(true);
         if (IsPdfHeader(prefix))
+        {
+            localPath ??= await MaterializeRemoteAsync(fileSystem, entry, 128L * 1024 * 1024,
+                cancellationToken).ConfigureAwait(true);
             return await PreviewPdfAsync(entry, details, localPath, cancellationToken).ConfigureAwait(true);
+        }
         if (IsZipHeader(prefix))
         {
             var archive = await TryArchiveAsync(entry, localPath, details, cancellationToken, zipOnly: true)
@@ -543,6 +595,45 @@ public sealed class PreviewService
             memory.Write(buffer, 0, read);
         }
         return memory.ToArray();
+    }
+
+    private static async Task<string?> MaterializeRemoteAsync(IFileSystem fileSystem, FileEntry entry,
+        long maxBytes, CancellationToken cancellationToken)
+    {
+        if (entry.IsDirectory || entry.Size <= 0 || entry.Size > maxBytes)
+            return null;
+
+        try
+        {
+            var directory = Path.Combine(AppPaths.CacheDirectory, "preview");
+            Directory.CreateDirectory(directory);
+            var identity = $"{fileSystem.Id}|{entry.Path}|{entry.Size}|{entry.Modified?.UtcTicks ?? 0}";
+            var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)))[..24];
+            var safeExtension = entry.Extension.Length is > 0 and <= 12 &&
+                                entry.Extension.All(char.IsLetterOrDigit)
+                ? "." + entry.Extension
+                : ".bin";
+            var path = Path.Combine(directory, key + safeExtension);
+            if (File.Exists(path) && new FileInfo(path).Length == entry.Size)
+                return path;
+
+            var temporary = path + ".part";
+            await using (var input = await fileSystem.OpenReadAsync(entry.Path, cancellationToken)
+                             .ConfigureAwait(true))
+            await using (var output = new FileStream(temporary, FileMode.Create, FileAccess.Write,
+                             FileShare.None, 128 * 1024, FileOptions.Asynchronous))
+            {
+                await input.CopyToAsync(output, cancellationToken).ConfigureAwait(true);
+            }
+
+            File.Move(temporary, path, true);
+            return path;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Warn($"缓存远程预览失败: {entry.Path}", ex);
+            return null;
+        }
     }
 
     private static string? LocalPathOf(FileEntry entry)

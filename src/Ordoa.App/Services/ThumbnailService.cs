@@ -5,7 +5,7 @@ using Ordoa.Core.Services;
 
 namespace Ordoa.App.Services;
 
-/// <summary>Bounded, concurrency-limited thumbnail decoder for local images.</summary>
+/// <summary>Bounded, concurrency-limited thumbnail decoder for local and remote images.</summary>
 public sealed class ThumbnailService
 {
     private const int MaxEntries = 320;
@@ -17,11 +17,12 @@ public sealed class ThumbnailService
     public async Task<Bitmap?> GetAsync(IFileSystem fileSystem, FileEntry entry, int width,
         CancellationToken cancellationToken = default)
     {
-        if (!fileSystem.IsLocal || entry.IsDirectory || entry.IsSymlink || entry.Size <= 0 ||
-            !MimeTypes.IsImage(entry.Extension) || entry.Size > 200L * 1024 * 1024)
+        var maxBytes = fileSystem.IsLocal ? 200L * 1024 * 1024 : 24L * 1024 * 1024;
+        if (entry.IsDirectory || entry.IsSymlink || entry.Size <= 0 ||
+            !MimeTypes.IsImage(entry.Extension) || entry.Size > maxBytes)
             return null;
 
-        var key = $"{entry.Path}|{entry.Modified?.UtcTicks ?? 0}|{width}";
+        var key = $"{fileSystem.Id}|{entry.Path}|{entry.Modified?.UtcTicks ?? 0}|{width}";
         lock (_sync)
         {
             if (_cache.TryGetValue(key, out var node))

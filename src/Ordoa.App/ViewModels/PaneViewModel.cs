@@ -2566,7 +2566,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         _thumbCts?.Dispose();
         _thumbCts = null;
 
-        if (!IsGrid || !_services.Settings.Current.ShowThumbnails || !FileSystem.IsLocal || _entries.Count > 700)
+        var thumbnailLimit = FileSystem.IsLocal ? 700 : 120;
+        if (!IsGrid || !_services.Settings.Current.ShowThumbnails || _entries.Count > thumbnailLimit)
             return;
 
         _thumbCts = new CancellationTokenSource();
