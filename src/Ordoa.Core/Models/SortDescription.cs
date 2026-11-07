@@ -7,6 +7,8 @@ public enum SortColumn
     Size,
     Modified,
     Type,
+    Permissions,
+    Owner,
 }
 
 public enum ViewKind

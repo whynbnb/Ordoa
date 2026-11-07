@@ -225,6 +225,15 @@
               <CheckBox Content="{loc:Tr 耗时操作时自动展开传输队列}" IsChecked="{Binding ShowTransferPanel, Mode=TwoWay}" />
             </StackPanel>
 
+            <TextBlock Text="{loc:Tr 列表列}" Classes="section" />
+            <StackPanel Spacing="7">
+              <CheckBox Content="{loc:Tr 显示大小列}" IsChecked="{Binding ShowSizeColumn, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示修改时间列}" IsChecked="{Binding ShowModifiedColumn, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示类型列}" IsChecked="{Binding ShowTypeColumn, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示权限列}" IsChecked="{Binding ShowPermissionColumn, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示所有者列}" IsChecked="{Binding ShowOwnerColumn, Mode=TwoWay}" />
+            </StackPanel>
+
             <Border Classes="divider" />
 
             <TextBlock Text="{loc:Tr 搜索}" Classes="section" />

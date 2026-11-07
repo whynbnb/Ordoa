@@ -465,6 +465,11 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _showHiddenVolumes = settings.ShowHiddenVolumes;
         _showThumbnails = settings.ShowThumbnails;
         _showTransferPanel = settings.ShowTransferPanel;
+        _showSizeColumn = settings.ShowSizeColumn;
+        _showModifiedColumn = settings.ShowModifiedColumn;
+        _showTypeColumn = settings.ShowTypeColumn;
+        _showPermissionColumn = settings.ShowPermissionColumn;
+        _showOwnerColumn = settings.ShowOwnerColumn;
         _showPreviewPanel = settings.ShowPreviewPanel;
         _previewPanelPlacementIndex = settings.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         _searchDepth = settings.SearchDepth;
@@ -691,6 +696,21 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _showTransferPanel;
+
+    [ObservableProperty]
+    private bool _showSizeColumn;
+
+    [ObservableProperty]
+    private bool _showModifiedColumn;
+
+    [ObservableProperty]
+    private bool _showTypeColumn;
+
+    [ObservableProperty]
+    private bool _showPermissionColumn;
+
+    [ObservableProperty]
+    private bool _showOwnerColumn;
 
     [ObservableProperty]
     private bool _showPreviewPanel;
@@ -996,6 +1016,11 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.ShowHiddenVolumes = ShowHiddenVolumes;
         settings.ShowThumbnails = ShowThumbnails;
         settings.ShowTransferPanel = ShowTransferPanel;
+        settings.ShowSizeColumn = ShowSizeColumn;
+        settings.ShowModifiedColumn = ShowModifiedColumn;
+        settings.ShowTypeColumn = ShowTypeColumn;
+        settings.ShowPermissionColumn = ShowPermissionColumn;
+        settings.ShowOwnerColumn = ShowOwnerColumn;
         settings.ShowPreviewPanel = ShowPreviewPanel;
         settings.PreviewPanelPlacement = PreviewPanelPlacementIndex == 1
             ? PreviewPanelPlacement.Bottom
@@ -1089,6 +1114,11 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         ShowHiddenVolumes = defaults.ShowHiddenVolumes;
         ShowThumbnails = defaults.ShowThumbnails;
         ShowTransferPanel = defaults.ShowTransferPanel;
+        ShowSizeColumn = defaults.ShowSizeColumn;
+        ShowModifiedColumn = defaults.ShowModifiedColumn;
+        ShowTypeColumn = defaults.ShowTypeColumn;
+        ShowPermissionColumn = defaults.ShowPermissionColumn;
+        ShowOwnerColumn = defaults.ShowOwnerColumn;
         ShowPreviewPanel = defaults.ShowPreviewPanel;
         PreviewPanelPlacementIndex = defaults.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         SearchDepth = defaults.SearchDepth;

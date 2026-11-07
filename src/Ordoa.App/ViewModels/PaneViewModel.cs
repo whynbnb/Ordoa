@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -44,6 +45,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private bool _lastGitSubmoduleBadges;
     private bool _lastGitDimIgnored;
     private bool _lastGitStatusBar;
+    private string _wideColumnLayout = "*";
+    private string? _appliedFolderViewKey;
     private bool _disposed;
 
     public PaneViewModel(AppServices services, IFileSystem fileSystem, string path)
@@ -65,6 +68,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         _lastGitSubmoduleBadges = settings.ShowGitSubmoduleBadges;
         _lastGitDimIgnored = settings.DimGitIgnored;
         _lastGitStatusBar = settings.ShowGitStatusBar;
+        _wideColumnLayout = BuildColumnLayout(settings);
         _locationText = BuildEditablePath();
         _services.Settings.Changed += OnSettingsChanged;
         _services.Clipboard.Changed += OnClipboardChanged;
@@ -146,11 +150,81 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(IsGrid));
             OnPropertyChanged(nameof(ViewIcon));
             OnPropertyChanged(nameof(ViewTooltip));
-            _services.Settings.Current.View = value;
-            _services.Settings.Save();
+            SaveFolderViewState();
             if (IsGrid)
                 StartThumbnailLoading();
         }
+    }
+
+    public string WideColumnLayout
+    {
+        get => _wideColumnLayout;
+        private set => SetProperty(ref _wideColumnLayout, value);
+    }
+
+    public bool ShowSizeColumn => _services.Settings.Current.ShowSizeColumn;
+    public bool ShowModifiedColumn => _services.Settings.Current.ShowModifiedColumn;
+    public bool ShowTypeColumn => _services.Settings.Current.ShowTypeColumn;
+    public bool ShowPermissionColumn => _services.Settings.Current.ShowPermissionColumn;
+    public bool ShowOwnerColumn => _services.Settings.Current.ShowOwnerColumn;
+
+    private static string BuildColumnLayout(AppSettings settings)
+        => $"*,{(settings.ShowSizeColumn ? 74 : 0)},{(settings.ShowModifiedColumn ? 116 : 0)}," +
+           $"{(settings.ShowTypeColumn ? 88 : 0)},{(settings.ShowPermissionColumn ? 86 : 0)}," +
+           $"{(settings.ShowOwnerColumn ? 92 : 0)}";
+
+    private void RefreshColumnLayout()
+    {
+        WideColumnLayout = BuildColumnLayout(_services.Settings.Current);
+        OnPropertyChanged(nameof(ShowSizeColumn));
+        OnPropertyChanged(nameof(ShowModifiedColumn));
+        OnPropertyChanged(nameof(ShowTypeColumn));
+        OnPropertyChanged(nameof(ShowPermissionColumn));
+        OnPropertyChanged(nameof(ShowOwnerColumn));
+    }
+
+    private string FolderViewKey =>
+        FileSystem.Id + "|" + FileSystem.NormalizePath(CurrentPath);
+
+    private void ApplyFolderViewState()
+    {
+        var key = FolderViewKey;
+        if (string.Equals(key, _appliedFolderViewKey, StringComparison.Ordinal))
+            return;
+        _appliedFolderViewKey = key;
+
+        if (!_services.Settings.Current.FolderViews.TryGetValue(key, out var state))
+            return;
+
+        _sortColumn = state.SortColumn;
+        _sortDescending = state.SortDescending;
+        _foldersFirst = state.FoldersFirst;
+        _viewMode = state.View;
+        OnPropertyChanged(nameof(SortColumn));
+        OnPropertyChanged(nameof(SortDescending));
+        OnPropertyChanged(nameof(FoldersFirst));
+        OnPropertyChanged(nameof(ViewMode));
+        OnPropertyChanged(nameof(SortColumnLabel));
+        OnPropertyChanged(nameof(IsGrid));
+        OnPropertyChanged(nameof(ViewIcon));
+        OnPropertyChanged(nameof(ViewTooltip));
+    }
+
+    private void SaveFolderViewState()
+    {
+        var settings = _services.Settings.Current;
+        settings.SortColumn = SortColumn;
+        settings.SortDescending = SortDescending;
+        settings.FoldersFirst = FoldersFirst;
+        settings.View = ViewMode;
+        settings.FolderViews[FolderViewKey] = new FolderViewState
+        {
+            SortColumn = SortColumn,
+            SortDescending = SortDescending,
+            FoldersFirst = FoldersFirst,
+            View = ViewMode,
+        };
+        _services.Settings.Save();
     }
 
     public bool IsGrid => ViewMode == ViewKind.Grid;
@@ -183,8 +257,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             if (!SetProperty(ref _foldersFirst, value))
                 return;
-            _services.Settings.Current.FoldersFirst = value;
-            _services.Settings.Save();
+            SaveFolderViewState();
             ApplySortAndFilter();
         }
     }
@@ -194,6 +267,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         SortColumn.Size => L10n.T("大小"),
         SortColumn.Modified => L10n.T("修改时间"),
         SortColumn.Type => L10n.T("类型"),
+        SortColumn.Permissions => L10n.T("权限"),
+        SortColumn.Owner => L10n.T("所有者"),
         _ => L10n.T("名称"),
     };
 
@@ -452,6 +527,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public TerminalProfile? EnabledHerdr => _services.Terminals.GetEnabledHerdr();
     public IReadOnlyList<CustomCommand> ContextCustomCommands => _services.CustomCommands.GetContextMenuCommands();
     public bool CanRestore => IsTrash && HasSelection;
+    public bool CanCalculateFolderSize => FileSystem.IsLocal && !IsTrash &&
+                                          _selected.Any(item => item.IsDirectory);
     public bool CanEmptyTrash => IsTrash;
     public bool CanSelectAll => VisibleItems.Count > 0;
     public bool CanGoHome => true;
@@ -492,6 +569,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         _loadCts = new CancellationTokenSource();
         var cancellationToken = _loadCts.Token;
         var version = ++_loadVersion;
+        ApplyFolderViewState();
 
         IsLoading = true;
         HasError = false;
@@ -836,9 +914,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             SortDescending = false;
         }
 
-        _services.Settings.Current.SortColumn = SortColumn;
-        _services.Settings.Current.SortDescending = SortDescending;
-        _services.Settings.Save();
+        SaveFolderViewState();
         ApplySortAndFilter();
         if (IsSearchActive && _searchResults.Count > 0)
             SortSearchResults();
@@ -1781,6 +1857,81 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         UpdateSelectionDependentProperties();
     }
 
+    public async Task CalculateFolderSizesAsync()
+    {
+        var directories = _selected.Where(item => item.IsDirectory).ToList();
+        if (directories.Count == 0)
+        {
+            Toast(L10n.T("没有选中文件夹"), L10n.T("请选择一个或多个文件夹"), false);
+            return;
+        }
+
+        foreach (var item in directories)
+            item.IsCalculatingFolderSize = true;
+
+        try
+        {
+            await Task.WhenAll(directories.Select(async item =>
+            {
+                try
+                {
+                    var bytes = await MeasureDirectoryAsync(item.Path, CancellationToken.None)
+                        .ConfigureAwait(true);
+                    item.FolderSizeText = Humanize.Size(bytes);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn($"计算文件夹大小失败: {item.Path}", ex);
+                    item.FolderSizeText = L10n.T("无法计算");
+                }
+                finally
+                {
+                    item.IsCalculatingFolderSize = false;
+                }
+            })).ConfigureAwait(true);
+        }
+        finally
+        {
+            foreach (var item in directories)
+                item.IsCalculatingFolderSize = false;
+        }
+    }
+
+    private static Task<long> MeasureDirectoryAsync(string path, CancellationToken cancellationToken)
+        => Task.Run(() =>
+        {
+            long total = 0;
+            var stack = new Stack<string>();
+            stack.Push(path);
+            while (stack.Count > 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var directory = stack.Pop();
+                try
+                {
+                    foreach (var file in Directory.EnumerateFiles(directory))
+                    {
+                        try { total += new FileInfo(file).Length; }
+                        catch { /* skip inaccessible file */ }
+                    }
+
+                    foreach (var child in Directory.EnumerateDirectories(directory))
+                    {
+                        try
+                        {
+                            var attributes = File.GetAttributes(child);
+                            if ((attributes & FileAttributes.ReparsePoint) == 0)
+                                stack.Push(child);
+                        }
+                        catch { /* skip inaccessible directory */ }
+                    }
+                }
+                catch { /* skip inaccessible directory */ }
+            }
+
+            return total;
+        }, cancellationToken);
+
     public void ExitSearch()
     {
         CancelSearch();
@@ -2243,6 +2394,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             ShowHidden = settings.ShowHidden;
             _ = LoadAsync().ConfigureAwait(true);
         }
+
+        RefreshColumnLayout();
 
         var gitEnabledChanged = settings.EnableGitIntegration != _lastGitEnabled;
         var gitDisplayChanged = settings.ShowGitFileBadges != _lastGitBadges ||

@@ -342,7 +342,7 @@
         <Border Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1" Padding="16,0,14,0" Height="27">
           <Grid>
-          <Grid Classes="headerwide" IsVisible="{Binding !IsNarrow}" ColumnDefinitions="*,74,116,88,86,92" ColumnSpacing="0">
+          <Grid x:Name="WideHeader" Classes="headerwide" IsVisible="{Binding !IsNarrow}" ColumnDefinitions="*,74,116,88,86,92" ColumnSpacing="0">
             <Button Classes="header" Tag="Name" Click="OnSortHeaderClick">
               <StackPanel Orientation="Horizontal" Spacing="3">
                 <TextBlock Text="{loc:Tr 名称}" Classes="columnvalue" />
@@ -353,7 +353,7 @@
               </StackPanel>
             </Button>
             <Button Grid.Column="1" Classes="header" Tag="Size" Click="OnSortHeaderClick"
-                    HorizontalContentAlignment="Right">
+                    IsVisible="{Binding ShowSizeColumn}" HorizontalContentAlignment="Right">
               <StackPanel Orientation="Horizontal" Spacing="3">
                 <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
@@ -362,7 +362,8 @@
                       IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Size}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="2" Classes="header" Tag="Modified" Click="OnSortHeaderClick">
+            <Button Grid.Column="2" Classes="header" Tag="Modified" Click="OnSortHeaderClick"
+                    IsVisible="{Binding ShowModifiedColumn}">
               <StackPanel Orientation="Horizontal" Spacing="3">
                 <TextBlock Text="{loc:Tr 修改时间}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
@@ -371,7 +372,8 @@
                       IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Modified}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="3" Classes="header" Tag="Type" Click="OnSortHeaderClick">
+            <Button Grid.Column="3" Classes="header" Tag="Type" Click="OnSortHeaderClick"
+                    IsVisible="{Binding ShowTypeColumn}">
               <StackPanel Orientation="Horizontal" Spacing="3">
                 <TextBlock Text="{loc:Tr 类型}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
@@ -380,8 +382,26 @@
                       IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Type}" />
               </StackPanel>
             </Button>
-            <TextBlock Grid.Column="4" Text="{loc:Tr 权限}" Classes="columnvalue" Margin="0,0,8,0" />
-            <TextBlock Grid.Column="5" Text="{loc:Tr 所有者}" Classes="columnvalue" />
+            <Button Grid.Column="4" Classes="header" Tag="Permissions" Click="OnSortHeaderClick"
+                    IsVisible="{Binding ShowPermissionColumn}" Margin="0,0,8,0">
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <TextBlock Text="{loc:Tr 权限}" Classes="columnvalue" />
+                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Permissions}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="5" Classes="header" Tag="Owner" Click="OnSortHeaderClick"
+                    IsVisible="{Binding ShowOwnerColumn}">
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <TextBlock Text="{loc:Tr 所有者}" Classes="columnvalue" />
+                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Owner}" />
+              </StackPanel>
+            </Button>
           </Grid>
           <Grid Classes="headernarrow" IsVisible="{Binding IsNarrow}" ColumnDefinitions="*,74" ColumnSpacing="0">
             <Button Classes="header" Tag="Name" Click="OnSortHeaderClick">
@@ -394,7 +414,7 @@
               </StackPanel>
             </Button>
             <Button Grid.Column="1" Classes="header" Tag="Size" Click="OnSortHeaderClick"
-                    HorizontalContentAlignment="Right">
+                    IsVisible="{Binding ShowSizeColumn}" HorizontalContentAlignment="Right">
               <StackPanel Orientation="Horizontal" Spacing="3">
                 <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" />
                 <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
@@ -420,7 +440,7 @@
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:FileItemViewModel">
               <Panel Classes="fileitem" Classes.dim="{Binding IsHidden}" Classes.gitignored="{Binding IsGitIgnoredDimmed}" ToolTip.Tip="{Binding TooltipText}" Background="Transparent">
-                <Grid Classes="rowwide" ColumnDefinitions="*,74,116,88,86,92">
+                <Grid Classes="rowwide" ColumnDefinitions="*,74,116,88,86,92" AttachedToVisualTree="OnWideRowAttached">
                   <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,0,0,0">
                     <Panel Width="22" Height="22" VerticalAlignment="Center">
                       <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="17" Height="17"
@@ -442,14 +462,19 @@
                     </Border>
                   </Grid>
                   <TextBlock Grid.Column="1" Text="{Binding SizeText}" Classes="columnvalue"
+                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowSizeColumn}"
                              HorizontalAlignment="Right" Margin="0,0,12,0" />
                   <TextBlock Grid.Column="2" Text="{Binding ModifiedText}" Classes="columnvalue"
+                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowModifiedColumn}"
                              Margin="0,0,8,0" />
                   <TextBlock Grid.Column="3" Text="{Binding TypeText}" Classes="columnvalue"
+                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowTypeColumn}"
                              TextTrimming="CharacterEllipsis" />
                   <TextBlock Grid.Column="4" Text="{Binding PermissionText}" Classes="columnvalue"
+                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowPermissionColumn}"
                              FontFamily="{DynamicResource MonoFontFamily}" Margin="0,0,8,0" />
                   <TextBlock Grid.Column="5" Text="{Binding OwnerText}" Classes="columnvalue"
+                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowOwnerColumn}"
                              ToolTip.Tip="{Binding OwnershipText}" TextTrimming="CharacterEllipsis" />
                 </Grid>
                 <Grid Classes="rownarrow" ColumnDefinitions="*,74">

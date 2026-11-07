@@ -54,6 +54,23 @@ public enum CopyVerificationMode
     Sha256,
 }
 
+/// <summary>Per-folder view and ordering overrides.</summary>
+public sealed class FolderViewState
+{
+    public SortColumn SortColumn { get; set; } = SortColumn.Name;
+    public bool SortDescending { get; set; }
+    public bool FoldersFirst { get; set; } = true;
+    public ViewKind View { get; set; } = ViewKind.List;
+
+    public FolderViewState Clone() => new()
+    {
+        SortColumn = SortColumn,
+        SortDescending = SortDescending,
+        FoldersFirst = FoldersFirst,
+        View = View,
+    };
+}
+
 public sealed class AppSettings
 {
     public UiLanguage Language { get; set; } = UiLanguage.System;
@@ -79,6 +96,14 @@ public sealed class AppSettings
     public double SidebarWidth { get; set; } = 232;
     public bool ShowThumbnails { get; set; } = true;
     public bool ShowTransferPanel { get; set; } = true;
+    /// <summary>Visible columns in the list view.</summary>
+    public bool ShowSizeColumn { get; set; } = true;
+    public bool ShowModifiedColumn { get; set; } = true;
+    public bool ShowTypeColumn { get; set; } = true;
+    public bool ShowPermissionColumn { get; set; } = true;
+    public bool ShowOwnerColumn { get; set; } = true;
+    /// <summary>Remembered sort/view settings keyed by filesystem id and path.</summary>
+    public Dictionary<string, FolderViewState> FolderViews { get; set; } = [];
     /// <summary>Keep a preview panel open for the current selection.</summary>
     public bool ShowPreviewPanel { get; set; }
     /// <summary>Where the persistent preview panel is docked.</summary>
@@ -175,6 +200,9 @@ public sealed class AppSettings
             .Select(command => command.Clone())
             .ToList();
         clone.SearchHistory = [.. SearchHistory];
+        clone.FolderViews = (FolderViews ?? [])
+            .Where(pair => pair.Value is not null)
+            .ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
         clone.SavedSearches = (SavedSearches ?? [])
             .Where(search => search is not null)
             .Select(search => search.Clone())
@@ -304,6 +332,19 @@ public sealed class SettingsService
             .ToList();
         Current.SearchDepth = Math.Clamp(Current.SearchDepth, 1, 64);
         Current.MaxSearchResults = Math.Clamp(Current.MaxSearchResults, 100, 20000);
+        Current.FolderViews = (Current.FolderViews ?? [])
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Value is not null)
+            .GroupBy(pair => pair.Key, StringComparer.Ordinal)
+            .Take(500)
+            .ToDictionary(group => group.Key, group =>
+            {
+                var state = group.Last().Value;
+                if (!Enum.IsDefined(state.SortColumn))
+                    state.SortColumn = SortColumn.Name;
+                if (!Enum.IsDefined(state.View))
+                    state.View = ViewKind.List;
+                return state;
+            }, StringComparer.Ordinal);
         Current.SearchHistory = (Current.SearchHistory ?? [])
             .Where(entry => !string.IsNullOrWhiteSpace(entry))
             .Select(entry => entry.Trim())

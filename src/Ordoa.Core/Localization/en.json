@@ -1061,5 +1061,16 @@
  "清空历史": "Clear history",
  "成功 {0} · 失败 {1}": "{0} succeeded · {1} failed",
  "成功 {0}": "{0} succeeded",
- "替换内容可使用 $1、$2 等捕获组；无效表达式会标记为错误。": "The replacement can use capture groups such as $1 and $2; invalid expressions are marked as errors."
+ "替换内容可使用 $1、$2 等捕获组；无效表达式会标记为错误。": "The replacement can use capture groups such as $1 and $2; invalid expressions are marked as errors.",
+ "列表列": "List columns",
+ "显示大小列": "Show the size column",
+ "显示修改时间列": "Show the modified column",
+ "显示类型列": "Show the type column",
+ "显示权限列": "Show the permissions column",
+ "显示所有者列": "Show the owner column",
+ "计算文件夹大小": "Calculate folder size",
+ "计算选中文件夹的递归大小": "Calculate the recursive size of selected folders",
+ "没有选中文件夹": "No folder selected",
+ "请选择一个或多个文件夹": "Select one or more folders",
+ "无法计算": "Cannot calculate"
 }

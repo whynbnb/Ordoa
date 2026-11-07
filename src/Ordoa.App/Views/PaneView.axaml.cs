@@ -187,7 +187,27 @@ public partial class PaneView : UserControl
             _pane.PropertyChanged += OnPanePropertyChanged;
         }
         UpdateNarrowState();
+        ApplyColumnDefinitions();
         ScrollBreadcrumbToEnd();
+    }
+
+    private void OnWideRowAttached(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (sender is Grid grid && _pane is not null)
+            grid.ColumnDefinitions = new ColumnDefinitions(_pane.WideColumnLayout);
+    }
+
+    private void ApplyColumnDefinitions()
+    {
+        if (_pane is null)
+            return;
+
+        WideHeader.ColumnDefinitions = new ColumnDefinitions(_pane.WideColumnLayout);
+        foreach (var grid in FileList.GetVisualDescendants().OfType<Grid>())
+        {
+            if (grid.Classes.Contains("rowwide"))
+                grid.ColumnDefinitions = new ColumnDefinitions(_pane.WideColumnLayout);
+        }
     }
 
     private void UpdateNarrowState()
@@ -210,6 +230,8 @@ public partial class PaneView : UserControl
     {
         if (e.PropertyName is nameof(PaneViewModel.Breadcrumbs) or nameof(PaneViewModel.IsEditingLocation))
             ScrollBreadcrumbToEnd();
+        if (e.PropertyName == nameof(PaneViewModel.WideColumnLayout))
+            ApplyColumnDefinitions();
     }
 
     private void ScrollBreadcrumbToEnd()
@@ -888,6 +910,8 @@ public partial class PaneView : UserControl
         menu.Items.Add(MenuItem(L10n.T("压缩为 tar.gz"), () => pane.CompressAsync(true), pane.CanCompress));
         menu.Items.Add(MenuItem(L10n.T("解压到此处"), pane.ExtractAsync, pane.CanExtract));
         menu.Items.Add(MenuItem(L10n.T("计算 SHA-256"), pane.ChecksumAsync, pane.CanChecksum));
+        menu.Items.Add(MenuItem(L10n.T("计算文件夹大小"), pane.CalculateFolderSizesAsync,
+            pane.CanCalculateFolderSize));
         var analysisMenu = new MenuItem { Header = L10n.T("分析工具") };
         analysisMenu.Items.Add(MenuItem(L10n.T("磁盘占用分析"), pane.AnalyzeDiskUsageAsync, pane.CanAnalyze));
         analysisMenu.Items.Add(MenuItem(L10n.T("查找重复文件"), pane.FindDuplicateFilesAsync, pane.CanAnalyze));

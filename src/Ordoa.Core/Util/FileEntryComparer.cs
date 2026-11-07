@@ -37,6 +37,11 @@ public sealed class FileEntryComparer : IComparer<FileEntry>
             SortColumn.Size => x.Size.CompareTo(y.Size),
             SortColumn.Modified => Nullable.Compare(x.Modified, y.Modified),
             SortColumn.Type => CompareType(x, y),
+            SortColumn.Permissions => Nullable.Compare(
+                x.UnixMode is { } xMode ? (int?)xMode : null,
+                y.UnixMode is { } yMode ? (int?)yMode : null),
+            SortColumn.Owner => string.Compare(x.Owner ?? string.Empty, y.Owner ?? string.Empty,
+                StringComparison.OrdinalIgnoreCase),
             _ => 0,
         };
 

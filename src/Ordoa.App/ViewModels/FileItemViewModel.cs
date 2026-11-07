@@ -40,7 +40,17 @@ public sealed partial class FileItemViewModel : ObservableObject
         OnPropertyChanged(nameof(TooltipText));
     }
 
-    public string SizeText => Entry.IsDirectory ? "—" : Humanize.Size(Entry.Size);
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SizeText))]
+    private string? _folderSizeText;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SizeText))]
+    private bool _isCalculatingFolderSize;
+
+    public string SizeText => Entry.IsDirectory
+        ? FolderSizeText ?? (IsCalculatingFolderSize ? "…" : "—")
+        : Humanize.Size(Entry.Size);
     public string ModifiedText => Humanize.Date(Entry.Modified);
     public string TypeText => Entry.TypeDescription;
     public string PermissionText => FilePermission.Format(Entry.UnixMode);
