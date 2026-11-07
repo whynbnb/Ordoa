@@ -2,6 +2,7 @@
              xmlns:loc="using:Ordoa.App.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Ordoa.App.ViewModels"
+             xmlns:views="using:Ordoa.App.Views"
              x:DataType="vm:PaneViewModel"
              x:CompileBindings="True"
              x:Class="Ordoa.App.Views.PaneView"
@@ -389,7 +390,7 @@
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemsPanel>
           <ItemsPanelTemplate>
-            <WrapPanel Orientation="Horizontal" ItemWidth="118" ItemHeight="108" />
+            <views:VirtualizingWrapPanel ItemWidth="118" ItemHeight="108" />
           </ItemsPanelTemplate>
         </ListBox.ItemsPanel>
         <ListBox.ItemTemplate>
