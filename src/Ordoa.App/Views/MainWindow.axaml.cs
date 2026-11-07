@@ -20,6 +20,10 @@ public partial class MainWindow : Window
     private bool _initialSizeApplied;
     private double _lastNormalWidth;
     private double _lastNormalHeight;
+    private TabViewModel? _dragTab;
+    private Border? _dragTabBorder;
+    private Point _tabDragStart;
+    private bool _tabDragging;
 
     public MainWindow()
     {
@@ -331,14 +335,74 @@ public partial class MainWindow : Window
                 _viewModel.ActivateTab(tab);
                 _viewModel.DuplicateActiveTabCommand.Execute(null);
             }));
+            menu.Items.Add(CreateMenuItem(tab.IsPinned ? L10n.T("取消固定标签页") : L10n.T("固定标签页"),
+                () => _viewModel.TogglePinTab(tab)));
             menu.Items.Add(CreateMenuItem(L10n.T("关闭标签页"), () => _viewModel.CloseTab(tab)));
             menu.Items.Add(CreateMenuItem(L10n.T("关闭其他标签页"), () => _viewModel.CloseOtherTabs(tab)));
             menu.Items.Add(new Separator());
+            menu.Items.Add(CreateMenuItem(L10n.T("恢复关闭的标签页"),
+                () => _viewModel.ReopenClosedTabCommand.Execute(null)));
             menu.Items.Add(CreateMenuItem(L10n.T("新建标签页"), () => _viewModel.NewTabCommand.Execute(null)));
             border.ContextMenu = menu;
             menu.Open(border);
             e.Handled = true;
+            return;
         }
+
+        if (point.Properties.IsLeftButtonPressed)
+        {
+            _dragTab = tab;
+            _dragTabBorder = border;
+            _tabDragStart = e.GetPosition(this);
+            _tabDragging = false;
+        }
+    }
+
+    private void OnTabPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_viewModel is null || _dragTab is null || _dragTabBorder is null)
+            return;
+
+        var point = e.GetPosition(this);
+        if (!_tabDragging)
+        {
+            if (Math.Abs(point.X - _tabDragStart.X) < 6 && Math.Abs(point.Y - _tabDragStart.Y) < 6)
+                return;
+            _tabDragging = true;
+            e.Pointer.Capture(_dragTabBorder);
+        }
+
+        var hit = this.InputHitTest(point) as Visual;
+        var target = hit?.GetSelfAndVisualAncestors()
+            .OfType<Border>()
+            .FirstOrDefault(candidate => candidate.DataContext is TabViewModel &&
+                                        candidate.Classes.Contains("tab"));
+        if (target?.DataContext is not TabViewModel targetTab || ReferenceEquals(targetTab, _dragTab))
+            return;
+
+        var targetIndex = _viewModel.Tabs.IndexOf(targetTab);
+        if (targetIndex >= 0)
+            _viewModel.MoveTab(_dragTab, targetIndex);
+    }
+
+    private void OnTabPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        EndTabDrag(e.Pointer);
+    }
+
+    private void OnTabPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        _dragTab = null;
+        _dragTabBorder = null;
+        _tabDragging = false;
+    }
+
+    private void EndTabDrag(IPointer? pointer)
+    {
+        pointer?.Capture(null);
+        _dragTab = null;
+        _dragTabBorder = null;
+        _tabDragging = false;
     }
 
     private static MenuItem CreateMenuItem(string header, Action action)
@@ -503,6 +567,13 @@ public partial class MainWindow : Window
         if (ctrl && shift && e.Key == Key.P)
         {
             _viewModel.ShowCommandPaletteCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrl && shift && e.Key == Key.T)
+        {
+            Run(_viewModel.ReopenClosedTabAsync);
             e.Handled = true;
             return;
         }

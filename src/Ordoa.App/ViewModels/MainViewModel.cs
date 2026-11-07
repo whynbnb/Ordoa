@@ -23,6 +23,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly IReadOnlyList<string>? _startupSelection;
     private readonly TaskCompletionSource<bool> _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly List<VolumeInfo> _volumes = [];
+    private readonly List<ClosedTabState> _closedTabs = [];
+    private const int MaxClosedTabs = 20;
     private bool _initialized;
     private bool _disposed;
     private bool _refreshingSidebar;
@@ -418,6 +420,74 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private async Task DuplicateActiveTabAsync()
         => await DuplicateTabAsync().ConfigureAwait(true);
 
+    public int PinnedTabCount => Tabs.Count(tab => tab.IsPinned);
+
+    public bool CanReopenClosedTab => _closedTabs.Count > 0;
+
+    [RelayCommand]
+    public async Task ReopenClosedTabAsync()
+    {
+        if (_closedTabs.Count == 0)
+        {
+            AddToast(L10n.T("没有可恢复的标签页"), L10n.T("关闭标签页后可以用 Ctrl+Shift+T 恢复"), ToastKind.Info);
+            return;
+        }
+
+        var closed = _closedTabs[^1];
+        _closedTabs.RemoveAt(_closedTabs.Count - 1);
+        var tab = await CreateTabFromSessionAsync(closed.Tab, closed.Index, closed.FileSystems).ConfigureAwait(true);
+        if (tab is null)
+            return;
+
+        tab.IsPinned = closed.Tab.IsPinned;
+        if (closed.Tab.IsPinned)
+            MoveTab(tab, Math.Min(closed.Index, PinnedTabCount - 1));
+        ActivateTab(tab);
+    }
+
+    [RelayCommand]
+    public void TogglePinTab(TabViewModel? tab)
+    {
+        tab ??= ActiveTab;
+        if (tab is null)
+            return;
+
+        if (tab.IsPinned)
+        {
+            tab.IsPinned = false;
+            var index = Tabs.IndexOf(tab);
+            var pinned = PinnedTabCount;
+            if (index < pinned)
+                MoveTab(tab, pinned);
+        }
+        else
+        {
+            tab.IsPinned = true;
+            MoveTab(tab, PinnedTabCount - 1);
+        }
+
+        OnPropertyChanged(nameof(PinnedTabCount));
+        UpdateWindowTitle();
+    }
+
+    /// <summary>Moves a tab while keeping pinned tabs grouped before regular tabs.</summary>
+    public void MoveTab(TabViewModel tab, int targetIndex)
+    {
+        var current = Tabs.IndexOf(tab);
+        if (current < 0)
+            return;
+
+        var pinned = PinnedTabCount;
+        var min = tab.IsPinned ? 0 : pinned;
+        var max = tab.IsPinned ? Math.Max(0, pinned - 1) : Tabs.Count - 1;
+        targetIndex = Math.Clamp(targetIndex, min, max);
+        if (targetIndex == current)
+            return;
+
+        Tabs.Move(current, targetIndex);
+        OnPropertyChanged(nameof(PinnedTabCount));
+    }
+
     [RelayCommand]
     public void CloseTab(TabViewModel? tab)
     {
@@ -428,6 +498,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var index = Tabs.IndexOf(tab);
         if (index < 0)
             return;
+
+        if (Tabs.Count > 1 && !_disposed)
+            RememberClosedTab(tab, index);
 
         foreach (var pane in tab.Panes.ToList())
         {
@@ -1159,6 +1232,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             state.Tabs.Add(new SessionTab
             {
                 IsSplit = tab.IsSplit,
+                IsPinned = tab.IsPinned,
                 ActivePane = Math.Max(0, panes.IndexOf(tab.ActivePane)),
                 Panes = panes.Select(p => new SessionPane
                 {
@@ -1204,6 +1278,78 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _services.Settings.Save();
     }
 
+    private void RememberClosedTab(TabViewModel tab, int index)
+    {
+        var panes = tab.Panes.ToList();
+        var state = new SessionTab
+        {
+            IsSplit = tab.IsSplit,
+            IsPinned = tab.IsPinned,
+            ActivePane = Math.Max(0, panes.IndexOf(tab.ActivePane)),
+            Panes = panes.Select(pane => new SessionPane
+            {
+                FileSystemId = pane.FileSystem.Id,
+                Path = pane.CurrentPath,
+            }).ToList(),
+        };
+        _closedTabs.Add(new ClosedTabState(state, index, panes.Select(pane => pane.FileSystem).ToList()));
+        while (_closedTabs.Count > MaxClosedTabs)
+            _closedTabs.RemoveAt(0);
+    }
+
+    private async Task<TabViewModel?> CreateTabFromSessionAsync(SessionTab tabState,
+        int insertAt, IReadOnlyList<IFileSystem>? fileSystems = null)
+    {
+        var panes = new List<(IFileSystem Fs, string Path)>();
+        for (var index = 0; index < tabState.Panes.Count; index++)
+        {
+            var paneState = tabState.Panes[index];
+            var fs = fileSystems is not null && index < fileSystems.Count && fileSystems[index].IsLocal
+                ? fileSystems[index]
+                : await ResolveSessionFileSystemAsync(paneState).ConfigureAwait(true);
+            if (fs is null)
+                continue;
+            var path = string.IsNullOrWhiteSpace(paneState.Path) ? fs.RootPath : paneState.Path;
+            if (fs.IsLocal && !Directory.Exists(path))
+                path = KnownFolders.DefaultStartupPath;
+            panes.Add((fs, path));
+        }
+
+        if (panes.Count == 0)
+            return null;
+
+        try
+        {
+            var primary = new PaneViewModel(_services, panes[0].Fs, panes[0].Path);
+            var tab = new TabViewModel(_services, primary) { IsPinned = tabState.IsPinned };
+            SubscribeTab(tab);
+            SubscribePane(primary);
+            var target = Math.Clamp(insertAt, 0, Tabs.Count);
+            Tabs.Insert(target, tab);
+            await primary.InitializeAsync().ConfigureAwait(true);
+
+            if (panes.Count > 1 && tabState.IsSplit)
+            {
+                await tab.AddSecondaryPaneAsync(panes[1].Fs, panes[1].Path,
+                    tabState.ActivePane == 1).ConfigureAwait(true);
+                foreach (var pane in tab.Panes)
+                    SubscribePane(pane);
+            }
+
+            OnPropertyChanged(nameof(HasTabs));
+            OnPropertyChanged(nameof(CanCloseActiveTab));
+            OnPropertyChanged(nameof(PinnedTabCount));
+            UpdateWindowTitle();
+            UpdateSidebarActive();
+            return tab;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("恢复标签页失败", ex);
+            return null;
+        }
+    }
+
     private async Task<bool> RestoreSessionAsync()
     {
         var session = _services.Session.Load();
@@ -1214,43 +1360,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         foreach (var tabState in session.Tabs)
         {
-            var panes = new List<(IFileSystem Fs, string Path)>();
-            foreach (var paneState in tabState.Panes)
-            {
-                var fs = await ResolveSessionFileSystemAsync(paneState).ConfigureAwait(true);
-                if (fs is null)
-                    continue;
-                var path = string.IsNullOrWhiteSpace(paneState.Path) ? fs.RootPath : paneState.Path;
-                if (fs.IsLocal && !Directory.Exists(path))
-                    path = KnownFolders.DefaultStartupPath;
-                panes.Add((fs, path));
-            }
-
-            if (panes.Count == 0)
-                continue;
-
-            try
-            {
-                var primary = new PaneViewModel(_services, panes[0].Fs, panes[0].Path);
-                var tab = new TabViewModel(_services, primary);
-                SubscribeTab(tab);
-                SubscribePane(primary);
-                Tabs.Add(tab);
-                await primary.InitializeAsync().ConfigureAwait(true);
-
-                if (panes.Count > 1 && tabState.IsSplit)
-                {
-                    await tab.AddSecondaryPaneAsync(panes[1].Fs, panes[1].Path, tabState.ActivePane == 1).ConfigureAwait(true);
-                    foreach (var pane in tab.Panes)
-                        SubscribePane(pane);
-                }
-
+            var tab = await CreateTabFromSessionAsync(tabState, Tabs.Count).ConfigureAwait(true);
+            if (tab is not null)
                 restoredAny = true;
-            }
-            catch (Exception ex)
-            {
-                Log.Warn("恢复标签页失败", ex);
-            }
+        }
+
+        // Keep pinned tabs ahead of regular ones even for older sessions.
+        var ordered = Tabs.Where(tab => tab.IsPinned)
+            .Concat(Tabs.Where(tab => !tab.IsPinned))
+            .ToList();
+        for (var index = 0; index < ordered.Count; index++)
+        {
+            var current = Tabs.IndexOf(ordered[index]);
+            if (current != index)
+                Tabs.Move(current, index);
         }
 
         if (!restoredAny)
@@ -1932,6 +2055,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Add(L10n.T("新建标签页"), L10n.T("打开一个新的文件浏览标签"), "Ctrl+T", "IconPlus", NewTabAsync);
         Add(L10n.T("新建窗口"), L10n.T("在新的窗口中打开文件浏览"), "Ctrl+N", "IconPlus", NewWindowAsync);
         Add(L10n.T("复制标签页"), L10n.T("克隆当前标签页"), null, "IconCopy", DuplicateTabAsync);
+        Add(L10n.T("恢复关闭的标签页"), L10n.T("重新打开最近关闭的标签页"), "Ctrl+Shift+T", "IconRestore", ReopenClosedTabAsync);
+        Add(L10n.T("固定 / 取消固定标签页"), L10n.T("固定标签页并保持在标签栏前部"), null, "IconStar", () =>
+        {
+            TogglePinTab(ActiveTab);
+            return Task.CompletedTask;
+        });
         Add(L10n.T("关闭标签页"), L10n.T("关闭当前标签页"), "Ctrl+W", "IconClose", () =>
         {
             CloseTab(ActiveTab);
@@ -2062,4 +2191,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         Tabs.Clear();
     }
+
+    private sealed record ClosedTabState(
+        SessionTab Tab,
+        int Index,
+        IReadOnlyList<IFileSystem> FileSystems);
 }

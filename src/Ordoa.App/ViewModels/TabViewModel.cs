@@ -35,6 +35,9 @@ public sealed partial class TabViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isActive;
 
+    [ObservableProperty]
+    private bool _isPinned;
+
     public string Title => ActivePane.Title;
     public string Tooltip
     {

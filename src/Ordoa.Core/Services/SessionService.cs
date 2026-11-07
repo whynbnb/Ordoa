@@ -13,6 +13,7 @@ public sealed class SessionTab
     public List<SessionPane> Panes { get; set; } = [];
     public int ActivePane { get; set; }
     public bool IsSplit { get; set; }
+    public bool IsPinned { get; set; }
 }
 
 public sealed class SessionPane

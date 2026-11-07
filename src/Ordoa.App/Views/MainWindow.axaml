@@ -58,6 +58,9 @@
     <Style Selector="Border.tab.active">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     </Style>
+    <Style Selector="Border.tab.pinned">
+      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    </Style>
     <Style Selector="Border.tab TextBlock.tabtitle">
       <Setter Property="FontSize" Value="12" />
       <Setter Property="MaxWidth" Value="180" />
@@ -156,17 +159,26 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:TabViewModel">
-                  <Border Classes="tab" Classes.active="{Binding IsActive}"
-                          PointerPressed="OnTabPointerPressed" ToolTip.Tip="{Binding Tooltip}">
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                  <Border Classes="tab" Classes.pinned="{Binding IsPinned}"
+                          Classes.active="{Binding IsActive}"
+                          PointerPressed="OnTabPointerPressed"
+                          PointerMoved="OnTabPointerMoved"
+                          PointerReleased="OnTabPointerReleased"
+                          PointerCaptureLost="OnTabPointerCaptureLost"
+                          ToolTip.Tip="{Binding Tooltip}">
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
                       <Path Classes="tabicon" Data="{Binding Icon}" Width="14" Height="14" Stretch="Uniform"
                             VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="1" Text="{Binding Title}" Classes="tabtitle" />
-                      <Path Grid.Column="2" Data="{StaticResource IconSplit}" Width="10" Height="10"
+                      <Path Grid.Column="1" Data="{StaticResource IconStar}" Width="9" Height="9"
+                            Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
+                            VerticalAlignment="Center" Margin="4,0,0,0"
+                            IsVisible="{Binding IsPinned}" />
+                      <TextBlock Grid.Column="2" Text="{Binding Title}" Classes="tabtitle" />
+                      <Path Grid.Column="3" Data="{StaticResource IconSplit}" Width="10" Height="10"
                             Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}"
                             VerticalAlignment="Center" Margin="0,0,3,0"
                             IsVisible="{Binding IsSplit}" />
-                      <Button Grid.Column="3" Classes="tabclose" Click="OnTabCloseClick"
+                      <Button Grid.Column="4" Classes="tabclose" Click="OnTabCloseClick"
                               ToolTip.Tip="{loc:Tr 关闭标签页}">
                         <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
                               Fill="{DynamicResource TextSecondaryBrush}" />

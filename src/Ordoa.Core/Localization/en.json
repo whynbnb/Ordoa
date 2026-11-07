@@ -902,5 +902,13 @@
  "已扫描 {0} 个文件 · 已哈希 {1} 次 · 找到 {2} 组": "Scanned {0} · hashed {1} times · {2} groups",
  "结果较多，仅显示占用最大的前 {0} 组。": "Many groups found; showing the top {0} by reclaimable space.",
  "无法分析": "Could not analyze",
- "仅支持本地文件夹": "Only local folders are supported."
+ "仅支持本地文件夹": "Only local folders are supported.",
+ "没有可恢复的标签页": "There are no closed tabs to reopen.",
+ "关闭标签页后可以用 Ctrl+Shift+T 恢复": "Use Ctrl+Shift+T after closing a tab to restore it.",
+ "恢复关闭的标签页": "Reopen Closed Tab",
+ "重新打开最近关闭的标签页": "Reopen the most recently closed tab",
+ "固定 / 取消固定标签页": "Pin / Unpin Tab",
+ "固定标签页并保持在标签栏前部": "Pin a tab and keep it at the front of the tab strip",
+ "固定标签页": "Pin Tab",
+ "取消固定标签页": "Unpin Tab"
 }
