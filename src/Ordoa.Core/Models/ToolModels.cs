@@ -54,6 +54,14 @@ public sealed class CustomCommand
     public bool ShowInContextMenu { get; set; } = true;
     public bool RunInTerminal { get; set; }
     public bool RequiresSelection { get; set; }
+    /// <summary>Ask for confirmation before executing.</summary>
+    public bool ConfirmBeforeRun { get; set; }
+    /// <summary>Write selected paths to the command's standard input.</summary>
+    public bool PipeSelectionToStdin { get; set; }
+    /// <summary>Extra environment variables as KEY=VALUE lines.</summary>
+    public string EnvironmentVariables { get; set; } = string.Empty;
+    /// <summary>Show this action in the toolbar's quick actions menu.</summary>
+    public bool PinnedToToolbar { get; set; }
 
     public CustomCommand Clone() => new()
     {
@@ -64,5 +72,9 @@ public sealed class CustomCommand
         ShowInContextMenu = ShowInContextMenu,
         RunInTerminal = RunInTerminal,
         RequiresSelection = RequiresSelection,
+        ConfirmBeforeRun = ConfirmBeforeRun,
+        PipeSelectionToStdin = PipeSelectionToStdin,
+        EnvironmentVariables = EnvironmentVariables,
+        PinnedToToolbar = PinnedToToolbar,
     };
 }

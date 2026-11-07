@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="using:Ordoa.App.Views"
         xmlns:vm="using:Ordoa.App.ViewModels"
+        xmlns:models="using:Ordoa.Core.Models"
         x:DataType="vm:MainViewModel"
         x:CompileBindings="True"
         xmlns:services="using:Ordoa.App.Services"
@@ -216,6 +217,26 @@
                            VerticalAlignment="Center" />
               </Border>
             </Panel>
+
+            <Button Classes="tool" IsVisible="{Binding HasToolbarCommands}"
+                    ToolTip.Tip="{loc:Tr 固定的自定义动作}" Width="28" Height="28">
+              <Path Data="{StaticResource IconStar}" Width="15" Height="15" Stretch="Uniform"
+                    Fill="{DynamicResource TextSecondaryBrush}" />
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <ItemsControl ItemsSource="{Binding ToolbarCommands}" MinWidth="200">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="models:CustomCommand">
+                        <Button Classes="ghost" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left" Padding="8,4"
+                                Content="{Binding Name}" Tag="{Binding Id}"
+                                Click="OnToolbarCommandClick" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
 
             <Button Classes="tool" Command="{Binding ShowCommandPaletteCommand}"
                     ToolTip.Tip="{loc:Tr 命令面板 (Ctrl+Shift+P)}" Width="28" Height="28">

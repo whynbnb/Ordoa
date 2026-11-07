@@ -114,6 +114,10 @@ public sealed class AppSettings
     public List<string> SearchHistory { get; set; } = [];
     /// <summary>Named search expressions shown in the search flyout.</summary>
     public List<SavedSearch> SavedSearches { get; set; } = [];
+    /// <summary>Recently executed command palette entries, newest first.</summary>
+    public List<string> PaletteRecent { get; set; } = [];
+    /// <summary>Execution counts for command palette entries.</summary>
+    public Dictionary<string, int> PaletteUsage { get; set; } = [];
     /// <summary>How copied files are verified after the transfer completes.</summary>
     public CopyVerificationMode CopyVerification { get; set; } = CopyVerificationMode.Size;
     /// <summary>Show a conflict summary before a batch copy or move starts.</summary>
@@ -204,6 +208,8 @@ public sealed class AppSettings
             .Select(command => command.Clone())
             .ToList();
         clone.SearchHistory = [.. SearchHistory];
+        clone.PaletteRecent = [.. PaletteRecent];
+        clone.PaletteUsage = new Dictionary<string, int>(PaletteUsage, StringComparer.Ordinal);
         clone.FolderViews = (FolderViews ?? [])
             .Where(pair => pair.Value is not null)
             .ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
@@ -361,6 +367,16 @@ public sealed class SettingsService
         Current.TransferSpeedLimitMb = Math.Clamp(Current.TransferSpeedLimitMb, 0, 100_000);
         Current.ArchiveCompressionLevel = Math.Clamp(Current.ArchiveCompressionLevel, 0, 9);
         Current.ArchiveSplitMb = Math.Clamp(Current.ArchiveSplitMb, 0, 100_000);
+        Current.PaletteRecent = (Current.PaletteRecent ?? [])
+            .Where(entry => !string.IsNullOrWhiteSpace(entry))
+            .Distinct(StringComparer.Ordinal)
+            .Take(16)
+            .ToList();
+        Current.PaletteUsage = (Current.PaletteUsage ?? [])
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Value > 0)
+            .OrderByDescending(pair => pair.Value)
+            .Take(300)
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         Current.SavedSearches = (Current.SavedSearches ?? [])
             .Where(search => search is not null && !string.IsNullOrWhiteSpace(search.Query))
             .Select(search =>

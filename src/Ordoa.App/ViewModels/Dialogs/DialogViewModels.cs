@@ -434,6 +434,18 @@ public sealed partial class CustomCommandViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _requiresSelection;
+
+    [ObservableProperty]
+    private bool _confirmBeforeRun;
+
+    [ObservableProperty]
+    private bool _pipeSelectionToStdin;
+
+    [ObservableProperty]
+    private string _environmentVariables = string.Empty;
+
+    [ObservableProperty]
+    private bool _pinnedToToolbar;
 }
 
 public sealed partial class SettingsDialogViewModel : ObservableObject
@@ -543,15 +555,22 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             var gesture = settings.ShortcutOverrides.TryGetValue(definition.Id, out var custom)
                 ? custom
                 : definition.DefaultGesture;
-            Shortcuts.Add(new ShortcutSettingViewModel
+            var shortcut = new ShortcutSettingViewModel
             {
                 Id = definition.Id,
                 Label = definition.Label,
                 DefaultGesture = definition.DefaultGesture,
                 Gesture = gesture,
-            });
+            };
+            shortcut.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(ShortcutSettingViewModel.Gesture))
+                    UpdateShortcutConflicts();
+            };
+            Shortcuts.Add(shortcut);
         }
 
+        UpdateShortcutConflicts();
         ReloadConnections();
         ReloadTerminals();
 
@@ -569,6 +588,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
                 ShowInContextMenu = command.ShowInContextMenu,
                 RunInTerminal = command.RunInTerminal,
                 RequiresSelection = command.RequiresSelection,
+                ConfirmBeforeRun = command.ConfirmBeforeRun,
+                PipeSelectionToStdin = command.PipeSelectionToStdin,
+                EnvironmentVariables = command.EnvironmentVariables,
+                PinnedToToolbar = command.PinnedToToolbar,
             });
         }
 
@@ -595,6 +618,32 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public System.Collections.ObjectModel.ObservableCollection<CustomCommandViewModel> CustomCommands { get; } = [];
 
     public System.Collections.ObjectModel.ObservableCollection<ShortcutSettingViewModel> Shortcuts { get; } = [];
+
+    private string? _shortcutConflictText;
+    public string? ShortcutConflictText
+    {
+        get => _shortcutConflictText;
+        private set
+        {
+            if (SetProperty(ref _shortcutConflictText, value))
+                OnPropertyChanged(nameof(HasShortcutConflicts));
+        }
+    }
+
+    public bool HasShortcutConflicts => ShortcutConflictText is not null;
+
+    private void UpdateShortcutConflicts()
+    {
+        var groups = Shortcuts
+            .Where(shortcut => !string.IsNullOrWhiteSpace(shortcut.Gesture))
+            .GroupBy(shortcut => ShortcutService.Normalize(shortcut.Gesture), StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .ToList();
+        ShortcutConflictText = groups.Count == 0
+            ? null
+            : L10n.Format("快捷键冲突：{0}", string.Join("；", groups.Select(group =>
+                $"{group.Key} → {string.Join(L10n.T("、"), group.Select(shortcut => shortcut.Label))}")));
+    }
 
     public bool HasConnections => Connections.Count > 0;
 
@@ -1085,6 +1134,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
                 ShowInContextMenu = command.ShowInContextMenu,
                 RunInTerminal = command.RunInTerminal,
                 RequiresSelection = command.RequiresSelection,
+                ConfirmBeforeRun = command.ConfirmBeforeRun,
+                PipeSelectionToStdin = command.PipeSelectionToStdin,
+                EnvironmentVariables = command.EnvironmentVariables ?? string.Empty,
+                PinnedToToolbar = command.PinnedToToolbar,
             })
             .ToList();
         settings.OpenWithDefaults = new Dictionary<string, string>(_openWithDefaults, StringComparer.Ordinal);

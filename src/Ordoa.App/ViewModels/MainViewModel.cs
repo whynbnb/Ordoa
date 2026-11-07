@@ -69,6 +69,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _systemSection, value);
     }
 
+    public IReadOnlyList<Ordoa.Core.Models.CustomCommand> ToolbarCommands
+        => _services.CustomCommands.GetToolbarCommands();
+    public bool HasToolbarCommands => ToolbarCommands.Count > 0;
+
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
     public ObservableCollection<PaletteCommand> PaletteCommands { get; } = [];
     public ObservableCollection<PaletteCommand> FilteredCommands { get; } = [];
@@ -701,12 +705,40 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             try
             {
                 await command.ExecuteAsync().ConfigureAwait(true);
+                RecordPaletteUse(command.Title);
             }
             catch (Exception ex)
             {
                 AddToast(L10n.T("操作失败"), ex.Message, ToastKind.Error);
             }
         }
+    }
+
+    private void RecordPaletteUse(string title)
+    {
+        var settings = _services.Settings.Current;
+        settings.PaletteRecent.RemoveAll(entry => string.Equals(entry, title, StringComparison.Ordinal));
+        settings.PaletteRecent.Insert(0, title);
+        while (settings.PaletteRecent.Count > 16)
+            settings.PaletteRecent.RemoveAt(settings.PaletteRecent.Count - 1);
+        settings.PaletteUsage[title] = settings.PaletteUsage.GetValueOrDefault(title) + 1;
+        _services.Settings.Save();
+    }
+
+    public async Task RunToolbarCommandAsync(string id)
+    {
+        var command = _services.CustomCommands.Find(id);
+        if (command is null)
+            return;
+        var paths = ActivePane?.SelectedPaths ?? [];
+        if (command.RequiresSelection && paths.Count == 0)
+        {
+            AddToast(L10n.T("无法运行命令"), L10n.T("该命令需要先选中文件或文件夹"), ToastKind.Error);
+            return;
+        }
+        if (!await _services.CustomCommands.RunAsync(command, ActivePane?.CurrentPath ?? AppPaths.Home, paths)
+                .ConfigureAwait(true))
+            AddToast(L10n.T("无法运行命令"), command.Name, ToastKind.Error);
     }
 
     [RelayCommand]
@@ -1124,16 +1156,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return Task.CompletedTask;
     }
 
-    public Task RunCustomCommandForSidebarEntryAsync(SidebarEntryViewModel entry, string commandId)
+    public async Task RunCustomCommandForSidebarEntryAsync(SidebarEntryViewModel entry, string commandId)
     {
         var path = entry.VolumeMountPoint ?? entry.Path;
         var command = _services.CustomCommands.Find(commandId);
         if (string.IsNullOrEmpty(path) || command is null)
-            return Task.CompletedTask;
+            return;
 
-        if (!_services.CustomCommands.Run(command, path, []))
+        if (!await _services.CustomCommands.RunAsync(command, path, []).ConfigureAwait(true))
             AddToast(L10n.T("无法运行命令"), command.Name, ToastKind.Error);
-        return Task.CompletedTask;
     }
 
     public Task AnalyzeDiskUsageForSidebarEntryAsync(SidebarEntryViewModel entry)
@@ -2062,6 +2093,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
+        OnPropertyChanged(nameof(ToolbarCommands));
+        OnPropertyChanged(nameof(HasToolbarCommands));
+
         var showPreviewPanel = _services.Settings.Current.ShowPreviewPanel;
         if (_isPreviewPanelOpen != showPreviewPanel)
         {
@@ -2196,11 +2230,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void FilterPalette()
     {
         var query = PaletteQuery.Trim();
+        var settings = _services.Settings.Current;
+        int Score(PaletteCommand command)
+        {
+            var score = command.Title.StartsWith(query, StringComparison.CurrentCultureIgnoreCase) ? 1000 : 0;
+            score += settings.PaletteUsage.GetValueOrDefault(command.Title) * 10;
+            var recentIndex = settings.PaletteRecent.IndexOf(command.Title);
+            if (recentIndex >= 0)
+                score += Math.Max(1, 60 - recentIndex * 4);
+            return score;
+        }
+
         var matches = PaletteCommands
             .Where(c => query.Length == 0 ||
                         c.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                         (c.Subtitle?.Contains(query, StringComparison.CurrentCultureIgnoreCase) ?? false))
-            .OrderByDescending(c => c.Title.StartsWith(query, StringComparison.CurrentCultureIgnoreCase))
+            .OrderByDescending(Score)
+            .ThenBy(c => c.Title, StringComparer.CurrentCulture)
             .ToList();
 
         FilteredCommands.Clear();

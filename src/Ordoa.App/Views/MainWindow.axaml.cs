@@ -426,6 +426,12 @@ public partial class MainWindow : Window
             _viewModel.DismissToast(toast);
     }
 
+    private async void OnToolbarCommandClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is Control { Tag: string id } && DataContext is MainViewModel vm)
+            await vm.RunToolbarCommandAsync(id);
+    }
+
     private void OnPaletteBackdropPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.Source == sender)

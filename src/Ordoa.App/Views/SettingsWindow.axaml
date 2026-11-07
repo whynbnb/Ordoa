@@ -534,7 +534,7 @@
                 <DataTemplate x:DataType="vm:CustomCommandViewModel">
                   <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="7" Padding="10,8"
                           Margin="0,3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
                       <TextBox Text="{Binding Name, Mode=TwoWay}"
                                PlaceholderText="{loc:Tr 命令名称}" />
                       <Button Grid.Column="1" Classes="tool" Width="24" Height="24" Margin="8,0,0,0"
@@ -561,8 +561,22 @@
                         <CheckBox Content="{loc:Tr 在终端中运行}"
                                   IsChecked="{Binding RunInTerminal, Mode=TwoWay}" Margin="0,0,14,0" />
                         <CheckBox Content="{loc:Tr 仅在有选中项时可用}"
-                                  IsChecked="{Binding RequiresSelection, Mode=TwoWay}" />
+                                  IsChecked="{Binding RequiresSelection, Mode=TwoWay}" Margin="0,0,14,0" />
+                        <CheckBox Content="{loc:Tr 固定到工具栏}"
+                                  IsChecked="{Binding PinnedToToolbar, Mode=TwoWay}" Margin="0,0,14,0" />
+                        <CheckBox Content="{loc:Tr 运行前确认}"
+                                  IsChecked="{Binding ConfirmBeforeRun, Mode=TwoWay}" Margin="0,0,14,0" />
+                        <CheckBox Content="{loc:Tr 将选中路径写入标准输入}"
+                                  IsChecked="{Binding PipeSelectionToStdin, Mode=TwoWay}" />
                       </WrapPanel>
+
+                      <Grid Grid.Row="4" Grid.ColumnSpan="2" ColumnDefinitions="120,*" ColumnSpacing="8">
+                        <TextBlock Text="{loc:Tr 环境变量}" Classes="fieldlabel" VerticalAlignment="Top" />
+                        <TextBox Grid.Column="1" Text="{Binding EnvironmentVariables, Mode=TwoWay}"
+                                 AcceptsReturn="True" MinHeight="48" MaxHeight="90"
+                                 FontFamily="{DynamicResource MonoFontFamily}"
+                                 PlaceholderText="KEY=VALUE" />
+                      </Grid>
                     </Grid>
                   </Border>
                 </DataTemplate>
@@ -708,6 +722,9 @@
               <TextBlock Text="{loc:Tr 为常用操作自定义键盘组合；留空即可禁用。}" Classes="caption" />
             </StackPanel>
 
+            <TextBlock Text="{Binding ShortcutConflictText}" Foreground="{DynamicResource ErrorBrush}"
+                       Classes="fieldhint" TextWrapping="Wrap"
+                       IsVisible="{Binding HasShortcutConflicts}" />
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="{loc:Tr 使用 Ctrl / Shift / Alt / Meta 加键名，例如 Ctrl+Shift+T。}"
                          Classes="fieldhint" TextWrapping="Wrap" VerticalAlignment="Center" />

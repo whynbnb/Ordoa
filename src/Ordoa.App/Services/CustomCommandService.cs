@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Ordoa.Core.Localization;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
@@ -23,6 +24,11 @@ public sealed class CustomCommandService
             .Where(command => command.ShowInContextMenu && !string.IsNullOrWhiteSpace(command.Command))
             .ToList();
 
+    public IReadOnlyList<CustomCommand> GetToolbarCommands()
+        => GetAll()
+            .Where(command => command.PinnedToToolbar && !string.IsNullOrWhiteSpace(command.Command))
+            .ToList();
+
     public CustomCommand? Find(string id)
         => GetAll().FirstOrDefault(command =>
             string.Equals(command.Id, id, StringComparison.Ordinal));
@@ -30,10 +36,20 @@ public sealed class CustomCommandService
     public bool CanRun(CustomCommand command, bool hasSelection)
         => !command.RequiresSelection || hasSelection;
 
-    public bool Run(CustomCommand command, string workingDirectory, IReadOnlyList<string> selectedPaths)
+    public async Task<bool> RunAsync(CustomCommand command, string workingDirectory,
+        IReadOnlyList<string> selectedPaths)
     {
         if (string.IsNullOrWhiteSpace(command.Command))
             return false;
+
+        if (command.ConfirmBeforeRun)
+        {
+            var confirmed = await _services.Dialogs.ConfirmAsync(
+                L10n.T("运行自定义命令？"), $"{command.Name}\n{command.Command}", L10n.T("运行"))
+                .ConfigureAwait(true);
+            if (!confirmed)
+                return false;
+        }
 
         var directory = ResolveWorkingDirectory(command.WorkingDirectory, workingDirectory, selectedPaths);
         var commandLine = CommandTemplateService.Expand(
@@ -44,7 +60,28 @@ public sealed class CustomCommandService
         if (command.RunInTerminal)
             return _services.Terminals.OpenCommand(directory, commandLine);
 
-        return StartShell(commandLine, directory);
+        var environment = ParseEnvironment(command.EnvironmentVariables);
+        return StartShell(commandLine, directory, environment,
+            command.PipeSelectionToStdin ? selectedPaths : null);
+    }
+
+    private static IReadOnlyDictionary<string, string> ParseEnvironment(string? text)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(text))
+            return result;
+
+        foreach (var raw in text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = raw.IndexOf('=');
+            if (separator <= 0)
+                continue;
+            var key = raw[..separator].Trim();
+            if (key.Length == 0)
+                continue;
+            result[key] = raw[(separator + 1)..];
+        }
+        return result;
     }
 
     private static string ResolveWorkingDirectory(string? template, string workingDirectory,
@@ -73,7 +110,8 @@ public sealed class CustomCommandService
         return workingDirectory;
     }
 
-    private static bool StartShell(string commandLine, string workingDirectory)
+    private static bool StartShell(string commandLine, string workingDirectory,
+        IReadOnlyDictionary<string, string> environment, IReadOnlyList<string>? stdinPaths)
     {
         try
         {
@@ -98,9 +136,29 @@ public sealed class CustomCommandService
             else
                 startInfo.ArgumentList.Add("-lc");
             startInfo.ArgumentList.Add(commandLine);
+            foreach (var (key, value) in environment)
+                startInfo.Environment[key] = value;
+            if (stdinPaths is not null)
+                startInfo.RedirectStandardInput = true;
 
             using var process = Process.Start(startInfo);
-            return process is not null;
+            if (process is null)
+                return false;
+
+            if (stdinPaths is not null)
+            {
+                try
+                {
+                    process.StandardInput.Write(string.Join(Environment.NewLine, stdinPaths));
+                    process.StandardInput.Close();
+                }
+                catch
+                {
+                    // The command may exit before reading standard input.
+                }
+            }
+
+            return true;
         }
         catch (Exception ex)
         {

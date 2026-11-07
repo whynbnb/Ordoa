@@ -1122,5 +1122,13 @@
  "没有扩展属性或 ACL": "No extended attributes or ACLs",
  "创建硬链接": "Create hard link",
  "创建硬链接失败": "Could not create hard link",
- "在当前位置创建指向选中项目的链接": "Create a link to the selected item in the current folder"
+ "在当前位置创建指向选中项目的链接": "Create a link to the selected item in the current folder",
+ "快捷键冲突：{0}": "Shortcut conflict: {0}",
+ "固定到工具栏": "Pin to toolbar",
+ "运行前确认": "Confirm before running",
+ "将选中路径写入标准输入": "Write selected paths to standard input",
+ "环境变量": "Environment variables",
+ "固定的自定义动作": "Pinned custom actions",
+ "运行自定义命令？": "Run custom command?",
+ "运行": "Run"
 }

@@ -543,6 +543,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public TerminalProfile? DefaultContextTerminal => _services.Terminals.GetDefaultContextProfile();
     public TerminalProfile? EnabledHerdr => _services.Terminals.GetEnabledHerdr();
     public IReadOnlyList<CustomCommand> ContextCustomCommands => _services.CustomCommands.GetContextMenuCommands();
+    public IReadOnlyList<string> SelectedPaths => _selected.Select(item => item.Entry.Path).ToList();
     public bool CanRestore => IsTrash && HasSelection;
     public bool CanCalculateFolderSize => FileSystem.IsLocal && !IsTrash &&
                                           _selected.Any(item => item.IsDirectory);
@@ -2005,27 +2006,26 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         SelectPaths([path]);
     }
 
-    public Task RunCustomCommandAsync(string id)
+    public async Task RunCustomCommandAsync(string id)
     {
         var command = _services.CustomCommands.Find(id);
         if (command is null)
-            return Task.CompletedTask;
+            return;
         if (!CanRunCustomCommands)
         {
             Toast(L10n.T("无法运行命令"), L10n.T("自定义命令只支持本地文件夹"), true);
-            return Task.CompletedTask;
+            return;
         }
         if (!CanRunCustomCommand(command))
         {
             Toast(L10n.T("无法运行命令"), L10n.T("该命令需要先选中文件或文件夹"), true);
-            return Task.CompletedTask;
+            return;
         }
 
         var paths = _selected.Select(item => item.Entry.Path).ToList();
-        var success = _services.CustomCommands.Run(command, CurrentPath, paths);
+        var success = await _services.CustomCommands.RunAsync(command, CurrentPath, paths).ConfigureAwait(true);
         if (!success)
             Toast(L10n.T("无法运行命令"), command.Name, true);
-        return Task.CompletedTask;
     }
 
     public void ToggleSelection(FileItemViewModel item, bool selected)
