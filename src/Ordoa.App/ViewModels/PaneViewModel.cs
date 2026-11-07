@@ -72,13 +72,15 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(LocationText));
             OnPropertyChanged(nameof(IsTrash));
             OnPropertyChanged(nameof(IsRemote));
+            OnPropertyChanged(nameof(IsArchive));
             OnPropertyChanged(nameof(FsBadgeText));
         }
     }
 
     public string DisplayPath => FileSystem.GetDisplayPath(CurrentPath);
-    public bool IsRemote => !FileSystem.IsLocal;
+    public bool IsRemote => !FileSystem.IsLocal && FileSystem is not ArchiveFileSystem;
     public bool IsTrash => FileSystem is TrashFileSystem;
+    public bool IsArchive => FileSystem is ArchiveFileSystem;
     public bool IsLocal => FileSystem.IsLocal;
 
     private string _title = L10n.T("主目录");
@@ -311,6 +313,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public string FsBadgeText => FileSystem switch
     {
         TrashFileSystem => L10n.T("回收站"),
+        ArchiveFileSystem archive => archive.Format switch
+        {
+            ArchiveFormat.Zip => "ZIP",
+            ArchiveFormat.TarGz => "TAR.GZ",
+            _ => "TAR",
+        },
         { IsLocal: true } => L10n.T("本机"),
         { Scheme: "sftp" } => "SFTP",
         { Scheme: "ftp" } => "FTP",
@@ -565,6 +573,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         UpdateSelectionDependentProperties();
         OnPropertyChanged(nameof(IsTrash));
         OnPropertyChanged(nameof(IsRemote));
+            OnPropertyChanged(nameof(IsArchive));
         OnPropertyChanged(nameof(FsBadgeText));
         OnPropertyChanged(nameof(CanCreateFolder));
         OnPropertyChanged(nameof(CanCreateFile));
@@ -610,6 +619,26 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (item.IsDirectory)
         {
             await NavigateAsync(FileSystem, item.Path).ConfigureAwait(true);
+            return;
+        }
+
+        if (FileSystem.IsLocal && ArchiveService.IsSupportedArchive(item.Name))
+        {
+            try
+            {
+                IsLoading = true;
+                var archive = await ArchiveFileSystem.OpenAsync(item.Path).ConfigureAwait(true);
+                await NavigateAsync(archive, "/").ConfigureAwait(true);
+                Toast(L10n.T("已打开压缩包"), item.Name, false);
+            }
+            catch (Exception ex)
+            {
+                Toast(L10n.T("无法打开压缩包"), ex.Message, true);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
             return;
         }
 
@@ -1684,6 +1713,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(DisplayPath));
         OnPropertyChanged(nameof(IsTrash));
         OnPropertyChanged(nameof(IsRemote));
+            OnPropertyChanged(nameof(IsArchive));
         OnPropertyChanged(nameof(FsBadgeText));
     }
 

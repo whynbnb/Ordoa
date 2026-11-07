@@ -12,6 +12,7 @@ public sealed class AppServices : IAsyncDisposable
     public AppServices()
     {
         AppPaths.EnsureCreated();
+        ArchiveFileSystem.CleanupStaleCache();
         Settings = new SettingsService();
         Shortcuts = new ShortcutService(Settings);
         ThemeService.Apply(Settings.Current);
