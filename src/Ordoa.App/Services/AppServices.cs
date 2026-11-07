@@ -28,6 +28,7 @@ public sealed class AppServices : IAsyncDisposable
         Workspaces = new WorkspaceService();
         Tags = new TagService();
         RemoteEdits = new RemoteEditService();
+        TabDrags = new TabDragService();
         Thumbnails = new ThumbnailService();
         Previews = new PreviewService();
         Shell = new ShellLauncher();
@@ -57,6 +58,7 @@ public sealed class AppServices : IAsyncDisposable
     public WorkspaceService Workspaces { get; }
     public TagService Tags { get; }
     public RemoteEditService RemoteEdits { get; }
+    public TabDragService TabDrags { get; }
     public ThumbnailService Thumbnails { get; }
     public PreviewService Previews { get; }
     public ClipboardService Clipboard { get; }

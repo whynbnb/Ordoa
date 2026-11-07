@@ -1528,16 +1528,33 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _services.Settings.Save();
     }
 
-    private void RememberClosedTab(TabViewModel tab, int index)
+    public SessionTab SnapshotTab(TabViewModel tab)
     {
         var panes = tab.Panes.ToList();
-        var state = new SessionTab
+        return new SessionTab
         {
             IsSplit = tab.IsSplit,
             IsPinned = tab.IsPinned,
             ActivePane = Math.Max(0, panes.IndexOf(tab.ActivePane)),
             Panes = panes.Select(SnapshotPane).ToList(),
         };
+    }
+
+    public async Task<TabViewModel?> AdoptTabAsync(SessionTab state)
+    {
+        var tab = await CreateTabFromSessionAsync(state, Tabs.Count).ConfigureAwait(true);
+        if (tab is not null)
+        {
+            ActivateTab(tab);
+            UpdateWindowTitle();
+        }
+        return tab;
+    }
+
+    private void RememberClosedTab(TabViewModel tab, int index)
+    {
+        var panes = tab.Panes.ToList();
+        var state = SnapshotTab(tab);
         _closedTabs.Add(new ClosedTabState(state, index, panes.Select(pane => pane.FileSystem).ToList()));
         while (_closedTabs.Count > MaxClosedTabs)
             _closedTabs.RemoveAt(0);

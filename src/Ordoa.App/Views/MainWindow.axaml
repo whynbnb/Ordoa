@@ -151,7 +151,8 @@
 
           <ScrollViewer x:Name="TabScroller" Grid.Column="2" HorizontalScrollBarVisibility="Hidden"
                         VerticalScrollBarVisibility="Disabled" PointerWheelChanged="OnTabScrollerWheel"
-                        Margin="6,0,6,0">
+                        DragDrop.AllowDrop="True" DragDrop.DragOver="OnTabStripDragOver"
+                        DragDrop.Drop="OnTabStripDrop" Margin="6,0,6,0">
             <ItemsControl ItemsSource="{Binding Tabs}" VerticalAlignment="Center">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>

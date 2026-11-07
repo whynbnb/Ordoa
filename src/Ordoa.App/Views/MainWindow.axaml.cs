@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private double _lastNormalWidth;
     private double _lastNormalHeight;
     private TabViewModel? _dragTab;
+    private PointerPressedEventArgs? _tabDragTrigger;
     private Border? _dragTabBorder;
     private Point _tabDragStart;
     private bool _tabDragging;
@@ -353,12 +354,13 @@ public partial class MainWindow : Window
         {
             _dragTab = tab;
             _dragTabBorder = border;
+            _tabDragTrigger = e;
             _tabDragStart = e.GetPosition(this);
             _tabDragging = false;
         }
     }
 
-    private void OnTabPointerMoved(object? sender, PointerEventArgs e)
+    private async void OnTabPointerMoved(object? sender, PointerEventArgs e)
     {
         if (_viewModel is null || _dragTab is null || _dragTabBorder is null)
             return;
@@ -370,6 +372,13 @@ public partial class MainWindow : Window
                 return;
             _tabDragging = true;
             e.Pointer.Capture(_dragTabBorder);
+        }
+
+        if (point.X < 0 || point.Y < 0 || point.X > Bounds.Width || point.Y > Bounds.Height)
+        {
+            var tab = _dragTab;
+            await BeginCrossWindowTabDragAsync(e, tab);
+            return;
         }
 
         var hit = this.InputHitTest(point) as Visual;
@@ -394,7 +403,67 @@ public partial class MainWindow : Window
     {
         _dragTab = null;
         _dragTabBorder = null;
+        _tabDragTrigger = null;
         _tabDragging = false;
+    }
+
+    private const string TabDragPrefix = "ordoa-tab:";
+
+    private async Task BeginCrossWindowTabDragAsync(PointerEventArgs e, TabViewModel tab)
+    {
+        if (_viewModel is null)
+            return;
+
+        var trigger = _tabDragTrigger;
+        EndTabDrag(e.Pointer);
+        if (trigger is null)
+            return;
+
+        var token = _viewModel.Services.TabDrags.Register(_viewModel, tab);
+        try
+        {
+            var transfer = new DataTransfer();
+            transfer.Add(DataTransferItem.CreateText(TabDragPrefix + token));
+            await DragDrop.DoDragDropAsync(trigger, transfer, DragDropEffects.Move);
+        }
+        catch
+        {
+            // A cancelled drag leaves the source tab untouched.
+        }
+        finally
+        {
+            _viewModel.Services.TabDrags.Cancel(token);
+        }
+    }
+
+    private void OnTabStripDragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    private async void OnTabStripDrop(object? sender, DragEventArgs e)
+    {
+        if (_viewModel is null)
+            return;
+
+        var text = e.DataTransfer.TryGetText();
+        if (string.IsNullOrEmpty(text) || !text.StartsWith(TabDragPrefix, StringComparison.Ordinal))
+            return;
+
+        var token = text[TabDragPrefix.Length..];
+        if (!_viewModel.Services.TabDrags.TryTake(token, out var payload) || payload is null)
+            return;
+
+        e.DragEffects = DragDropEffects.Move;
+        e.Handled = true;
+        if (ReferenceEquals(payload.Source, _viewModel) ||
+            !payload.Source.Tabs.Contains(payload.Tab))
+            return;
+
+        var state = payload.Source.SnapshotTab(payload.Tab);
+        payload.Source.CloseTab(payload.Tab);
+        await _viewModel.AdoptTabAsync(state);
     }
 
     private void EndTabDrag(IPointer? pointer)
@@ -402,6 +471,7 @@ public partial class MainWindow : Window
         pointer?.Capture(null);
         _dragTab = null;
         _dragTabBorder = null;
+        _tabDragTrigger = null;
         _tabDragging = false;
     }
 
