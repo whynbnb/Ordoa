@@ -47,6 +47,13 @@ public enum PreviewPanelPlacement
     Bottom,
 }
 
+public enum CopyVerificationMode
+{
+    None,
+    Size,
+    Sha256,
+}
+
 public sealed class AppSettings
 {
     public UiLanguage Language { get; set; } = UiLanguage.System;
@@ -82,6 +89,12 @@ public sealed class AppSettings
     public List<string> SearchHistory { get; set; } = [];
     /// <summary>Named search expressions shown in the search flyout.</summary>
     public List<SavedSearch> SavedSearches { get; set; } = [];
+    /// <summary>How copied files are verified after the transfer completes.</summary>
+    public CopyVerificationMode CopyVerification { get; set; } = CopyVerificationMode.Size;
+    /// <summary>Number of transfer jobs allowed to run at once.</summary>
+    public int TransferConcurrency { get; set; } = 1;
+    /// <summary>Global transfer speed limit in MB/s. Zero means unlimited.</summary>
+    public int TransferSpeedLimitMb { get; set; }
     /// <summary>Optional path to the ffmpeg executable used for media previews.</summary>
     public string FfmpegPath { get; set; } = string.Empty;
     public double WindowWidth { get; set; } = 1200;
@@ -295,6 +308,10 @@ public sealed class SettingsService
             .Distinct(StringComparer.Ordinal)
             .Take(20)
             .ToList();
+        if (!Enum.IsDefined(Current.CopyVerification))
+            Current.CopyVerification = CopyVerificationMode.Size;
+        Current.TransferConcurrency = Math.Clamp(Current.TransferConcurrency, 1, 4);
+        Current.TransferSpeedLimitMb = Math.Clamp(Current.TransferSpeedLimitMb, 0, 100_000);
         Current.SavedSearches = (Current.SavedSearches ?? [])
             .Where(search => search is not null && !string.IsNullOrWhiteSpace(search.Query))
             .Select(search =>

@@ -83,7 +83,27 @@
                       </StackPanel>
                     </Grid>
                     <TextBlock Text="{Binding Error}" Classes="tiny" Foreground="{DynamicResource ErrorBrush}"
-                               TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding IsFailed}" />
+                               TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding ShowError}" />
+                    <Button Classes="ghost" Padding="4,1" FontSize="10.5" HorizontalAlignment="Left"
+                            IsVisible="{Binding HasFailures}" ToolTip.Tip="{loc:Tr 查看失败项}">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{loc:Tr 失败项}" FontSize="10.5" />
+                        <TextBlock Text="{Binding FailureCount}" FontSize="10.5" />
+                        <Path Data="{StaticResource IconChevronDown}" Width="8" Height="8" Stretch="Uniform"
+                              Fill="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <Button.Flyout>
+                        <Flyout Placement="Top">
+                          <ItemsControl ItemsSource="{Binding Failures}" MaxWidth="460">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{Binding}" Classes="tiny" TextWrapping="Wrap" Margin="0,2" />
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </Flyout>
+                      </Button.Flyout>
+                    </Button>
                   </StackPanel>
 
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="1"
@@ -108,7 +128,7 @@
                             IsVisible="{Binding CanRetry}"
                             Command="{Binding $parent[UserControl].DataContext.RetryTransferCommand}"
                             CommandParameter="{Binding}"
-                            ToolTip.Tip="{loc:Tr 重试}">
+                            ToolTip.Tip="{loc:Tr 重试失败项}">
                       <Path Data="{StaticResource IconRestore}" Fill="{DynamicResource TextSecondaryBrush}"
                             Width="12" Height="12" Stretch="Uniform" />
                     </Button>

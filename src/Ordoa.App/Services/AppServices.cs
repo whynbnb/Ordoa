@@ -35,7 +35,7 @@ public sealed class AppServices : IAsyncDisposable
         Dialogs = new DialogService(() => Windows.ActiveWindow);
         Integration = new SystemIntegrationService();
         FileManager1 = new FileManager1Service((uris, action) => Windows.HandleFileManagerRequestAsync(uris, action));
-        Operations = new FileOperationService(Trash, action => Dispatcher.UIThread.Post(action));
+        Operations = new FileOperationService(Trash, action => Dispatcher.UIThread.Post(action), Settings);
         Operations.ConflictResolver = new DialogConflictResolver(Dialogs);
         Undo = new UndoService(this);
     }

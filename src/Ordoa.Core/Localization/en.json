@@ -1020,5 +1020,22 @@
  "无法保存搜索": "Cannot save search",
  "请先输入搜索内容": "Enter a search expression first",
  "保存搜索": "Save search",
- "已保存搜索": "Search saved"
+ "已保存搜索": "Search saved",
+ "传输": "Transfers",
+ "并发任务": "Concurrent jobs",
+ "同时执行的传输任务数量": "Number of transfer jobs that may run at once",
+ "速度限制": "Speed limit",
+ "单位 MB/s；0 表示不限制": "In MB/s; 0 means unlimited",
+ "复制校验": "Copy verification",
+ "不校验": "No verification",
+ "校验大小": "Verify size",
+ "校验失败的文件会标记为失败，可单独重试": "Files that fail verification are marked as failed and can be retried individually",
+ "重试 {0} 个失败项目": "Retry {0} failed items",
+ "失败项": "Failed items",
+ "查看失败项": "View failed items",
+ "重试失败项": "Retry failed items",
+ "复制后找不到目标文件：{0}": "Destination file not found after copy: {0}",
+ "复制后大小校验失败：{0}（源 {1} 字节，目标 {2} 字节）": "Size verification failed after copy: {0} (source {1} bytes, destination {2} bytes)",
+ "复制后 SHA-256 校验失败：{0}": "SHA-256 verification failed after copy: {0}",
+ "SHA-256": "SHA-256"
 }

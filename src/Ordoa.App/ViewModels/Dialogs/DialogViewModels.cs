@@ -469,6 +469,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _previewPanelPlacementIndex = settings.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         _searchDepth = settings.SearchDepth;
         _maxSearchResults = settings.MaxSearchResults;
+        _transferConcurrency = settings.TransferConcurrency;
+        _transferSpeedLimit = settings.TransferSpeedLimitMb;
+        _copyVerificationIndex = (int)settings.CopyVerification;
         _ffmpegPath = settings.FfmpegPath;
         _useSystemWindowFrame = settings.UseSystemWindowFrame;
         _windowButtonMode = settings.WindowButtonMode;
@@ -504,6 +507,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         [
             L10n.T("右侧"),
             L10n.T("底部"),
+        ];
+        CopyVerificationModes =
+        [
+            L10n.T("不校验"),
+            L10n.T("校验大小"),
+            L10n.T("SHA-256"),
         ];
 
         Categories =
@@ -695,6 +704,15 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private decimal _maxSearchResults;
 
     [ObservableProperty]
+    private decimal _transferConcurrency = 1;
+
+    [ObservableProperty]
+    private decimal _transferSpeedLimit;
+
+    [ObservableProperty]
+    private int _copyVerificationIndex;
+
+    [ObservableProperty]
     private string _ffmpegPath = string.Empty;
 
     [ObservableProperty]
@@ -807,6 +825,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public IReadOnlyList<string> FolderOpenModes { get; }
     public IReadOnlyList<string> UndoBehaviors { get; }
     public IReadOnlyList<string> PreviewPanelPlacements { get; }
+    public IReadOnlyList<string> CopyVerificationModes { get; }
 
     public string SettingsPath => AppPaths.SettingsFile;
 
@@ -979,6 +998,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             : PreviewPanelPlacement.Right;
         settings.SearchDepth = Math.Clamp((int)SearchDepth, 1, 64);
         settings.MaxSearchResults = Math.Clamp((int)MaxSearchResults, 100, 20000);
+        settings.TransferConcurrency = Math.Clamp((int)TransferConcurrency, 1, 4);
+        settings.TransferSpeedLimitMb = Math.Clamp((int)TransferSpeedLimit, 0, 100_000);
+        settings.CopyVerification = (CopyVerificationMode)Math.Clamp(CopyVerificationIndex, 0, 2);
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
         settings.UseSystemWindowFrame = UseSystemWindowFrame;
         settings.WindowButtonMode = WindowButtonMode;
@@ -1066,6 +1088,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         PreviewPanelPlacementIndex = defaults.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         SearchDepth = defaults.SearchDepth;
         MaxSearchResults = defaults.MaxSearchResults;
+        TransferConcurrency = defaults.TransferConcurrency;
+        TransferSpeedLimit = defaults.TransferSpeedLimitMb;
+        CopyVerificationIndex = (int)defaults.CopyVerification;
         FfmpegPath = defaults.FfmpegPath;
         UseSystemWindowFrame = defaults.UseSystemWindowFrame;
         WindowButtonMode = defaults.WindowButtonMode;

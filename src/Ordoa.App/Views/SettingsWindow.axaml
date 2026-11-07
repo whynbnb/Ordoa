@@ -241,6 +241,30 @@
               <TextBlock Grid.Row="1" Grid.Column="2" Text="{loc:Tr 达到上限后停止继续扫描}" Classes="fieldhint"
                          VerticalAlignment="Center" Margin="10,0,0,0" />
             </Grid>
+
+            <Border Classes="divider" />
+
+            <TextBlock Text="{loc:Tr 传输}" Classes="section" />
+            <Grid ColumnDefinitions="120,140,*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+              <TextBlock Text="{loc:Tr 并发任务}" Classes="fieldlabel" />
+              <NumericUpDown Grid.Column="1" Minimum="1" Maximum="4" Increment="1" FormatString="0"
+                             Value="{Binding TransferConcurrency, Mode=TwoWay}" />
+              <TextBlock Grid.Column="2" Text="{loc:Tr 同时执行的传输任务数量}" Classes="fieldhint"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
+
+              <TextBlock Grid.Row="1" Text="{loc:Tr 速度限制}" Classes="fieldlabel" />
+              <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100000" Increment="1"
+                             FormatString="0" Value="{Binding TransferSpeedLimit, Mode=TwoWay}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Text="{loc:Tr 单位 MB/s；0 表示不限制}" Classes="fieldhint"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
+
+              <TextBlock Grid.Row="2" Text="{loc:Tr 复制校验}" Classes="fieldlabel" />
+              <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding CopyVerificationModes}"
+                        SelectedIndex="{Binding CopyVerificationIndex, Mode=TwoWay}"
+                        MinWidth="140" HorizontalAlignment="Left" />
+              <TextBlock Grid.Row="2" Grid.Column="2" Text="{loc:Tr 校验失败的文件会标记为失败，可单独重试}"
+                         Classes="fieldhint" VerticalAlignment="Center" Margin="10,0,0,0" />
+            </Grid>
           </StackPanel>
 
           <!-- Sidebar -->

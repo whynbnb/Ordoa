@@ -35,6 +35,11 @@ public sealed record OperationSource(IFileSystem FileSystem, FileEntry Entry)
     public bool IsDirectory => Entry.IsDirectory;
 }
 
+/// <summary>A source that failed to transfer, kept so retry can target only it.</summary>
+public sealed record FailedTransfer(OperationSource Source, string DestinationDirectory, string Message);
+
+internal sealed record CopyEntry(OperationSource Source, string DestinationDirectory);
+
 /// <summary>A successfully completed file operation, used by session undo history.</summary>
 public sealed record FileOperationResult(
     OperationSource Source,
@@ -73,6 +78,7 @@ public sealed partial class FileOperationItem : ObservableObject
     private readonly PauseGate _pauseGate = new();
     private CancellationTokenSource _cts = new();
     private OperationState _stateBeforePause = OperationState.Running;
+    private readonly object _failureSync = new();
 
     public FileOperationItem(string title, string detail, OperationKind kind)
     {
@@ -99,6 +105,7 @@ public sealed partial class FileOperationItem : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsCancelled))]
     [NotifyPropertyChangedFor(nameof(IsRunning))]
     [NotifyPropertyChangedFor(nameof(IsPausedState))]
+    [NotifyPropertyChangedFor(nameof(ShowError))]
     private OperationState _state;
 
     [ObservableProperty]
@@ -126,13 +133,22 @@ public sealed partial class FileOperationItem : ObservableObject
     private int _successCount;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFailures))]
+    [NotifyPropertyChangedFor(nameof(ShowError))]
+    [NotifyPropertyChangedFor(nameof(CanRetry))]
     private int _failureCount;
 
     [ObservableProperty]
     private bool _hasWarnings;
 
     public List<FileOperationResult> Results { get; } = [];
+    internal List<FailedTransfer> FailedTransfers { get; } = [];
+    public System.Collections.ObjectModel.ObservableCollection<string> Failures { get; } = [];
     internal Func<FileOperationItem?>? RetryFactory { get; set; }
+
+    public bool HasFailures => FailureCount > 0;
+    public bool ShowError => IsFailed || HasFailures;
+    public int FailedTransferCount => FailedTransfers.Count;
 
     public bool CanCancel => State is OperationState.Queued or OperationState.Scanning or
         OperationState.Running or OperationState.Paused;
@@ -198,6 +214,22 @@ public sealed partial class FileOperationItem : ObservableObject
     {
         try { _cts.Dispose(); } catch { /* ignore */ }
     }
+
+    internal void AddFailure(FailedTransfer transfer)
+    {
+        lock (_failureSync)
+            FailedTransfers.Add(transfer);
+    }
+
+    internal void SetFailures(IReadOnlyList<string> failures)
+    {
+        lock (_failureSync)
+        {
+            Failures.Clear();
+            foreach (var failure in failures)
+                Failures.Add(failure);
+        }
+    }
 }
 
 internal sealed class PauseGate
@@ -237,18 +269,30 @@ internal sealed class PauseGate
 
 public sealed class FileOperationService : IDisposable
 {
+    private const int MaxConcurrency = 4;
     private readonly System.Threading.Channels.Channel<Job> _queue =
         System.Threading.Channels.Channel.CreateUnbounded<Job>();
     private readonly CancellationTokenSource _shutdown = new();
-    private readonly Task _worker;
+    private readonly List<Task> _workers = [];
     private readonly Action<Action>? _post;
     private readonly TrashService _trash;
+    private readonly SettingsService? _settings;
+    private readonly ConcurrencyGate _gate = new();
+    private readonly BandwidthLimiter _bandwidth;
 
-    public FileOperationService(TrashService trash, Action<Action>? uiPost = null)
+    public FileOperationService(TrashService trash, Action<Action>? uiPost = null,
+        SettingsService? settings = null)
     {
         _trash = trash;
         _post = uiPost;
-        _worker = Task.Run(ProcessLoopAsync);
+        _settings = settings;
+        _bandwidth = new BandwidthLimiter(() =>
+            (_settings?.Current.TransferSpeedLimitMb ?? 0) * 1024L * 1024L);
+        _gate.SetLimit(_settings?.Current.TransferConcurrency ?? 1);
+        if (_settings is not null)
+            _settings.Changed += OnSettingsChanged;
+        for (var i = 0; i < MaxConcurrency; i++)
+            _workers.Add(Task.Run(ProcessLoopAsync));
     }
 
     public System.Collections.ObjectModel.ObservableCollection<FileOperationItem> Operations { get; } = [];
@@ -256,18 +300,47 @@ public sealed class FileOperationService : IDisposable
 
     public event EventHandler<FileOperationItem>? Finished;
 
+    private void OnSettingsChanged(object? sender, EventArgs e)
+    {
+        if (_settings is null)
+            return;
+        _gate.SetLimit(_settings.Current.TransferConcurrency);
+    }
+
     public FileOperationItem Copy(IReadOnlyList<OperationSource> sources, IFileSystem destinationFileSystem,
         string destinationDirectory, bool move)
     {
         ValidateSources(sources);
+        var entries = sources.Select(source => new CopyEntry(source, destinationDirectory)).ToList();
         var destination = destinationFileSystem.GetDisplayPath(destinationDirectory);
         var title = L10n.Format("{0} {1} 个项目", L10n.T(move ? "移动" : "复制"), sources.Count);
         var item = new FileOperationItem(title, destination, move ? OperationKind.Move : OperationKind.Copy)
         {
             Destination = destination,
         };
-        item.RetryFactory = () => Copy(sources, destinationFileSystem, destinationDirectory, move);
-        Enqueue(item, token => RunCopyAsync(item, sources, destinationFileSystem, destinationDirectory, move, token));
+        item.RetryFactory = () => item.State == OperationState.Failed && item.FailedTransfers.Count > 0
+            ? RetryFailedTransfers(item, destinationFileSystem, move)
+            : Copy(sources, destinationFileSystem, destinationDirectory, move);
+        Enqueue(item, token => RunCopyAsync(item, entries, destinationFileSystem, move, token));
+        return item;
+    }
+
+    private FileOperationItem RetryFailedTransfers(FileOperationItem failed, IFileSystem destinationFileSystem,
+        bool move)
+    {
+        var entries = failed.FailedTransfers
+            .Select(failure => new CopyEntry(failure.Source, failure.DestinationDirectory))
+            .ToList();
+        var title = L10n.Format("重试 {0} 个失败项目", entries.Count);
+        var item = new FileOperationItem(title, failed.Detail, move ? OperationKind.Move : OperationKind.Copy)
+        {
+            Destination = failed.Destination,
+        };
+        item.RetryFactory = () => item.State == OperationState.Failed && item.FailedTransfers.Count > 0
+            ? RetryFailedTransfers(item, destinationFileSystem, move)
+            : RetryFailedTransfers(failed, destinationFileSystem, move);
+        Enqueue(item, token => RunCopyAsync(item, entries, destinationFileSystem, move, token,
+            replaceAll: true));
         return item;
     }
 
@@ -338,11 +411,13 @@ public sealed class FileOperationService : IDisposable
 
     public void Dispose()
     {
+        if (_settings is not null)
+            _settings.Changed -= OnSettingsChanged;
         _shutdown.Cancel();
         _queue.Writer.TryComplete();
         foreach (var item in Operations)
             item.Cancel();
-        try { _worker.Wait(TimeSpan.FromSeconds(2)); } catch { /* ignore */ }
+        try { Task.WaitAll(_workers.ToArray(), TimeSpan.FromSeconds(2)); } catch { /* ignore */ }
         _shutdown.Dispose();
     }
 
@@ -353,6 +428,7 @@ public sealed class FileOperationService : IDisposable
         else
             _post(() => Operations.Insert(0, item));
 
+        _gate.SetLimit(_settings?.Current.TransferConcurrency ?? 1);
         _queue.Writer.TryWrite(new Job(item, work));
     }
 
@@ -360,39 +436,19 @@ public sealed class FileOperationService : IDisposable
     {
         try
         {
-            await foreach (var job in _queue.Reader.ReadAllAsync(_shutdown.Token).ConfigureAwait(false))
+            while (true)
             {
-                var item = job.Item;
-                if (item.Token.IsCancellationRequested)
-                {
-                    SetState(item, OperationState.Cancelled);
-                    item.DisposeToken();
-                    RaiseFinished(item);
-                    continue;
-                }
-
-                SetState(item, OperationState.Running);
+                await _gate.EnterAsync(_shutdown.Token).ConfigureAwait(false);
                 try
                 {
-                    await job.Work(item.Token).ConfigureAwait(false);
-                    if (item.State is OperationState.Running or OperationState.Scanning)
-                        SetState(item, OperationState.Completed);
-                }
-                catch (OperationCanceledException)
-                {
-                    SetState(item, OperationState.Cancelled);
-                    SetProgress(item, item.Progress, item.IsIndeterminate, L10n.T("已取消"), string.Empty, string.Empty, string.Empty);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error($"操作失败: {item.Title}", ex);
-                    SetError(item, ex.Message);
-                    SetState(item, OperationState.Failed);
+                    if (!await _queue.Reader.WaitToReadAsync(_shutdown.Token).ConfigureAwait(false))
+                        return;
+                    if (_queue.Reader.TryRead(out var job))
+                        await ProcessJobAsync(job).ConfigureAwait(false);
                 }
                 finally
                 {
-                    item.DisposeToken();
-                    RaiseFinished(item);
+                    _gate.Exit();
                 }
             }
         }
@@ -400,6 +456,42 @@ public sealed class FileOperationService : IDisposable
         catch (Exception ex)
         {
             Log.Error("操作队列异常", ex);
+        }
+    }
+
+    private async Task ProcessJobAsync(Job job)
+    {
+        var item = job.Item;
+        if (item.Token.IsCancellationRequested)
+        {
+            SetState(item, OperationState.Cancelled);
+            item.DisposeToken();
+            RaiseFinished(item);
+            return;
+        }
+
+        SetState(item, OperationState.Running);
+        try
+        {
+            await job.Work(item.Token).ConfigureAwait(false);
+            if (item.State is OperationState.Running or OperationState.Scanning)
+                SetState(item, OperationState.Completed);
+        }
+        catch (OperationCanceledException)
+        {
+            SetState(item, OperationState.Cancelled);
+            SetProgress(item, item.Progress, item.IsIndeterminate, L10n.T("已取消"), string.Empty, string.Empty, string.Empty);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"操作失败: {item.Title}", ex);
+            SetError(item, ex.Message);
+            SetState(item, OperationState.Failed);
+        }
+        finally
+        {
+            item.DisposeToken();
+            RaiseFinished(item);
         }
     }
 
@@ -411,13 +503,14 @@ public sealed class FileOperationService : IDisposable
             _post(() => Finished?.Invoke(this, item));
     }
 
-    private async Task RunCopyAsync(FileOperationItem item, IReadOnlyList<OperationSource> sources,
-        IFileSystem destinationFileSystem, string destinationDirectory, bool move, CancellationToken cancellationToken)
+    private async Task RunCopyAsync(FileOperationItem item, IReadOnlyList<CopyEntry> entries,
+        IFileSystem destinationFileSystem, bool move, CancellationToken cancellationToken, bool replaceAll = false)
     {
         SetState(item, OperationState.Scanning);
         SetProgress(item, 0, true, L10n.T("正在分析…"), string.Empty, string.Empty, string.Empty);
 
-        var scan = await ScanSourcesAsync(item, sources, cancellationToken).ConfigureAwait(false);
+        var scan = await ScanSourcesAsync(item, entries.Select(entry => entry.Source).ToList(), cancellationToken)
+            .ConfigureAwait(false);
         var tracker = new JobTracker(item, this, scan.TotalBytes, scan.TotalItems, scan.Indeterminate);
         if (item.State != OperationState.Paused)
             SetState(item, OperationState.Running);
@@ -426,9 +519,13 @@ public sealed class FileOperationService : IDisposable
         var errors = new List<string>();
         var succeeded = 0;
         var conflictContext = new ConflictContext();
+        if (replaceAll)
+            conflictContext.GlobalChoice = ConflictChoice.ReplaceAll;
 
-        foreach (var source in sources)
+        foreach (var entry in entries)
         {
+            var source = entry.Source;
+            var destinationDirectory = entry.DestinationDirectory;
             cancellationToken.ThrowIfCancellationRequested();
             await item.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
             tracker.StartSource(source.Name);
@@ -511,12 +608,13 @@ public sealed class FileOperationService : IDisposable
             catch (Exception ex)
             {
                 errors.Add($"{source.Name}: {ex.Message}");
+                tracker.FailTransfer(source, destinationDirectory, ex.Message);
                 Log.Warn($"复制项目失败: {source.Path}", ex);
             }
         }
 
         tracker.Complete(succeeded, errors);
-        if (succeeded == 0 && errors.Count > 0)
+        if (errors.Count > 0)
             SetState(item, OperationState.Failed);
     }
 
@@ -541,6 +639,7 @@ public sealed class FileOperationService : IDisposable
         {
             Log.Warn($"读取目录失败: {source.Path}", ex);
             tracker.FailSource();
+            tracker.FailTransfer(source, destinationFileSystem.GetParent(plan.Destination), ex.Message);
             return true;
         }
 
@@ -580,6 +679,7 @@ public sealed class FileOperationService : IDisposable
             {
                 hadError = true;
                 tracker.FailSource();
+                tracker.FailTransfer(childSource, plan.Destination, ex.Message);
                 Log.Warn($"复制子项目失败: {child.Path}", ex);
             }
         }
@@ -623,11 +723,14 @@ public sealed class FileOperationService : IDisposable
             while ((read = await input.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
             {
                 await tracker.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
+                await _bandwidth.ThrottleAsync(read, cancellationToken).ConfigureAwait(false);
                 await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                 tracker.AddBytes(read);
             }
             await output.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
+
+        await VerifyCopyAsync(source, plan, destinationFileSystem, cancellationToken).ConfigureAwait(false);
 
         if (source.Entry.Modified is { } modified)
         {
@@ -657,6 +760,41 @@ public sealed class FileOperationService : IDisposable
         }
 
         tracker.CompleteItem();
+    }
+
+    private async Task VerifyCopyAsync(OperationSource source, DestinationPlan plan,
+        IFileSystem destinationFileSystem, CancellationToken cancellationToken)
+    {
+        var mode = _settings?.Current.CopyVerification ?? CopyVerificationMode.None;
+        if (mode == CopyVerificationMode.None || source.Entry.IsSymlink || source.IsDirectory)
+            return;
+
+        var destination = await destinationFileSystem.GetEntryAsync(plan.Destination, cancellationToken)
+            .ConfigureAwait(false);
+        if (destination is null)
+            throw new IOException(L10n.Format("复制后找不到目标文件：{0}", plan.Destination));
+        if (destination.Size != source.Entry.Size)
+            throw new IOException(L10n.Format(
+                "复制后大小校验失败：{0}（源 {1} 字节，目标 {2} 字节）",
+                source.Name, source.Entry.Size, destination.Size));
+
+        if (mode != CopyVerificationMode.Sha256)
+            return;
+
+        var sourceHash = await HashAsync(source.FileSystem, source.Path, cancellationToken).ConfigureAwait(false);
+        var destinationHash = await HashAsync(destinationFileSystem, plan.Destination, cancellationToken)
+            .ConfigureAwait(false);
+        if (!string.Equals(sourceHash, destinationHash, StringComparison.OrdinalIgnoreCase))
+            throw new IOException(L10n.Format("复制后 SHA-256 校验失败：{0}", source.Name));
+    }
+
+    private static async Task<string> HashAsync(IFileSystem fileSystem, string path,
+        CancellationToken cancellationToken)
+    {
+        await using var stream = await fileSystem.OpenReadAsync(path, cancellationToken).ConfigureAwait(false);
+        var hash = await System.Security.Cryptography.SHA256.HashDataAsync(stream, cancellationToken)
+            .ConfigureAwait(false);
+        return Convert.ToHexString(hash);
     }
 
     private async Task<DestinationPlan> PlanDestinationAsync(OperationSource source, string name,
@@ -1036,6 +1174,10 @@ public sealed class FileOperationService : IDisposable
             _post(() => item.Error = error);
     }
 
+    internal void RecordFailure(FileOperationItem item, OperationSource source, string destinationDirectory,
+        string message)
+        => item.AddFailure(new FailedTransfer(source, destinationDirectory, message));
+
     internal void SetSummary(FileOperationItem item, int successes, int failures, IReadOnlyList<string> errors)
     {
         var message = errors.Count > 0 ? string.Join(Environment.NewLine, errors.Take(5)) : null;
@@ -1045,6 +1187,7 @@ public sealed class FileOperationService : IDisposable
             item.FailureCount = failures;
             item.Error = message;
             item.HasWarnings = errors.Count > 0;
+            item.SetFailures(errors);
         }
 
         if (_post is null)
@@ -1081,6 +1224,9 @@ public sealed class FileOperationService : IDisposable
         public Task WaitIfPausedAsync(CancellationToken cancellationToken)
             => _item.WaitIfPausedAsync(cancellationToken);
         public void FailSource() { }
+
+        public void FailTransfer(OperationSource source, string destinationDirectory, string message)
+            => _service.RecordFailure(_item, source, destinationDirectory, message);
 
         public void SkipSource(long bytes, int items)
         {
@@ -1141,4 +1287,94 @@ public sealed class FileOperationService : IDisposable
         }
     }
 
+}
+
+/// <summary>Limits transfer concurrency and reacts immediately to limit changes.</summary>
+internal sealed class ConcurrencyGate
+{
+    private readonly object _sync = new();
+    private readonly Queue<TaskCompletionSource> _waiters = new();
+    private int _running;
+    private int _limit = 1;
+
+    public void SetLimit(int limit)
+    {
+        lock (_sync)
+        {
+            _limit = Math.Clamp(limit, 1, 4);
+            while (_running < _limit && _waiters.Count > 0)
+            {
+                _running++;
+                _waiters.Dequeue().TrySetResult();
+            }
+        }
+    }
+
+    public async Task EnterAsync(CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            Task wait;
+            lock (_sync)
+            {
+                if (_running < _limit)
+                {
+                    _running++;
+                    return;
+                }
+
+                var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _waiters.Enqueue(completion);
+                wait = completion.Task;
+            }
+
+            await wait.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public void Exit()
+    {
+        lock (_sync)
+        {
+            if (_running > 0)
+                _running--;
+            if (_running < _limit && _waiters.Count > 0)
+            {
+                _running++;
+                _waiters.Dequeue().TrySetResult();
+            }
+        }
+    }
+}
+
+/// <summary>Shared token-bucket style bandwidth limiter for all active transfers.</summary>
+internal sealed class BandwidthLimiter
+{
+    private readonly Func<long> _limitProvider;
+    private readonly object _sync = new();
+    private long _nextTimestamp;
+
+    public BandwidthLimiter(Func<long> limitProvider) => _limitProvider = limitProvider;
+
+    public async Task ThrottleAsync(int bytes, CancellationToken cancellationToken)
+    {
+        var limit = _limitProvider();
+        if (limit <= 0 || bytes <= 0)
+            return;
+
+        long target;
+        lock (_sync)
+        {
+            var now = System.Diagnostics.Stopwatch.GetTimestamp();
+            var start = Math.Max(now, _nextTimestamp);
+            target = start + (long)(bytes / (double)limit * System.Diagnostics.Stopwatch.Frequency);
+            _nextTimestamp = target;
+        }
+
+        var remaining = target - System.Diagnostics.Stopwatch.GetTimestamp();
+        if (remaining <= 0)
+            return;
+        await Task.Delay(TimeSpan.FromSeconds(remaining / (double)System.Diagnostics.Stopwatch.Frequency),
+            cancellationToken).ConfigureAwait(false);
+    }
 }
