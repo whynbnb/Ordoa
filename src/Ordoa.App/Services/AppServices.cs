@@ -27,6 +27,7 @@ public sealed class AppServices : IAsyncDisposable
         Session = new SessionService();
         Workspaces = new WorkspaceService();
         Tags = new TagService();
+        RemoteEdits = new RemoteEditService();
         Thumbnails = new ThumbnailService();
         Previews = new PreviewService();
         Shell = new ShellLauncher();
@@ -55,6 +56,7 @@ public sealed class AppServices : IAsyncDisposable
     public SessionService Session { get; }
     public WorkspaceService Workspaces { get; }
     public TagService Tags { get; }
+    public RemoteEditService RemoteEdits { get; }
     public ThumbnailService Thumbnails { get; }
     public PreviewService Previews { get; }
     public ClipboardService Clipboard { get; }
@@ -112,6 +114,7 @@ public sealed class AppServices : IAsyncDisposable
     {
         try { Operations.Dispose(); } catch { /* ignore */ }
         try { Thumbnails.Clear(); } catch { /* ignore */ }
+        try { RemoteEdits.Dispose(); } catch { /* ignore */ }
         try { await SingleInstanceService.StopAsync().ConfigureAwait(false); } catch { /* ignore */ }
         try { await FileManager1.DisposeAsync().ConfigureAwait(false); } catch { /* ignore */ }
         await FileSystems.DisposeAsync().ConfigureAwait(false);

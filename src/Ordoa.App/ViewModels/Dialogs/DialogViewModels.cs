@@ -490,6 +490,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _transferSpeedLimit = settings.TransferSpeedLimitMb;
         _copyVerificationIndex = (int)settings.CopyVerification;
         _showTransferPreview = settings.ShowTransferPreview;
+        _uploadRemoteEdits = settings.UploadRemoteEdits;
         _archiveCompressionLevel = settings.ArchiveCompressionLevel;
         _archiveSplitMb = settings.ArchiveSplitMb;
         _ffmpegPath = settings.FfmpegPath;
@@ -786,6 +787,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _showTransferPreview;
+
+    [ObservableProperty]
+    private bool _uploadRemoteEdits = true;
 
     [ObservableProperty]
     private decimal _archiveCompressionLevel = 5;
@@ -1088,6 +1092,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.TransferSpeedLimitMb = Math.Clamp((int)TransferSpeedLimit, 0, 100_000);
         settings.CopyVerification = (CopyVerificationMode)Math.Clamp(CopyVerificationIndex, 0, 2);
         settings.ShowTransferPreview = ShowTransferPreview;
+        settings.UploadRemoteEdits = UploadRemoteEdits;
         settings.ArchiveCompressionLevel = Math.Clamp((int)ArchiveCompressionLevel, 0, 9);
         settings.ArchiveSplitMb = Math.Clamp((int)ArchiveSplitMb, 0, 100_000);
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
@@ -1190,6 +1195,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         TransferSpeedLimit = defaults.TransferSpeedLimitMb;
         CopyVerificationIndex = (int)defaults.CopyVerification;
         ShowTransferPreview = defaults.ShowTransferPreview;
+        UploadRemoteEdits = defaults.UploadRemoteEdits;
         ArchiveCompressionLevel = defaults.ArchiveCompressionLevel;
         ArchiveSplitMb = defaults.ArchiveSplitMb;
         FfmpegPath = defaults.FfmpegPath;

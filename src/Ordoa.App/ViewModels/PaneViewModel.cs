@@ -399,6 +399,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isNarrow;
 
+    [ObservableProperty]
+    private string _remoteLatencyText = string.Empty;
+
+    [ObservableProperty]
+    private IBrush _remoteLatencyBrush = Brushes.Gray;
+
     public int VisibleCount => VisibleItems.Count;
     public bool HasSelection => _selected.Count > 0;
     public int SelectedCount => _selected.Count;
@@ -552,6 +558,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanCreateLink => FileSystem.IsLocal && !IsTrash && SelectedCount == 1 &&
                                  PrimarySelection is not null;
     public bool CanTag => !IsTrash && HasSelection;
+    public bool CanConvertImages => FileSystem.IsLocal && !IsTrash && HasSelection &&
+                                    _selected.All(item => !item.IsDirectory &&
+                                                          MimeTypes.IsImage(item.Extension));
     public bool CanEmptyTrash => IsTrash;
     public bool CanSelectAll => VisibleItems.Count > 0;
     public bool CanGoHome => true;
@@ -604,7 +613,10 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             if (resetFilter)
                 FilterText = string.Empty;
 
+            var latencyStart = IsRemote ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
             var entries = await FileSystem.ListAsync(CurrentPath, cancellationToken).ConfigureAwait(true);
+            if (IsRemote)
+                UpdateRemoteLatency(System.Diagnostics.Stopwatch.GetElapsedTime(latencyStart));
             if (version != _loadVersion || cancellationToken.IsCancellationRequested)
                 return;
 
@@ -646,6 +658,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             if (version != _loadVersion)
                 return;
+            if (IsRemote)
+            {
+                RemoteLatencyText = L10n.T("离线");
+                RemoteLatencyBrush = new SolidColorBrush(Color.Parse("#D9534F"));
+            }
             _entries.Clear();
             VisibleItems = [];
             HasError = true;
@@ -1007,6 +1024,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanCompare));
         OnPropertyChanged(nameof(CanTag));
+        OnPropertyChanged(nameof(CanConvertImages));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -1400,6 +1418,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanCompare));
         OnPropertyChanged(nameof(CanTag));
+        OnPropertyChanged(nameof(CanConvertImages));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -2053,6 +2072,16 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         UpdateSelectionDependentProperties();
     }
 
+    public async Task ConvertImagesAsync()
+    {
+        if (!CanConvertImages)
+            return;
+        var paths = _selected.Where(item => !item.IsDirectory).Select(item => item.Path).ToList();
+        if (paths.Count == 0)
+            return;
+        await _services.Dialogs.ShowImageConversionAsync(paths, CurrentPath).ConfigureAwait(true);
+    }
+
     public async Task CompareSelectionAsync()
     {
         var files = _selected.Where(item => !item.IsDirectory).Take(2).ToList();
@@ -2136,6 +2165,20 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
             return total;
         }, cancellationToken);
+
+    private void UpdateRemoteLatency(TimeSpan elapsed)
+    {
+        var milliseconds = (long)elapsed.TotalMilliseconds;
+        RemoteLatencyText = milliseconds < 1000
+            ? L10n.Format("{0} ms", milliseconds)
+            : L10n.Format("{0:0.0} s", elapsed.TotalSeconds);
+        RemoteLatencyBrush = new SolidColorBrush(Color.Parse(milliseconds switch
+        {
+            <= 300 => "#2E9E5B",
+            <= 1000 => "#D8B321",
+            _ => "#D9534F",
+        }));
+    }
 
     private void ApplyTagItem(FileItemViewModel item)
     {
@@ -2571,6 +2614,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanCompare));
         OnPropertyChanged(nameof(CanTag));
+        OnPropertyChanged(nameof(CanConvertImages));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -2625,6 +2669,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             {
                 try { File.SetUnixFileMode(localPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); }
                 catch { /* best effort */ }
+            }
+
+            if (_services.Settings.Current.UploadRemoteEdits)
+            {
+                _services.RemoteEdits.Track(FileSystem, item.Path, localPath,
+                    (message, error) => Toast(L10n.T("远程文件"), message, error));
             }
 
             if (!_services.OpenWith.TryOpenDefault(localPath))

@@ -648,6 +648,9 @@
                      ToolTip.Tip="{Binding GitTooltipText}"
                      IsVisible="{Binding ShowGitStatusBar}" />
           <TextBlock Text="{Binding FsBadgeText}" Classes="tiny" Foreground="{DynamicResource AccentBrush}" />
+          <TextBlock Text="{Binding RemoteLatencyText}" Classes="tiny"
+                     Foreground="{Binding RemoteLatencyBrush}" IsVisible="{Binding IsRemote}"
+                     ToolTip.Tip="{loc:Tr 最近一次列目录耗时}" />
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
           <TextBlock Text="{Binding FreeSpaceText}" Classes="tiny" />

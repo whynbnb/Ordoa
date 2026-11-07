@@ -283,6 +283,18 @@ public sealed class DialogService : IDialogService
         await ShowDialogAsync("undohistory", window, owner).ConfigureAwait(true);
     }
 
+    public async Task ShowImageConversionAsync(IReadOnlyList<string> paths, string outputDirectory)
+    {
+        if (paths.Count == 0 || !TryPrepareDialog("imageconvert", out var owner))
+            return;
+
+        var window = new ImageConversionWindow
+        {
+            DataContext = new ImageConversionDialogViewModel(this, paths, outputDirectory),
+        };
+        await ShowDialogAsync("imageconvert", window, owner).ConfigureAwait(true);
+    }
+
     public async Task ShowErrorAsync(string title, string message)
     {
         var kind = "error:" + title;

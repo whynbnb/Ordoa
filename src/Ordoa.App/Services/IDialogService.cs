@@ -37,4 +37,5 @@ public interface IDialogService
     Task<string?> PickFolderAsync(string title, string? initialPath = null);
     Task ShowFileCompareAsync(IFileSystem fileSystem, FileEntry left, FileEntry right);
     Task ShowUndoHistoryAsync(UndoService undo);
+    Task ShowImageConversionAsync(IReadOnlyList<string> paths, string outputDirectory);
 }

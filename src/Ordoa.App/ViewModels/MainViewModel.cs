@@ -2410,6 +2410,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Add(L10n.T("计算 SHA-256"), L10n.T("计算选中文件的校验和"), null, "IconCheckCircle", () => PaneAction(p => p.ChecksumAsync()));
         Add(L10n.T("磁盘占用分析"), L10n.T("用树图查看当前文件夹的空间占用"), null, "IconDisk", () => PaneAction(p => p.AnalyzeDiskUsageAsync()));
         Add(L10n.T("查找重复文件"), L10n.T("按内容查找当前文件夹中的重复文件"), null, "IconCopy", () => PaneAction(p => p.FindDuplicateFilesAsync()));
+        Add(L10n.T("批量转换图片…"), L10n.T("转换格式、质量或最大尺寸"), null, "IconImage",
+            () => PaneAction(p => p.ConvertImagesAsync()));
         Add(L10n.T("编辑标签…"), L10n.T("为选中的文件或文件夹设置标签"), null, "IconBookmark",
             () => PaneAction(p => p.EditTagsAsync()));
         Add(L10n.T("比较选中文件"), L10n.T("并排查看两个文本或二进制文件的差异"), null, "IconPanel",
