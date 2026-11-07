@@ -108,6 +108,9 @@ public sealed class AppSettings
     /// <summary>Remembered application choice per lowercase extension (empty key for no extension).</summary>
     public Dictionary<string, string> OpenWithDefaults { get; set; } = [];
 
+    /// <summary>Key bindings that differ from the defaults, keyed by action id. Empty disables.</summary>
+    public Dictionary<string, string> ShortcutOverrides { get; set; } = [];
+
     /// <summary>Session undo scope. System follows the platform file manager behavior.</summary>
     public UndoBehavior UndoBehavior { get; set; } = UndoBehavior.System;
 
@@ -134,6 +137,7 @@ public sealed class AppSettings
         clone.HiddenPlaces = [.. HiddenPlaces];
         clone.HiddenConnections = [.. HiddenConnections];
         clone.OpenWithDefaults = new Dictionary<string, string>(OpenWithDefaults, StringComparer.Ordinal);
+        clone.ShortcutOverrides = new Dictionary<string, string>(ShortcutOverrides, StringComparer.Ordinal);
         clone.TerminalPreferences = (TerminalPreferences ?? [])
             .Where(preference => preference is not null)
             .Select(preference => preference.Clone())
@@ -244,6 +248,11 @@ public sealed class SettingsService
             .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
             .GroupBy(pair => pair.Key.Trim().TrimStart('.').ToLowerInvariant(), StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Last().Value, StringComparer.Ordinal);
+        Current.ShortcutOverrides = (Current.ShortcutOverrides ?? [])
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
+            .GroupBy(pair => pair.Key.Trim(), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => (group.Last().Value ?? string.Empty).Trim(),
+                StringComparer.Ordinal);
         if (Current.WindowWidth < 720)
             Current.WindowWidth = 1200;
         if (Current.WindowHeight < 480)

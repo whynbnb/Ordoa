@@ -648,6 +648,39 @@
               <TextBlock Text="{Binding SettingsPath}" Classes="tiny" FontFamily="{DynamicResource MonoFontFamily}" />
             </StackPanel>
           </StackPanel>
+
+          <!-- Keyboard shortcuts -->
+          <StackPanel IsVisible="{Binding ShowShortcuts}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 快捷键}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 为常用操作自定义键盘组合；留空即可禁用。}" Classes="caption" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{loc:Tr 使用 Ctrl / Shift / Alt / Meta 加键名，例如 Ctrl+Shift+T。}"
+                         Classes="fieldhint" TextWrapping="Wrap" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Content="{loc:Tr 全部恢复默认}" Classes="ghost"
+                      Click="OnResetShortcutsClick" />
+            </Grid>
+
+            <ItemsControl ItemsSource="{Binding Shortcuts}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ShortcutSettingViewModel">
+                  <Grid ColumnDefinitions="220,*" ColumnSpacing="12" Margin="0,3">
+                    <TextBlock Text="{Binding Label}" FontSize="12.5" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBox Text="{Binding Gesture, Mode=TwoWay}" Width="190"
+                               HorizontalAlignment="Left"
+                               FontFamily="{DynamicResource MonoFontFamily}" />
+                      <TextBlock Text="{Binding Error}" Classes="fieldhint"
+                                 Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"
+                                 IsVisible="{Binding HasError}" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </StackPanel>
       </ScrollViewer>
     </Grid>

@@ -455,7 +455,6 @@ public partial class MainWindow : Window
         var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
         var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         var alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
-        var meta = e.KeyModifiers.HasFlag(KeyModifiers.Meta);
 
         if (_viewModel.IsCommandPaletteOpen)
         {
@@ -509,9 +508,9 @@ public partial class MainWindow : Window
         if (inTextBox)
             return;
 
-        if (e.Key == Key.Space && !ctrl && !shift && !alt)
+        if (_viewModel.Services.Shortcuts.TryMatch(e, OperatingSystem.IsMacOS(), out var shortcut))
         {
-            Run(_viewModel.TogglePreviewAsync);
+            ExecuteShortcut(shortcut, _viewModel.ActivePane);
             e.Handled = true;
             return;
         }
@@ -532,134 +531,10 @@ public partial class MainWindow : Window
         }
 
         var active = _viewModel.ActivePane;
-        var commandModifier = OperatingSystem.IsMacOS() ? (meta || ctrl) : ctrl;
 
-        if (commandModifier && e.Key == Key.Z && !shift)
+        if (ctrl && e.Key == Key.Tab)
         {
-            Run(_viewModel.UndoAsync);
-            e.Handled = true;
-            return;
-        }
-
-        if (commandModifier && (e.Key == Key.Y || (shift && e.Key == Key.Z)))
-        {
-            Run(_viewModel.RedoAsync);
-            e.Handled = true;
-            return;
-        }
-
-        if (ctrl && shift && e.Key == Key.O)
-        {
-            if (active is { CanOpenWith: true })
-                Run(active.OpenWithAsync);
-            e.Handled = true;
-            return;
-        }
-
-        if (ctrl && shift && e.Key == Key.R)
-        {
-            if (active is { CanBatchRename: true })
-                Run(active.BatchRenameAsync);
-            e.Handled = true;
-            return;
-        }
-
-        if (ctrl && shift && e.Key == Key.P)
-        {
-            _viewModel.ShowCommandPaletteCommand.Execute(null);
-            e.Handled = true;
-            return;
-        }
-
-        if (ctrl && shift && e.Key == Key.T)
-        {
-            Run(_viewModel.ReopenClosedTabAsync);
-            e.Handled = true;
-            return;
-        }
-
-        if (ctrl)
-        {
-            switch (e.Key)
-            {
-                case Key.N when !shift:
-                    _viewModel.NewWindowCommand.Execute(null);
-                    e.Handled = true;
-                    return;
-                case Key.T:
-                    _viewModel.NewTabCommand.Execute(null);
-                    e.Handled = true;
-                    return;
-                case Key.W:
-                    if (shift && _viewModel.ActiveTab is { IsSplit: true })
-                        _viewModel.ToggleSplitCommand.Execute(null);
-                    else
-                        _viewModel.CloseActiveTabCommand.Execute(null);
-                    e.Handled = true;
-                    return;
-                case Key.Tab:
-                    SwitchTab(shift ? -1 : 1);
-                    e.Handled = true;
-                    return;
-                case Key.L:
-                    active?.BeginEditLocation();
-                    e.Handled = true;
-                    return;
-                case Key.F:
-                    active?.RequestSearchFocus();
-                    e.Handled = true;
-                    return;
-                case Key.H:
-                    _viewModel.ToggleHiddenCommand.Execute(null);
-                    e.Handled = true;
-                    return;
-                case Key.D:
-                    Run(_viewModel.AddCurrentBookmarkAsync);
-                    e.Handled = true;
-                    return;
-                case Key.OemComma:
-                    Run(_viewModel.ShowSettingsAsync);
-                    e.Handled = true;
-                    return;
-                case Key.OemBackslash:
-                case Key.OemPipe:
-                    _viewModel.ToggleSplitCommand.Execute(null);
-                    e.Handled = true;
-                    return;
-                case Key.D1:
-                    _viewModel.SetView(Ordoa.Core.Models.ViewKind.List);
-                    e.Handled = true;
-                    return;
-                case Key.D2:
-                    _viewModel.SetView(Ordoa.Core.Models.ViewKind.Grid);
-                    e.Handled = true;
-                    return;
-                case Key.C:
-                    if (active is { HasSelection: true })
-                        Run(() => active.CopySelectionAsync(false));
-                    e.Handled = true;
-                    return;
-                case Key.X:
-                    if (active is { HasSelection: true })
-                        Run(() => active.CopySelectionAsync(true));
-                    e.Handled = true;
-                    return;
-                case Key.V:
-                    if (active is { CanPaste: true })
-                        Run(active.PasteAsync);
-                    e.Handled = true;
-                    return;
-                case Key.A:
-                    active?.RequestSelectAll();
-                    e.Handled = true;
-                    return;
-            }
-        }
-
-        if (shift && ctrl && e.Key == Key.N)
-        {
-            if (active is { CanCreateFolder: true })
-                Run(active.NewFolderAsync);
+            SwitchTab(shift ? -1 : 1);
             e.Handled = true;
             return;
         }
@@ -702,40 +577,8 @@ public partial class MainWindow : Window
 
         switch (e.Key)
         {
-            case Key.F1:
-                Run(() => _viewModel.Services.Dialogs.ShowAboutAsync());
-                e.Handled = true;
-                break;
-            case Key.F2:
-                if (active is { CanRename: true })
-                    Run(active.RenameAsync);
-                e.Handled = true;
-                break;
-            case Key.F3:
-                _viewModel.TogglePreviewPanelCommand.Execute(null);
-                e.Handled = true;
-                break;
-            case Key.F5:
-                if (active is not null)
-                    Run(active.RefreshAsync);
-                e.Handled = true;
-                break;
-            case Key.F9:
-                _viewModel.ToggleSidebarCommand.Execute(null);
-                e.Handled = true;
-                break;
             case Key.F11:
                 WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen;
-                e.Handled = true;
-                break;
-            case Key.Delete:
-                if (active is { HasSelection: true })
-                    Run(() => active.DeleteSelectionAsync(shift));
-                e.Handled = true;
-                break;
-            case Key.Enter:
-                if (active is not null)
-                    Run(() => active.OpenAsync());
                 e.Handled = true;
                 break;
             case Key.Back:
@@ -743,7 +586,123 @@ public partial class MainWindow : Window
                     active.GoUpCommand.Execute(null);
                 e.Handled = true;
                 break;
-            case Key.Escape:
+        }
+    }
+
+    private void ExecuteShortcut(string id, PaneViewModel? pane)
+    {
+        if (_viewModel is null)
+            return;
+
+        switch (id)
+        {
+            case "newTab":
+                _viewModel.NewTabCommand.Execute(null);
+                break;
+            case "newWindow":
+                _viewModel.NewWindowCommand.Execute(null);
+                break;
+            case "closeTab":
+                _viewModel.CloseActiveTabCommand.Execute(null);
+                break;
+            case "closeSplit":
+                if (_viewModel.ActiveTab is { IsSplit: true })
+                    _viewModel.ToggleSplitCommand.Execute(null);
+                break;
+            case "reopenTab":
+                Run(_viewModel.ReopenClosedTabAsync);
+                break;
+            case "commandPalette":
+                _viewModel.ShowCommandPaletteCommand.Execute(null);
+                break;
+            case "quickPreview":
+                Run(_viewModel.TogglePreviewAsync);
+                break;
+            case "undo":
+                Run(_viewModel.UndoAsync);
+                break;
+            case "redo":
+                Run(_viewModel.RedoAsync);
+                break;
+            case "openWith":
+                if (pane is { CanOpenWith: true })
+                    Run(pane.OpenWithAsync);
+                break;
+            case "batchRename":
+                if (pane is { CanBatchRename: true })
+                    Run(pane.BatchRenameAsync);
+                break;
+            case "editLocation":
+                pane?.BeginEditLocation();
+                break;
+            case "search":
+                pane?.RequestSearchFocus();
+                break;
+            case "toggleHidden":
+                _viewModel.ToggleHiddenCommand.Execute(null);
+                break;
+            case "bookmark":
+                Run(_viewModel.AddCurrentBookmarkAsync);
+                break;
+            case "settings":
+                Run(_viewModel.ShowSettingsAsync);
+                break;
+            case "toggleSplit":
+                _viewModel.ToggleSplitCommand.Execute(null);
+                break;
+            case "listView":
+                _viewModel.SetView(Ordoa.Core.Models.ViewKind.List);
+                break;
+            case "gridView":
+                _viewModel.SetView(Ordoa.Core.Models.ViewKind.Grid);
+                break;
+            case "newFolder":
+                if (pane is { CanCreateFolder: true })
+                    Run(pane.NewFolderAsync);
+                break;
+            case "about":
+                Run(() => _viewModel.Services.Dialogs.ShowAboutAsync());
+                break;
+            case "rename":
+                if (pane is { CanRename: true })
+                    Run(pane.RenameAsync);
+                break;
+            case "previewPanel":
+                _viewModel.TogglePreviewPanelCommand.Execute(null);
+                break;
+            case "refresh":
+                if (pane is not null)
+                    Run(pane.RefreshAsync);
+                break;
+            case "toggleSidebar":
+                _viewModel.ToggleSidebarCommand.Execute(null);
+                break;
+            case "delete":
+                if (pane is { HasSelection: true })
+                    Run(() => pane.DeleteSelectionAsync(false));
+                break;
+            case "permanentDelete":
+                if (pane is { HasSelection: true })
+                    Run(() => pane.DeleteSelectionAsync(true));
+                break;
+            case "open":
+                if (pane is not null)
+                    Run(() => pane.OpenAsync());
+                break;
+            case "copy":
+                if (pane is { HasSelection: true })
+                    Run(() => pane.CopySelectionAsync(false));
+                break;
+            case "cut":
+                if (pane is { HasSelection: true })
+                    Run(() => pane.CopySelectionAsync(true));
+                break;
+            case "paste":
+                if (pane is { CanPaste: true })
+                    Run(pane.PasteAsync);
+                break;
+            case "selectAll":
+                pane?.RequestSelectAll();
                 break;
         }
     }

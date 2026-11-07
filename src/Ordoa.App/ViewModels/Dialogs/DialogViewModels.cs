@@ -355,6 +355,37 @@ public sealed class SettingsCategoryViewModel
     public Geometry? Icon { get; init; }
 }
 
+public sealed partial class ShortcutSettingViewModel : ObservableObject
+{
+    public required string Id { get; init; }
+    public required string Label { get; init; }
+    public required string DefaultGesture { get; init; }
+
+    private string _gesture = string.Empty;
+    public string Gesture
+    {
+        get => _gesture;
+        set
+        {
+            if (!SetProperty(ref _gesture, value))
+                return;
+            Error = string.IsNullOrWhiteSpace(value) || ShortcutService.TryParse(value, out _)
+                ? null
+                : L10n.T("无法识别这个快捷键，请使用 Ctrl+Shift+T 这样的格式。");
+            OnPropertyChanged(nameof(Error));
+            OnPropertyChanged(nameof(HasError));
+            OnPropertyChanged(nameof(IsDefault));
+        }
+    }
+
+    public string? Error { get; private set; }
+    public bool HasError => Error is not null;
+    public bool IsDefault => string.Equals(
+        ShortcutService.Normalize(Gesture),
+        ShortcutService.Normalize(DefaultGesture),
+        StringComparison.Ordinal);
+}
+
 public sealed partial class ConnectionSettingViewModel : ObservableObject
 {
     public required string Id { get; init; }
@@ -479,7 +510,22 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             new SettingsCategoryViewModel { Title = L10n.T("网络"), Icon = FileIconCatalog.Resource("IconCloud") },
             new SettingsCategoryViewModel { Title = L10n.T("行为与撤销"), Icon = FileIconCatalog.Resource("IconUndo") },
             new SettingsCategoryViewModel { Title = L10n.T("系统与集成"), Icon = FileIconCatalog.Resource("IconSettings") },
+            new SettingsCategoryViewModel { Title = L10n.T("快捷键"), Icon = FileIconCatalog.Resource("IconKeyboard") },
         ];
+
+        foreach (var definition in ShortcutService.Definitions)
+        {
+            var gesture = settings.ShortcutOverrides.TryGetValue(definition.Id, out var custom)
+                ? custom
+                : definition.DefaultGesture;
+            Shortcuts.Add(new ShortcutSettingViewModel
+            {
+                Id = definition.Id,
+                Label = definition.Label,
+                DefaultGesture = definition.DefaultGesture,
+                Gesture = gesture,
+            });
+        }
 
         ReloadConnections();
         ReloadTerminals();
@@ -523,6 +569,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     public System.Collections.ObjectModel.ObservableCollection<CustomCommandViewModel> CustomCommands { get; } = [];
 
+    public System.Collections.ObjectModel.ObservableCollection<ShortcutSettingViewModel> Shortcuts { get; } = [];
+
     public bool HasConnections => Connections.Count > 0;
 
     public bool HasTerminals => Terminals.Count > 0;
@@ -554,6 +602,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public bool ShowNetwork => SelectedCategoryIndex == 6;
     public bool ShowBehavior => SelectedCategoryIndex == 7;
     public bool ShowSystem => SelectedCategoryIndex == 8;
+    public bool ShowShortcuts => SelectedCategoryIndex == 9;
 
     partial void OnSelectedCategoryIndexChanged(int value)
     {
@@ -572,6 +621,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowNetwork));
         OnPropertyChanged(nameof(ShowBehavior));
         OnPropertyChanged(nameof(ShowSystem));
+        OnPropertyChanged(nameof(ShowShortcuts));
     }
 
     [ObservableProperty]
@@ -938,6 +988,18 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             })
             .ToList();
         settings.OpenWithDefaults = new Dictionary<string, string>(_openWithDefaults, StringComparer.Ordinal);
+        settings.ShortcutOverrides = Shortcuts
+            .Where(shortcut => string.IsNullOrWhiteSpace(shortcut.Gesture) ||
+                               ShortcutService.TryParse(shortcut.Gesture, out _))
+            .Select(shortcut => new
+            {
+                shortcut.Id,
+                Gesture = ShortcutService.Normalize(shortcut.Gesture),
+                Default = ShortcutService.Normalize(shortcut.DefaultGesture),
+            })
+            .Where(item => !string.Equals(item.Gesture, item.Default, StringComparison.Ordinal))
+            .GroupBy(item => item.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Last().Gesture, StringComparer.Ordinal);
         settings.CustomSidebarPaths = CustomPaths.Select(item => item.Path).ToList();
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
         if (_fileSystems is not null)
@@ -990,6 +1052,13 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         foreach (var connection in Connections)
             connection.IsVisible = true;
         ResetPlaces();
+        ResetShortcuts();
+    }
+
+    public void ResetShortcuts()
+    {
+        foreach (var shortcut in Shortcuts)
+            shortcut.Gesture = shortcut.DefaultGesture;
     }
 
     public void ResetPlaces()

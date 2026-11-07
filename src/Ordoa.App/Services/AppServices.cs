@@ -13,6 +13,7 @@ public sealed class AppServices : IAsyncDisposable
     {
         AppPaths.EnsureCreated();
         Settings = new SettingsService();
+        Shortcuts = new ShortcutService(Settings);
         ThemeService.Apply(Settings.Current);
 
         Trash = new TrashService();
@@ -39,6 +40,7 @@ public sealed class AppServices : IAsyncDisposable
     }
 
     public SettingsService Settings { get; }
+    public ShortcutService Shortcuts { get; }
     public FileSystemManager FileSystems { get; }
     public TrashService Trash { get; }
     public TrashFileSystem TrashFs { get; }

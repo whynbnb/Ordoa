@@ -66,6 +66,12 @@ public partial class SettingsWindow : Window
             vm.ResetPlaces();
     }
 
+    private void OnResetShortcutsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+            vm.ResetShortcuts();
+    }
+
     private void OnAddCustomPathClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm)

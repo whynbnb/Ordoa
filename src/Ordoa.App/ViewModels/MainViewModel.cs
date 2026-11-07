@@ -2076,63 +2076,63 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             });
         }
 
-        Add(L10n.T("撤销"), L10n.T("撤销上一步文件操作"), "Ctrl+Z", "IconUndo", UndoAsync);
-        Add(L10n.T("重做"), L10n.T("重做被撤销的文件操作"), "Ctrl+Shift+Z", "IconRedo", RedoAsync);
-        Add(L10n.T("新建标签页"), L10n.T("打开一个新的文件浏览标签"), "Ctrl+T", "IconPlus", NewTabAsync);
-        Add(L10n.T("新建窗口"), L10n.T("在新的窗口中打开文件浏览"), "Ctrl+N", "IconPlus", NewWindowAsync);
+        Add(L10n.T("撤销"), L10n.T("撤销上一步文件操作"), _services.Shortcuts.GetGesture("undo"), "IconUndo", UndoAsync);
+        Add(L10n.T("重做"), L10n.T("重做被撤销的文件操作"), _services.Shortcuts.GetGesture("redo"), "IconRedo", RedoAsync);
+        Add(L10n.T("新建标签页"), L10n.T("打开一个新的文件浏览标签"), _services.Shortcuts.GetGesture("newTab"), "IconPlus", NewTabAsync);
+        Add(L10n.T("新建窗口"), L10n.T("在新的窗口中打开文件浏览"), _services.Shortcuts.GetGesture("newWindow"), "IconPlus", NewWindowAsync);
         Add(L10n.T("复制标签页"), L10n.T("克隆当前标签页"), null, "IconCopy", DuplicateTabAsync);
-        Add(L10n.T("恢复关闭的标签页"), L10n.T("重新打开最近关闭的标签页"), "Ctrl+Shift+T", "IconRestore", ReopenClosedTabAsync);
+        Add(L10n.T("恢复关闭的标签页"), L10n.T("重新打开最近关闭的标签页"), _services.Shortcuts.GetGesture("reopenTab"), "IconRestore", ReopenClosedTabAsync);
         Add(L10n.T("固定 / 取消固定标签页"), L10n.T("固定标签页并保持在标签栏前部"), null, "IconStar", () =>
         {
             TogglePinTab(ActiveTab);
             return Task.CompletedTask;
         });
-        Add(L10n.T("关闭标签页"), L10n.T("关闭当前标签页"), "Ctrl+W", "IconClose", () =>
+        Add(L10n.T("关闭标签页"), L10n.T("关闭当前标签页"), _services.Shortcuts.GetGesture("closeTab"), "IconClose", () =>
         {
             CloseTab(ActiveTab);
             return Task.CompletedTask;
         });
-        Add(L10n.T("切换分屏"), L10n.T("在当前标签页中显示两个面板"), "Ctrl+\\", "IconSplit", ToggleSplitAsync);
-        Add(L10n.T("显示/隐藏侧栏"), L10n.T("切换左侧导航栏"), "F9", "IconPanel", () =>
+        Add(L10n.T("切换分屏"), L10n.T("在当前标签页中显示两个面板"), _services.Shortcuts.GetGesture("toggleSplit"), "IconSplit", ToggleSplitAsync);
+        Add(L10n.T("显示/隐藏侧栏"), L10n.T("切换左侧导航栏"), _services.Shortcuts.GetGesture("toggleSidebar"), "IconPanel", () =>
         {
             ToggleSidebar();
             return Task.CompletedTask;
         });
-        Add(L10n.T("刷新"), L10n.T("重新读取当前文件夹"), "F5", "IconRefresh", RefreshAllAsync);
+        Add(L10n.T("刷新"), L10n.T("重新读取当前文件夹"), _services.Shortcuts.GetGesture("refresh"), "IconRefresh", RefreshAllAsync);
         Add(L10n.T("主目录"), L10n.T("打开主目录"), "Alt+Home", "IconHome", OpenHomeAsync);
         Add(L10n.T("回收站"), L10n.T("查看已删除的项目"), null, "IconTrash", OpenTrashAsync);
-        Add(L10n.T("新建文件夹"), L10n.T("在当前位置创建文件夹"), "Ctrl+Shift+N", "IconPlusCircle", () => PaneAction(p => p.NewFolderAsync()));
+        Add(L10n.T("新建文件夹"), L10n.T("在当前位置创建文件夹"), _services.Shortcuts.GetGesture("newFolder"), "IconPlusCircle", () => PaneAction(p => p.NewFolderAsync()));
         Add(L10n.T("新建空文件"), L10n.T("在当前位置创建空文件"), null, "IconFile", () => PaneAction(p => p.NewFileAsync()));
-        Add(L10n.T("打开方式"), L10n.T("选择其他应用打开选中的文件"), "Ctrl+Shift+O", "IconApps", () => PaneAction(p => p.OpenWithAsync()));
-        Add(L10n.T("重命名"), L10n.T("重命名选中的项目"), "F2", "IconRename", () => PaneAction(p => p.RenameAsync()));
-        Add(L10n.T("批量重命名"), L10n.T("使用查找替换、序号和日期变量批量修改名称"), "Ctrl+Shift+R", "IconRename", () => PaneAction(p => p.BatchRenameAsync()));
-        Add(L10n.T("移到回收站"), L10n.T("删除选中的项目到回收站"), "Delete", "IconTrash", () => PaneAction(p => p.DeleteSelectionAsync(false)));
-        Add(L10n.T("永久删除"), L10n.T("永久删除选中的项目"), "Shift+Delete", "IconDelete", () => PaneAction(p => p.DeleteSelectionAsync(true)));
-        Add(L10n.T("复制"), L10n.T("复制选中的项目"), "Ctrl+C", "IconCopy", () => PaneAction(p => p.CopySelectionAsync(false)));
-        Add(L10n.T("剪切"), L10n.T("剪切选中的项目"), "Ctrl+X", "IconCut", () => PaneAction(p => p.CopySelectionAsync(true)));
-        Add(L10n.T("粘贴"), L10n.T("将剪贴板中的项目粘贴到此处"), "Ctrl+V", "IconPaste", () => PaneAction(p => p.PasteAsync()));
-        Add(L10n.T("全选"), L10n.T("选择当前视图中的所有项目"), "Ctrl+A", "IconSelectAll", () =>
+        Add(L10n.T("打开方式"), L10n.T("选择其他应用打开选中的文件"), _services.Shortcuts.GetGesture("openWith"), "IconApps", () => PaneAction(p => p.OpenWithAsync()));
+        Add(L10n.T("重命名"), L10n.T("重命名选中的项目"), _services.Shortcuts.GetGesture("rename"), "IconRename", () => PaneAction(p => p.RenameAsync()));
+        Add(L10n.T("批量重命名"), L10n.T("使用查找替换、序号和日期变量批量修改名称"), _services.Shortcuts.GetGesture("batchRename"), "IconRename", () => PaneAction(p => p.BatchRenameAsync()));
+        Add(L10n.T("移到回收站"), L10n.T("删除选中的项目到回收站"), _services.Shortcuts.GetGesture("delete"), "IconTrash", () => PaneAction(p => p.DeleteSelectionAsync(false)));
+        Add(L10n.T("永久删除"), L10n.T("永久删除选中的项目"), _services.Shortcuts.GetGesture("permanentDelete"), "IconDelete", () => PaneAction(p => p.DeleteSelectionAsync(true)));
+        Add(L10n.T("复制"), L10n.T("复制选中的项目"), _services.Shortcuts.GetGesture("copy"), "IconCopy", () => PaneAction(p => p.CopySelectionAsync(false)));
+        Add(L10n.T("剪切"), L10n.T("剪切选中的项目"), _services.Shortcuts.GetGesture("cut"), "IconCut", () => PaneAction(p => p.CopySelectionAsync(true)));
+        Add(L10n.T("粘贴"), L10n.T("将剪贴板中的项目粘贴到此处"), _services.Shortcuts.GetGesture("paste"), "IconPaste", () => PaneAction(p => p.PasteAsync()));
+        Add(L10n.T("全选"), L10n.T("选择当前视图中的所有项目"), _services.Shortcuts.GetGesture("selectAll"), "IconSelectAll", () =>
         {
             ActivePane?.RequestSelectAll();
             return Task.CompletedTask;
         });
-        Add(L10n.T("列表视图"), L10n.T("以详细列表显示文件"), "Ctrl+1", "IconList", () =>
+        Add(L10n.T("列表视图"), L10n.T("以详细列表显示文件"), _services.Shortcuts.GetGesture("listView"), "IconList", () =>
         {
             SetView(ViewKind.List);
             return Task.CompletedTask;
         });
-        Add(L10n.T("网格视图"), L10n.T("以图标网格显示文件"), "Ctrl+2", "IconGrid", () =>
+        Add(L10n.T("网格视图"), L10n.T("以图标网格显示文件"), _services.Shortcuts.GetGesture("gridView"), "IconGrid", () =>
         {
             SetView(ViewKind.Grid);
             return Task.CompletedTask;
         });
-        Add(L10n.T("显示/隐藏隐藏文件"), L10n.T("切换点文件与隐藏属性"), "Ctrl+H", "IconEye", () =>
+        Add(L10n.T("显示/隐藏隐藏文件"), L10n.T("切换点文件与隐藏属性"), _services.Shortcuts.GetGesture("toggleHidden"), "IconEye", () =>
         {
             ToggleHidden();
             return Task.CompletedTask;
         });
-        Add(L10n.T("快速预览"), L10n.T("按空格预览选中的文件"), "Space", "IconEye", TogglePreviewAsync);
-        Add(L10n.T("预览面板"), L10n.T("显示或隐藏常驻预览面板"), "F3", "IconEye", () =>
+        Add(L10n.T("快速预览"), L10n.T("按空格预览选中的文件"), _services.Shortcuts.GetGesture("quickPreview"), "IconEye", TogglePreviewAsync);
+        Add(L10n.T("预览面板"), L10n.T("显示或隐藏常驻预览面板"), _services.Shortcuts.GetGesture("previewPanel"), "IconEye", () =>
         {
             TogglePreviewPanel();
             return Task.CompletedTask;
@@ -2161,10 +2161,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 () => PaneAction(p => p.RunCustomCommandAsync(id)));
         }
         Add(L10n.T("复制路径"), L10n.T("复制选中项目的完整路径"), null, "IconLink", () => PaneAction(p => p.CopyPathAsync()));
-        Add(L10n.T("添加书签"), L10n.T("将当前文件夹加入侧栏"), "Ctrl+D", "IconBookmark", AddBookmarkAsync);
+        Add(L10n.T("添加书签"), L10n.T("将当前文件夹加入侧栏"), _services.Shortcuts.GetGesture("bookmark"), "IconBookmark", AddBookmarkAsync);
         Add(L10n.T("新建远程连接"), L10n.T("连接到 FTP、SFTP、SMB 或 WebDAV"), null, "IconCloudAdd", () => ShowConnectionDialogAsync(null));
-        Add(L10n.T("设置"), L10n.T("打开应用设置"), "Ctrl+,", "IconSettings", OpenSettingsAsync);
-        Add(L10n.T("键盘快捷键"), L10n.T("查看所有快捷键"), "F1", "IconKeyboard", () => _services.Dialogs.ShowAboutAsync());
+        Add(L10n.T("设置"), L10n.T("打开应用设置"), _services.Shortcuts.GetGesture("settings"), "IconSettings", OpenSettingsAsync);
+        Add(L10n.T("键盘快捷键"), L10n.T("查看所有快捷键"), _services.Shortcuts.GetGesture("about"), "IconKeyboard", () => _services.Dialogs.ShowAboutAsync());
         Add(L10n.T("关闭分屏"), L10n.T("隐藏当前标签页的第二个面板"), null, "IconSplit", () =>
         {
             if (ActiveTab is { IsSplit: true })

@@ -80,7 +80,7 @@
  "版本": "Version",
  "能力": "Features",
  "技术": "Technology",
- "快捷键": "Shortcuts",
+ "快捷键": "Keyboard Shortcuts",
  "· 多标签页与可拖拽分屏": "· Multi-tab browsing and draggable split panes",
  "· 本地、FTP/FTPS、SFTP、SMB、WebDAV": "· Local, FTP/FTPS, SFTP, SMB, WebDAV",
  "· 跨文件系统复制、移动与传输队列": "· Cross-file-system copy, move, and transfer queue",
@@ -916,5 +916,9 @@
  "继续": "Resume",
  "无法重试": "Could not retry",
  "只有失败或已取消的传输可以重试": "Only failed or cancelled transfers can be retried.",
- "未知所有者": "Unknown owner"
+ "未知所有者": "Unknown owner",
+ "为常用操作自定义键盘组合；留空即可禁用。": "Customize key combinations for common actions. Leave a field empty to disable it.",
+ "使用 Ctrl / Shift / Alt / Meta 加键名，例如 Ctrl+Shift+T。": "Use Ctrl / Shift / Alt / Meta plus a key name, for example Ctrl+Shift+T.",
+ "全部恢复默认": "Restore All Defaults",
+ "无法识别这个快捷键，请使用 Ctrl+Shift+T 这样的格式。": "This shortcut is not valid. Use a format such as Ctrl+Shift+T."
 }
