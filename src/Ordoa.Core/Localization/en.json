@@ -1208,5 +1208,11 @@
  "{0:0.0} s": "{0:0.0} s",
  "离线": "Offline",
  "最近一次列目录耗时": "Time of the latest directory listing",
- "远程文件在外部修改后自动回传": "Upload remote files automatically after external edits"
+ "远程文件在外部修改后自动回传": "Upload remote files automatically after external edits",
+ "已恢复窗口": "Window restored",
+ "没有可恢复的窗口": "No closed window to restore",
+ "上次关闭的窗口已重新打开": "The last closed window was reopened",
+ "关闭一个窗口后可以在这里恢复": "Close a window first, then reopen it here",
+ "重新打开关闭的窗口": "Reopen closed window",
+ "恢复上次关闭窗口中的标签页": "Restore the tabs from the last closed window"
 }

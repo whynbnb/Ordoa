@@ -64,6 +64,19 @@ public sealed class WindowManager
         return window;
     }
 
+    public async Task<bool> ReopenLastClosedWindowAsync()
+    {
+        if (_closedSessions.Count == 0)
+            return false;
+
+        var state = _closedSessions[^1];
+        _closedSessions.RemoveAt(_closedSessions.Count - 1);
+        var window = await CreateWindowAsync().ConfigureAwait(true);
+        if (window.DataContext is MainViewModel viewModel)
+            await viewModel.ReplaceWithSessionAsync(state).ConfigureAwait(true);
+        return true;
+    }
+
     public void Activate(MainWindow? window)
     {
         window ??= ActiveWindow ?? _windows.FirstOrDefault();

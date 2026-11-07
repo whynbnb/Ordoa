@@ -1431,6 +1431,34 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    public async Task ReplaceWithSessionAsync(SessionState state)
+    {
+        foreach (var tab in Tabs.ToList())
+        {
+            foreach (var pane in tab.Panes.ToList())
+                UnsubscribePane(pane);
+            tab.Dispose();
+        }
+        Tabs.Clear();
+        ActiveTab = null;
+        OnPropertyChanged(nameof(HasTabs));
+        OnPropertyChanged(nameof(CanCloseActiveTab));
+
+        await RestoreSessionStateAsync(state).ConfigureAwait(true);
+        if (Tabs.Count == 0)
+            await CreateTabAsync(_services.FileSystems.Local, KnownFolders.DefaultStartupPath, true)
+                .ConfigureAwait(true);
+        UpdateWindowTitle();
+    }
+
+    public async Task ReopenClosedWindowAsync()
+    {
+        var reopened = await _services.Windows.ReopenLastClosedWindowAsync().ConfigureAwait(true);
+        AddToast(reopened ? L10n.T("已恢复窗口") : L10n.T("没有可恢复的窗口"),
+            reopened ? L10n.T("上次关闭的窗口已重新打开") : L10n.T("关闭一个窗口后可以在这里恢复"),
+            reopened ? ToastKind.Success : ToastKind.Info);
+    }
+
     public SessionState CreateSessionState()
     {
         var state = new SessionState
@@ -2421,6 +2449,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             Add(L10n.T("Git 状态"), L10n.T("查看当前仓库的分支与未提交变更"), null, "IconCode",
                 () => PaneAction(p => p.ShowGitStatusAsync()));
         }
+        Add(L10n.T("重新打开关闭的窗口"), L10n.T("恢复上次关闭窗口中的标签页"), null, "IconRestore",
+            ReopenClosedWindowAsync);
         Add(L10n.T("保存工作区…"), L10n.T("保存当前标签页和分屏布局"), null, "IconBookmark",
             SaveWorkspaceAsync);
         foreach (var workspace in Workspaces)
