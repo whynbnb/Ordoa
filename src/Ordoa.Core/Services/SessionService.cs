@@ -20,6 +20,8 @@ public sealed class SessionPane
 {
     public string FileSystemId { get; set; } = "local";
     public string Path { get; set; } = string.Empty;
+    /// <summary>Source archive when FileSystemId is "archive".</summary>
+    public string? ArchivePath { get; set; }
 }
 
 public sealed class SessionService

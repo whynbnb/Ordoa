@@ -942,5 +942,14 @@
  "已弹出": "Ejected",
  "无法挂载": "Could not mount",
  "无法卸载": "Could not unmount",
- "无法弹出": "Could not eject"
+ "无法弹出": "Could not eject",
+ "已打开压缩包": "Archive opened",
+ "无法打开压缩包": "Could not open archive",
+ "以压缩包浏览": "Browse as Archive",
+ "像文件夹一样打开选中的压缩包": "Open the selected archive like a folder",
+ "压缩包是只读的": "Archives are read-only.",
+ "无法移到系统回收站": "Could not move the item to the system Trash.",
+ "清空回收站失败": "Could not empty the Trash.",
+ "编辑路径": "Edit Path",
+ "要恢复的项目不存在": "The item to restore no longer exists."
 }

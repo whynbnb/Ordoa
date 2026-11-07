@@ -1334,16 +1334,26 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 IsSplit = tab.IsSplit,
                 IsPinned = tab.IsPinned,
                 ActivePane = Math.Max(0, panes.IndexOf(tab.ActivePane)),
-                Panes = panes.Select(p => new SessionPane
-                {
-                    FileSystemId = p.FileSystem.Id,
-                    Path = p.CurrentPath,
-                }).ToList(),
+                Panes = panes.Select(SnapshotPane).ToList(),
             });
         }
 
         return state;
     }
+
+    private static SessionPane SnapshotPane(PaneViewModel pane)
+        => pane.FileSystem is ArchiveFileSystem archive
+            ? new SessionPane
+            {
+                FileSystemId = "archive",
+                ArchivePath = archive.ArchivePath,
+                Path = pane.CurrentPath,
+            }
+            : new SessionPane
+            {
+                FileSystemId = pane.FileSystem.Id,
+                Path = pane.CurrentPath,
+            };
 
     public void SaveSession()
     {
@@ -1386,11 +1396,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             IsSplit = tab.IsSplit,
             IsPinned = tab.IsPinned,
             ActivePane = Math.Max(0, panes.IndexOf(tab.ActivePane)),
-            Panes = panes.Select(pane => new SessionPane
-            {
-                FileSystemId = pane.FileSystem.Id,
-                Path = pane.CurrentPath,
-            }).ToList(),
+            Panes = panes.Select(SnapshotPane).ToList(),
         };
         _closedTabs.Add(new ClosedTabState(state, index, panes.Select(pane => pane.FileSystem).ToList()));
         while (_closedTabs.Count > MaxClosedTabs)
@@ -1404,7 +1410,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         for (var index = 0; index < tabState.Panes.Count; index++)
         {
             var paneState = tabState.Panes[index];
-            var fs = fileSystems is not null && index < fileSystems.Count && fileSystems[index].IsLocal
+            var fs = fileSystems is not null && index < fileSystems.Count &&
+                     (fileSystems[index].IsLocal || fileSystems[index] is ArchiveFileSystem)
                 ? fileSystems[index]
                 : await ResolveSessionFileSystemAsync(paneState).ConfigureAwait(true);
             if (fs is null)
@@ -1492,6 +1499,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return _services.FileSystems.Local;
         if (pane.FileSystemId == "trash")
             return _services.TrashFs;
+        if (pane.FileSystemId == "archive")
+        {
+            if (string.IsNullOrWhiteSpace(pane.ArchivePath) || !File.Exists(pane.ArchivePath))
+                return null;
+            try
+            {
+                return await ArchiveFileSystem.OpenAsync(pane.ArchivePath).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"恢复压缩包失败: {pane.ArchivePath}", ex);
+                return null;
+            }
+        }
 
         var profile = _services.FileSystems.Connections.Get(pane.FileSystemId);
         try
@@ -2249,6 +2270,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Add(L10n.T("压缩为 ZIP"), L10n.T("将选中的项目压缩为 zip"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(false)));
         Add(L10n.T("压缩为 tar.gz"), L10n.T("将选中的项目压缩为 tar.gz"), null, "IconArchive", () => PaneAction(p => p.CompressAsync(true)));
         Add(L10n.T("解压到此处"), L10n.T("解压选中的压缩包"), null, "IconDownload", () => PaneAction(p => p.ExtractAsync()));
+        Add(L10n.T("以压缩包浏览"), L10n.T("像文件夹一样打开选中的压缩包"), null, "IconArchive", () => PaneAction(p => p.OpenArchiveAsync()));
         Add(L10n.T("在终端中打开"), L10n.T("在当前位置或选中的文件夹中启动终端"), null, "IconTerminal", () => PaneAction(p => p.OpenTerminalAsync()));
         if (_services.Terminals.GetEnabledHerdr() is not null)
         {

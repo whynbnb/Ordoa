@@ -22,11 +22,9 @@ public sealed record VolumeInfo(
     public bool IsMounted { get; init; } = true;
     public bool IsGvfs { get; init; }
     public bool CanMount => IsLinux && !IsMounted && Device.StartsWith("/dev/", StringComparison.Ordinal);
-    public bool CanUnmount => IsMounted && IsLinux &&
-        (IsGvfs || Device.StartsWith("/dev/", StringComparison.Ordinal) ||
-         MountPoint.StartsWith("/media/", StringComparison.Ordinal) ||
-         MountPoint.StartsWith("/run/media/", StringComparison.Ordinal));
-    public bool CanEject => IsRemovable && IsMounted && IsLinux &&
+    public bool CanUnmount => IsMounted && IsLinux && !IsSystem &&
+        (IsGvfs || IsRemovable && !string.IsNullOrEmpty(Device));
+    public bool CanEject => IsRemovable && IsMounted && IsLinux && !IsSystem &&
         Device.StartsWith("/dev/", StringComparison.Ordinal);
     public string MountStateText => IsMounted ? string.Empty : L10n.T("未挂载");
 

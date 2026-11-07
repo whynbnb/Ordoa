@@ -18,7 +18,9 @@ public sealed class ShortcutService
         Reload();
     }
 
-    public static IReadOnlyList<ShortcutDefinition> Definitions { get; } =
+    public static IReadOnlyList<ShortcutDefinition> Definitions => CreateDefinitions();
+
+    private static IReadOnlyList<ShortcutDefinition> CreateDefinitions() =>
     [
         new("newTab", L10n.T("新建标签页"), "Ctrl+T"),
         new("newWindow", L10n.T("新建窗口"), "Ctrl+N"),

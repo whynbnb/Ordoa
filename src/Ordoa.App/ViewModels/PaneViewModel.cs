@@ -345,6 +345,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanExtract => HasSelection && SelectedCount == 1 && FileSystem.IsLocal && !IsTrash &&
                               PrimarySelection is { IsDirectory: false } p && ArchiveService.IsSupportedArchive(p.Name);
     public bool CanChecksum => HasSelection && _selected.Any(i => !i.IsDirectory);
+    public bool CanOpenArchive => HasSelection && SelectedCount == 1 && FileSystem.IsLocal && !IsTrash &&
+                                  PrimarySelection is { IsDirectory: false } item &&
+                                  ArchiveService.IsSupportedArchive(item.Name);
     public bool CanOpenWith => !_isOpenWithDialogOpen && HasSelection && SelectedCount == 1 && !IsTrash &&
                                PrimarySelection is { IsDirectory: false } && FileSystem.IsLocal &&
                                _services.OpenWith.IsSupported;
@@ -584,6 +587,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanOpenWith));
         OnPropertyChanged(nameof(CanOpenInNewWindow));
         OnPropertyChanged(nameof(CanOpenTerminal));
@@ -624,21 +628,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
         if (FileSystem.IsLocal && ArchiveService.IsSupportedArchive(item.Name))
         {
-            try
-            {
-                IsLoading = true;
-                var archive = await ArchiveFileSystem.OpenAsync(item.Path).ConfigureAwait(true);
-                await NavigateAsync(archive, "/").ConfigureAwait(true);
-                Toast(L10n.T("已打开压缩包"), item.Name, false);
-            }
-            catch (Exception ex)
-            {
-                Toast(L10n.T("无法打开压缩包"), ex.Message, true);
-            }
-            finally
-            {
-                IsLoading = false;
-            }
+            await OpenArchiveAsync(item).ConfigureAwait(true);
             return;
         }
 
@@ -657,6 +647,30 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         }
 
         await OpenRemoteFileAsync(item).ConfigureAwait(true);
+    }
+
+    public async Task OpenArchiveAsync(FileItemViewModel? item = null)
+    {
+        item ??= PrimarySelection;
+        if (item is null || item.IsDirectory || !FileSystem.IsLocal ||
+            !ArchiveService.IsSupportedArchive(item.Name) || IsTrash)
+            return;
+
+        try
+        {
+            IsLoading = true;
+            var archive = await ArchiveFileSystem.OpenAsync(item.Path).ConfigureAwait(true);
+            await NavigateAsync(archive, "/").ConfigureAwait(true);
+            Toast(L10n.T("已打开压缩包"), item.Name, false);
+        }
+        catch (Exception ex)
+        {
+            Toast(L10n.T("无法打开压缩包"), ex.Message, true);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     public async Task OpenWithAsync()
@@ -947,6 +961,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanOpenWith));
         OnPropertyChanged(nameof(CanOpenInNewWindow));
         OnPropertyChanged(nameof(CanRestore));
@@ -1703,6 +1718,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCompress));
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
+        OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanOpenWith));
         OnPropertyChanged(nameof(CanOpenInNewWindow));
         OnPropertyChanged(nameof(CanOpenTerminal));

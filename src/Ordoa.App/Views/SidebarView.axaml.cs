@@ -161,7 +161,10 @@ public partial class SidebarView : UserControl
             menu.Items.Add(CreateItem(L10n.T("在分屏中打开"), () => vm.OpenSidebarEntryInSplitAsync(entry)));
         }
 
-        if (entry.Kind == SidebarEntryKind.Volume)
+        if (entry.Kind == SidebarEntryKind.Volume &&
+            (entry.CanMountVolume && !entry.VolumeMounted ||
+             entry.CanUnmountVolume && entry.VolumeMounted ||
+             entry.CanEjectVolume && entry.VolumeMounted))
         {
             menu.Items.Add(new Separator());
             if (entry.CanMountVolume && !entry.VolumeMounted)

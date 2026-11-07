@@ -814,6 +814,7 @@ public partial class PaneView : UserControl
         var menu = new ContextMenu();
 
         menu.Items.Add(MenuItem(L10n.T("打开"), () => pane.OpenAsync(), pane.HasSelection));
+        menu.Items.Add(MenuItem(L10n.T("以压缩包浏览"), () => pane.OpenArchiveAsync(), pane.CanOpenArchive));
         menu.Items.Add(MenuItem(L10n.T("打开方式"), pane.OpenWithAsync, pane.CanOpenWith));
         menu.Items.Add(MenuItem(L10n.T("快速预览"), () =>
         {
