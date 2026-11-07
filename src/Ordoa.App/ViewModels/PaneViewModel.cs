@@ -37,6 +37,13 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private GitRepositoryStatus? _gitStatus;
     private string _lastTitle = string.Empty;
     private bool _lastShowHidden;
+    private bool _lastGitEnabled;
+    private bool _lastGitBadges;
+    private bool _lastGitCleanCheck;
+    private bool _lastGitRepositoryBadges;
+    private bool _lastGitSubmoduleBadges;
+    private bool _lastGitDimIgnored;
+    private bool _lastGitStatusBar;
     private bool _disposed;
 
     public PaneViewModel(AppServices services, IFileSystem fileSystem, string path)
@@ -51,6 +58,13 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         _viewMode = settings.View;
         _showHidden = settings.ShowHidden;
         _lastShowHidden = settings.ShowHidden;
+        _lastGitEnabled = settings.EnableGitIntegration;
+        _lastGitBadges = settings.ShowGitFileBadges;
+        _lastGitCleanCheck = settings.ShowGitCleanCheck;
+        _lastGitRepositoryBadges = settings.ShowGitRepositoryBadges;
+        _lastGitSubmoduleBadges = settings.ShowGitSubmoduleBadges;
+        _lastGitDimIgnored = settings.DimGitIgnored;
+        _lastGitStatusBar = settings.ShowGitStatusBar;
         _locationText = BuildEditablePath();
         _services.Settings.Changed += OnSettingsChanged;
         _services.Clipboard.Changed += OnClipboardChanged;
@@ -333,7 +347,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public GitRepositoryStatus? GitStatus => _gitStatus;
     public bool HasGitRepository => _gitStatus is not null;
     public bool IsGitDirty => _gitStatus is { IsClean: false };
-    public bool CanShowGitStatus => FileSystem.IsLocal && !IsTrash && !IsArchive;
+    public bool CanShowGitStatus => _services.Settings.Current.EnableGitIntegration &&
+                                    FileSystem.IsLocal && !IsTrash && !IsArchive;
+    public bool ShowGitStatusBar => HasGitRepository && _services.Settings.Current.ShowGitStatusBar;
 
     public string GitStatusText
     {
@@ -575,37 +591,48 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private void ApplyGitStatus(GitRepositoryStatus? status)
     {
         _gitStatus = status;
+        var settings = _services.Settings.Current;
+        var enabled = settings.EnableGitIntegration;
+        var badges = enabled && settings.ShowGitFileBadges;
         foreach (var item in _entries)
         {
-            var itemPath = Path.TrimEndingDirectorySeparator(item.Path);
-            if (item.IsDirectory)
-            {
-                if (status is not null &&
-                    status.FilesByPath.TryGetValue(itemPath, out var exact))
-                {
-                    item.SetGitChange(exact);
-                }
-                else
-                {
-                    item.SetGitChange(null,
-                        status?.ChangedDirectories.Contains(itemPath) == true);
-                }
-                continue;
-            }
+            item.SetGitDisplay(badges, settings.ShowGitCleanCheck,
+                settings.ShowGitRepositoryBadges, settings.ShowGitSubmoduleBadges,
+                settings.DimGitIgnored);
 
-            item.SetGitChange(status is not null &&
-                              status.FilesByPath.TryGetValue(itemPath, out var change)
-                ? change
-                : null);
+            var itemPath = Path.TrimEndingDirectorySeparator(item.Path);
+            var change = status is not null &&
+                         status.FilesByPath.TryGetValue(itemPath, out var exact)
+                ? exact
+                : null;
+            var repository = enabled && settings.ShowGitRepositoryBadges &&
+                             item.IsDirectory && HasGitMarker(itemPath);
+            var ignored = enabled && (status?.IgnoredPaths.Contains(itemPath) == true ||
+                          status?.IgnoredDirectories.Any(directory => IsUnder(itemPath, directory)) == true);
+            var submodule = enabled && (status?.SubmodulePaths.Contains(itemPath) == true ||
+                                        change?.IsSubmodule == true);
+            var trackedClean = enabled && !item.IsDirectory && change is null &&
+                               status?.TrackedPaths.Contains(itemPath) == true;
+            var directoryDirty = enabled && item.IsDirectory && status is not null &&
+                                 status.ChangedDirectories.Contains(itemPath);
+            item.SetGitState(change, directoryDirty, trackedClean, ignored, repository, submodule);
         }
 
         OnPropertyChanged(nameof(GitStatus));
         OnPropertyChanged(nameof(HasGitRepository));
         OnPropertyChanged(nameof(IsGitDirty));
+        OnPropertyChanged(nameof(ShowGitStatusBar));
         OnPropertyChanged(nameof(GitStatusText));
         OnPropertyChanged(nameof(GitStatusBrush));
         OnPropertyChanged(nameof(GitTooltipText));
     }
+
+    private static bool HasGitMarker(string path)
+        => Directory.Exists(Path.Combine(path, ".git")) || File.Exists(Path.Combine(path, ".git"));
+
+    private static bool IsUnder(string path, string directory)
+        => path.StartsWith(directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar,
+            OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
 
     [RelayCommand]
     private async Task GoBackAsync()
@@ -2052,6 +2079,40 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             _lastShowHidden = settings.ShowHidden;
             ShowHidden = settings.ShowHidden;
             _ = LoadAsync().ConfigureAwait(true);
+        }
+
+        var gitEnabledChanged = settings.EnableGitIntegration != _lastGitEnabled;
+        var gitDisplayChanged = settings.ShowGitFileBadges != _lastGitBadges ||
+                                settings.ShowGitCleanCheck != _lastGitCleanCheck ||
+                                settings.ShowGitRepositoryBadges != _lastGitRepositoryBadges ||
+                                settings.ShowGitSubmoduleBadges != _lastGitSubmoduleBadges ||
+                                settings.DimGitIgnored != _lastGitDimIgnored;
+        var gitStatusBarChanged = settings.ShowGitStatusBar != _lastGitStatusBar;
+        _lastGitEnabled = settings.EnableGitIntegration;
+        _lastGitBadges = settings.ShowGitFileBadges;
+        _lastGitCleanCheck = settings.ShowGitCleanCheck;
+        _lastGitRepositoryBadges = settings.ShowGitRepositoryBadges;
+        _lastGitSubmoduleBadges = settings.ShowGitSubmoduleBadges;
+        _lastGitDimIgnored = settings.DimGitIgnored;
+
+        if (gitStatusBarChanged)
+        {
+            _lastGitStatusBar = settings.ShowGitStatusBar;
+            OnPropertyChanged(nameof(ShowGitStatusBar));
+        }
+
+        if (gitEnabledChanged)
+        {
+            OnPropertyChanged(nameof(CanShowGitStatus));
+            OnPropertyChanged(nameof(ShowGitStatusBar));
+            if (settings.EnableGitIntegration)
+                _ = LoadAsync().ConfigureAwait(true);
+            else
+                ApplyGitStatus(null);
+        }
+        else if (gitDisplayChanged)
+        {
+            ApplyGitStatus(_gitStatus);
         }
     }
 

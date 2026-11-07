@@ -681,6 +681,40 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </StackPanel>
+
+          <!-- Git -->
+          <StackPanel IsVisible="{Binding ShowGit}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr Git}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 仓库状态、分支与未提交变更标记}" Classes="caption" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 显示}" Classes="section" />
+            <StackPanel Spacing="7">
+              <CheckBox Content="{loc:Tr 启用 Git 集成}" IsChecked="{Binding EnableGitIntegration, Mode=TwoWay}" />
+              <StackPanel Spacing="7" IsEnabled="{Binding EnableGitIntegration}">
+                <CheckBox Content="{loc:Tr 在状态栏显示分支与变更数量}"
+                          IsChecked="{Binding ShowGitStatusBar, Mode=TwoWay}" />
+                <CheckBox Content="{loc:Tr 在文件和文件夹上显示 Git 标记}"
+                          IsChecked="{Binding ShowGitFileBadges, Mode=TwoWay}" />
+                <CheckBox Content="{loc:Tr 已跟踪且无变更的文件显示绿色勾}"
+                          IsChecked="{Binding ShowGitCleanCheck, Mode=TwoWay}" />
+                <CheckBox Content="{loc:Tr 在文件夹外显示 Git 仓库标记}"
+                          IsChecked="{Binding ShowGitRepositoryBadges, Mode=TwoWay}" />
+                <CheckBox Content="{loc:Tr 显示子模块特殊标记}"
+                          IsChecked="{Binding ShowGitSubmoduleBadges, Mode=TwoWay}" />
+                <CheckBox Content="{loc:Tr 淡显被 Git 忽略的文件}"
+                          IsChecked="{Binding DimGitIgnored, Mode=TwoWay}" />
+              </StackPanel>
+            </StackPanel>
+
+            <Border Classes="divider" />
+
+            <TextBlock Text="{loc:Tr Git 状态是只读的，仅调用系统 PATH 中的 git status，不会暂存或提交。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
+            <TextBlock Text="{loc:Tr 需要安装 Git 命令行工具；未安装时这些开关不会影响文件浏览。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
+          </StackPanel>
         </StackPanel>
       </ScrollViewer>
     </Grid>

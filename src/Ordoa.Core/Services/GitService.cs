@@ -24,7 +24,8 @@ public sealed record GitFileChange(
     string RelativePath,
     char IndexStatus,
     char WorkTreeStatus,
-    bool IsDirectoryHint = false)
+    bool IsDirectoryHint = false,
+    bool IsSubmodule = false)
 {
     public bool IsUntracked => IndexStatus == '?' && WorkTreeStatus == '?';
     public bool IsConflicted => IndexStatus == 'U' || WorkTreeStatus == 'U' ||
@@ -94,7 +95,7 @@ public sealed record GitFileChange(
                 text += " · " + L10n.T("已暂存");
             else if (IsStaged && !IsUntracked && !IsConflicted)
                 text += " · " + L10n.T("已暂存");
-            return text;
+            return IsSubmodule ? L10n.T("子模块") + " · " + text : text;
         }
     }
 }
@@ -111,6 +112,14 @@ public sealed class GitRepositoryStatus
     public IReadOnlyDictionary<string, GitFileChange> FilesByPath { get; init; } =
         new Dictionary<string, GitFileChange>(StringComparer.Ordinal);
     public IReadOnlySet<string> ChangedDirectories { get; init; } =
+        new HashSet<string>(StringComparer.Ordinal);
+    public IReadOnlySet<string> TrackedPaths { get; init; } =
+        new HashSet<string>(StringComparer.Ordinal);
+    public IReadOnlySet<string> IgnoredPaths { get; init; } =
+        new HashSet<string>(StringComparer.Ordinal);
+    public IReadOnlySet<string> IgnoredDirectories { get; init; } =
+        new HashSet<string>(StringComparer.Ordinal);
+    public IReadOnlySet<string> SubmodulePaths { get; init; } =
         new HashSet<string>(StringComparer.Ordinal);
 
     public int ChangedCount => Files.Count;
@@ -158,22 +167,40 @@ public static class GitService
         if (root is null)
             return null;
 
-        return await GetStatusForRootAsync(root, cancellationToken).ConfigureAwait(false);
+        var fullPath = Path.GetFullPath(path);
+        var scope = string.Equals(Path.TrimEndingDirectorySeparator(fullPath),
+            Path.TrimEndingDirectorySeparator(root), StringComparison.Ordinal)
+            ? "."
+            : Path.GetRelativePath(root, fullPath).Replace('\\', '/');
+        return await GetStatusForRootAsync(root, cancellationToken, scope).ConfigureAwait(false);
     }
 
     public static async Task<GitRepositoryStatus?> GetStatusForRootAsync(string root,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, string? scope = null)
     {
-        var output = await RunGitAsync(root,
+        var statusTask = RunGitAsync(root,
             ["status", "--porcelain=v2", "--branch", "-z", "--untracked-files=normal"],
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
+        var trackedTask = scope is null
+            ? Task.FromResult<string?>(null)
+            : RunGitAsync(root, ["ls-files", "-z", "--stage", "--", scope], cancellationToken);
+        var ignoredTask = scope is null
+            ? Task.FromResult<string?>(null)
+            : RunGitAsync(root,
+                ["status", "--porcelain=v2", "-z", "--ignored=matching", "--", scope],
+                cancellationToken);
+
+        await Task.WhenAll(statusTask, trackedTask, ignoredTask).ConfigureAwait(false);
+        var output = await statusTask.ConfigureAwait(false);
         if (output is null)
             return null;
 
-        return Parse(root, output);
+        return Parse(root, output, await trackedTask.ConfigureAwait(false),
+            await ignoredTask.ConfigureAwait(false));
     }
 
-    private static GitRepositoryStatus Parse(string root, string output)
+    private static GitRepositoryStatus Parse(string root, string output, string? trackedOutput,
+        string? ignoredOutput)
     {
         var branch = string.Empty;
         string? upstream = null;
@@ -219,14 +246,16 @@ public static class GitService
             {
                 var fields = token.Split(' ', 9);
                 if (fields.Length == 9)
-                    files.Add(CreateChange(root, fields[8], fields[1], comparer));
+                    files.Add(CreateChange(root, fields[8], fields[1], comparer,
+                        submodule: IsSubmoduleStatus(fields[2])));
                 continue;
             }
             if (token.StartsWith("2 ", StringComparison.Ordinal))
             {
                 var fields = token.Split(' ', 10);
                 if (fields.Length == 10)
-                    files.Add(CreateChange(root, fields[9], fields[1], comparer));
+                    files.Add(CreateChange(root, fields[9], fields[1], comparer,
+                        submodule: IsSubmoduleStatus(fields[2])));
                 if (index + 1 < tokens.Length)
                     index++; // Original path for renames/copies.
                 continue;
@@ -235,7 +264,8 @@ public static class GitService
             {
                 var fields = token.Split(' ', 11);
                 if (fields.Length == 11)
-                    files.Add(CreateChange(root, fields[10], fields[1], comparer));
+                    files.Add(CreateChange(root, fields[10], fields[1], comparer,
+                        submodule: IsSubmoduleStatus(fields[2])));
                 continue;
             }
             if (token.StartsWith("? ", StringComparison.Ordinal))
@@ -269,6 +299,43 @@ public static class GitService
             }
         }
 
+        var tracked = new HashSet<string>(comparer);
+        var submodules = new HashSet<string>(comparer);
+        if (!string.IsNullOrEmpty(trackedOutput))
+        {
+            foreach (var record in trackedOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var tab = record.IndexOf('\t');
+                if (tab <= 0)
+                    continue;
+                var metadata = record[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (metadata.Length == 0)
+                    continue;
+                var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(
+                    Path.Combine(root, record[(tab + 1)..].Replace('/', Path.DirectorySeparatorChar))));
+                tracked.Add(full);
+                if (metadata[0] == "160000")
+                    submodules.Add(full);
+            }
+        }
+
+        var ignored = new HashSet<string>(comparer);
+        var ignoredDirectories = new HashSet<string>(comparer);
+        if (!string.IsNullOrEmpty(ignoredOutput))
+        {
+            foreach (var token in ignoredOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!token.StartsWith("! ", StringComparison.Ordinal))
+                    continue;
+                var gitPath = token[2..];
+                var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(
+                    Path.Combine(root, gitPath.Replace('/', Path.DirectorySeparatorChar))));
+                ignored.Add(full);
+                if (gitPath.EndsWith('/') || gitPath.EndsWith('\\'))
+                    ignoredDirectories.Add(full);
+            }
+        }
+
         return new GitRepositoryStatus
         {
             Root = root,
@@ -284,11 +351,18 @@ public static class GitService
                 .ToList(),
             FilesByPath = byPath,
             ChangedDirectories = directories,
+            TrackedPaths = tracked,
+            IgnoredPaths = ignored,
+            IgnoredDirectories = ignoredDirectories,
+            SubmodulePaths = submodules,
         };
     }
 
+    private static bool IsSubmoduleStatus(string status)
+        => status.Length > 0 && status[0] == 'S';
+
     private static GitFileChange CreateChange(string root, string gitPath, string status,
-        StringComparer comparer, bool isDirectoryHint = false)
+        StringComparer comparer, bool isDirectoryHint = false, bool submodule = false)
     {
         var relative = gitPath.Replace('\\', Path.DirectorySeparatorChar)
             .Replace('/', Path.DirectorySeparatorChar);
@@ -296,7 +370,7 @@ public static class GitService
             Path.GetFullPath(Path.Combine(root, relative)));
         var x = status.Length > 0 ? status[0] : '.';
         var y = status.Length > 1 ? status[1] : '.';
-        return new GitFileChange(full, gitPath.Replace('\\', '/'), x, y, isDirectoryHint);
+        return new GitFileChange(full, gitPath.Replace('\\', '/'), x, y, isDirectoryHint, submodule);
     }
 
     private static async Task<string?> RunGitAsync(string root, IReadOnlyList<string> arguments,

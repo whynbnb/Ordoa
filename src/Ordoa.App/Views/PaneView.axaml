@@ -330,7 +330,7 @@
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:FileItemViewModel">
-              <Panel Classes="fileitem" Classes.dim="{Binding IsHidden}" ToolTip.Tip="{Binding TooltipText}" Background="Transparent">
+              <Panel Classes="fileitem" Classes.dim="{Binding IsDimmed}" ToolTip.Tip="{Binding TooltipText}" Background="Transparent">
                 <Grid Classes="rowwide" ColumnDefinitions="*,74,116,88,86,92">
                   <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,0,0,0">
                     <Panel Width="22" Height="22" VerticalAlignment="Center">
@@ -344,7 +344,7 @@
                     </Panel>
                     <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Border Grid.Column="2" IsVisible="{Binding HasGitChange}"
+                    <Border Grid.Column="2" IsVisible="{Binding ShowGitBadge}"
                             Background="{Binding GitBadgeBrush}" CornerRadius="4"
                             Padding="4,1" Margin="5,0,4,0" MinWidth="15" VerticalAlignment="Center"
                             ToolTip.Tip="{Binding GitTooltip}">
@@ -376,7 +376,7 @@
                     </Panel>
                     <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Border Grid.Column="2" IsVisible="{Binding HasGitChange}"
+                    <Border Grid.Column="2" IsVisible="{Binding ShowGitBadge}"
                             Background="{Binding GitBadgeBrush}" CornerRadius="4"
                             Padding="4,1" Margin="5,0,4,0" MinWidth="15" VerticalAlignment="Center"
                             ToolTip.Tip="{Binding GitTooltip}">
@@ -410,13 +410,13 @@
         </ListBox.ItemsPanel>
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:FileItemViewModel">
-            <StackPanel Classes="filetile" Classes.dim="{Binding IsHidden}" Width="104" Spacing="3" ToolTip.Tip="{Binding TooltipText}">
+            <StackPanel Classes="filetile" Classes.dim="{Binding IsDimmed}" Width="104" Spacing="3" ToolTip.Tip="{Binding TooltipText}">
               <Panel Height="62" HorizontalAlignment="Center">
                 <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="44" Height="44"
                       Stretch="Uniform" IsVisible="{Binding !HasThumbnail}" />
                 <Image Source="{Binding Thumbnail}" Height="60" Stretch="Uniform"
                        IsVisible="{Binding HasThumbnail}" />
-                <Border IsVisible="{Binding HasGitChange}" Background="{Binding GitBadgeBrush}"
+                <Border IsVisible="{Binding ShowGitBadge}" Background="{Binding GitBadgeBrush}"
                         CornerRadius="4" Padding="4,1" MinWidth="15"
                         HorizontalAlignment="Right" VerticalAlignment="Top"
                         ToolTip.Tip="{Binding GitTooltip}">
@@ -497,7 +497,7 @@
           <TextBlock Text="{Binding GitStatusText}" Classes="tiny"
                      Foreground="{Binding GitStatusBrush}"
                      ToolTip.Tip="{Binding GitTooltipText}"
-                     IsVisible="{Binding HasGitRepository}" />
+                     IsVisible="{Binding ShowGitStatusBar}" />
           <TextBlock Text="{Binding FsBadgeText}" Classes="tiny" Foreground="{DynamicResource AccentBrush}" />
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">

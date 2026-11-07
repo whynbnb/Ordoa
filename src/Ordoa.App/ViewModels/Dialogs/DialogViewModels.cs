@@ -476,6 +476,13 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _allowMultipleWindows = settings.AllowMultipleWindows;
         _folderOpenIndex = settings.FolderOpenMode == FolderOpenMode.NewWindow ? 1 : 0;
         _undoBehaviorIndex = (int)settings.UndoBehavior;
+        _enableGitIntegration = settings.EnableGitIntegration;
+        _showGitStatusBar = settings.ShowGitStatusBar;
+        _showGitFileBadges = settings.ShowGitFileBadges;
+        _showGitCleanCheck = settings.ShowGitCleanCheck;
+        _showGitRepositoryBadges = settings.ShowGitRepositoryBadges;
+        _showGitSubmoduleBadges = settings.ShowGitSubmoduleBadges;
+        _dimGitIgnored = settings.DimGitIgnored;
         _terminalMode = settings.TerminalMode;
         _manualTerminalName = settings.ManualTerminalName;
         _manualTerminalPath = settings.ManualTerminalPath;
@@ -511,6 +518,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             new SettingsCategoryViewModel { Title = L10n.T("行为与撤销"), Icon = FileIconCatalog.Resource("IconUndo") },
             new SettingsCategoryViewModel { Title = L10n.T("系统与集成"), Icon = FileIconCatalog.Resource("IconSettings") },
             new SettingsCategoryViewModel { Title = L10n.T("快捷键"), Icon = FileIconCatalog.Resource("IconKeyboard") },
+            new SettingsCategoryViewModel { Title = L10n.T("Git"), Icon = FileIconCatalog.Resource("IconCode") },
         ];
 
         foreach (var definition in ShortcutService.Definitions)
@@ -603,6 +611,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public bool ShowBehavior => SelectedCategoryIndex == 7;
     public bool ShowSystem => SelectedCategoryIndex == 8;
     public bool ShowShortcuts => SelectedCategoryIndex == 9;
+    public bool ShowGit => SelectedCategoryIndex == 10;
 
     partial void OnSelectedCategoryIndexChanged(int value)
     {
@@ -622,6 +631,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowBehavior));
         OnPropertyChanged(nameof(ShowSystem));
         OnPropertyChanged(nameof(ShowShortcuts));
+        OnPropertyChanged(nameof(ShowGit));
     }
 
     [ObservableProperty]
@@ -704,6 +714,27 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private int _undoBehaviorIndex;
+
+    [ObservableProperty]
+    private bool _enableGitIntegration;
+
+    [ObservableProperty]
+    private bool _showGitStatusBar;
+
+    [ObservableProperty]
+    private bool _showGitFileBadges;
+
+    [ObservableProperty]
+    private bool _showGitCleanCheck;
+
+    [ObservableProperty]
+    private bool _showGitRepositoryBadges;
+
+    [ObservableProperty]
+    private bool _showGitSubmoduleBadges;
+
+    [ObservableProperty]
+    private bool _dimGitIgnored;
 
     [ObservableProperty]
     private TerminalDetectionMode _terminalMode;
@@ -957,6 +988,13 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             ? FolderOpenMode.NewWindow
             : FolderOpenMode.CurrentWindow;
         settings.UndoBehavior = (UndoBehavior)Math.Clamp(UndoBehaviorIndex, 0, 3);
+        settings.EnableGitIntegration = EnableGitIntegration;
+        settings.ShowGitStatusBar = ShowGitStatusBar;
+        settings.ShowGitFileBadges = ShowGitFileBadges;
+        settings.ShowGitCleanCheck = ShowGitCleanCheck;
+        settings.ShowGitRepositoryBadges = ShowGitRepositoryBadges;
+        settings.ShowGitSubmoduleBadges = ShowGitSubmoduleBadges;
+        settings.DimGitIgnored = DimGitIgnored;
         settings.TerminalMode = TerminalMode;
         settings.ManualTerminalName = (ManualTerminalName ?? string.Empty).Trim();
         settings.ManualTerminalPath = (ManualTerminalPath ?? string.Empty).Trim();
@@ -1035,6 +1073,13 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         AllowMultipleWindows = defaults.AllowMultipleWindows;
         FolderOpenIndex = defaults.FolderOpenMode == FolderOpenMode.NewWindow ? 1 : 0;
         UndoBehaviorIndex = (int)defaults.UndoBehavior;
+        EnableGitIntegration = defaults.EnableGitIntegration;
+        ShowGitStatusBar = defaults.ShowGitStatusBar;
+        ShowGitFileBadges = defaults.ShowGitFileBadges;
+        ShowGitCleanCheck = defaults.ShowGitCleanCheck;
+        ShowGitRepositoryBadges = defaults.ShowGitRepositoryBadges;
+        ShowGitSubmoduleBadges = defaults.ShowGitSubmoduleBadges;
+        DimGitIgnored = defaults.DimGitIgnored;
         TerminalMode = defaults.TerminalMode;
         ManualTerminalName = defaults.ManualTerminalName;
         ManualTerminalPath = defaults.ManualTerminalPath;

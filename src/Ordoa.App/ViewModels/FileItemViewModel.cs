@@ -36,6 +36,7 @@ public sealed partial class FileItemViewModel : ObservableObject
         OnPropertyChanged(nameof(TypeText));
         OnPropertyChanged(nameof(GridSubtitle));
         OnPropertyChanged(nameof(ModifiedText));
+        OnPropertyChanged(nameof(GitTooltip));
         OnPropertyChanged(nameof(TooltipText));
     }
 
@@ -79,41 +80,140 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     private GitFileChange? _gitChange;
     private bool _isGitDirectoryDirty;
+    private bool _isGitTrackedClean;
+    private bool _isGitIgnored;
+    private bool _isGitRepository;
+    private bool _isGitSubmodule;
+    private bool _gitBadgesVisible = true;
+    private bool _showGitClean = true;
+    private bool _showGitRepository = true;
+    private bool _showGitSubmodule = true;
+    private bool _dimGitIgnored = true;
 
-    public bool HasGitChange => _gitChange is not null || _isGitDirectoryDirty;
     public bool IsGitDirectoryDirty => _isGitDirectoryDirty;
-    public string GitBadgeText => _gitChange?.Code ?? (_isGitDirectoryDirty ? "●" : string.Empty);
+    public bool IsGitIgnored => _isGitIgnored;
+    public bool IsGitRepository => _isGitRepository;
+    public bool IsGitSubmodule => _isGitSubmodule;
+    public bool IsDimmed => IsHidden || _dimGitIgnored && _isGitIgnored;
 
-    public IBrush? GitBadgeBrush => _gitChange?.Kind switch
+    public bool ShowGitBadge => _gitBadgesVisible &&
+        (_gitChange is not null || _isGitDirectoryDirty ||
+         _showGitClean && _isGitTrackedClean ||
+         _showGitRepository && _isGitRepository ||
+         _showGitSubmodule && _isGitSubmodule);
+
+    public string GitBadgeText
     {
-        GitChangeKind.Untracked or GitChangeKind.Added => GitBrushes.Added,
-        GitChangeKind.Deleted or GitChangeKind.Conflicted => GitBrushes.Deleted,
-        GitChangeKind.Renamed or GitChangeKind.Copied => GitBrushes.Renamed,
-        GitChangeKind.TypeChanged => GitBrushes.Renamed,
-        GitChangeKind.Modified => GitBrushes.Modified,
-        _ => _isGitDirectoryDirty ? GitBrushes.Modified : null,
-    };
+        get
+        {
+            if (_showGitSubmodule && _isGitSubmodule)
+                return "S";
+            if (_showGitRepository && _isGitRepository)
+                return "GIT";
+            if (_gitChange is not null)
+                return _gitChange.Code;
+            if (_showGitClean && _isGitTrackedClean)
+                return "✓";
+            return _isGitDirectoryDirty ? "●" : string.Empty;
+        }
+    }
 
-    public string? GitTooltip => _gitChange is not null
-        ? $"{_gitChange.Description}\n{_gitChange.RelativePath}"
-        : _isGitDirectoryDirty
-            ? L10n.T("此文件夹包含未提交的变更")
-            : null;
-
-    public void SetGitChange(GitFileChange? change, bool directoryDirty = false)
+    public IBrush? GitBadgeBrush
     {
-        if (ReferenceEquals(_gitChange, change) && _isGitDirectoryDirty == directoryDirty)
+        get
+        {
+            if (_isGitSubmodule)
+                return _gitChange is not null ? BrushFor(_gitChange) : GitBrushes.Submodule;
+            if (_isGitRepository)
+                return _gitChange is not null ? BrushFor(_gitChange) : GitBrushes.Repository;
+            if (_gitChange is not null)
+                return BrushFor(_gitChange);
+            if (_isGitTrackedClean)
+                return GitBrushes.Added;
+            return _isGitDirectoryDirty ? GitBrushes.Modified : null;
+        }
+    }
+
+    public string? GitTooltip
+    {
+        get
+        {
+            var lines = new List<string>();
+            if (_isGitRepository)
+                lines.Add(L10n.T("Git 仓库"));
+            if (_isGitSubmodule)
+                lines.Add(L10n.T("Git 子模块"));
+            if (_gitChange is not null)
+                lines.Add($"{_gitChange.Description}\n{_gitChange.RelativePath}");
+            else if (_isGitTrackedClean)
+                lines.Add(L10n.T("已提交，工作区干净"));
+            if (_isGitDirectoryDirty)
+                lines.Add(L10n.T("此文件夹包含未提交的变更"));
+            if (_isGitIgnored)
+                lines.Add(L10n.T("已被 Git 忽略"));
+            return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
+        }
+    }
+
+    public void SetGitState(GitFileChange? change, bool directoryDirty = false,
+        bool trackedClean = false, bool ignored = false, bool repository = false,
+        bool submodule = false)
+    {
+        if (ReferenceEquals(_gitChange, change) &&
+            _isGitDirectoryDirty == directoryDirty &&
+            _isGitTrackedClean == trackedClean &&
+            _isGitIgnored == ignored &&
+            _isGitRepository == repository &&
+            _isGitSubmodule == submodule)
             return;
 
         _gitChange = change;
         _isGitDirectoryDirty = directoryDirty;
-        OnPropertyChanged(nameof(HasGitChange));
+        _isGitTrackedClean = trackedClean;
+        _isGitIgnored = ignored;
+        _isGitRepository = repository;
+        _isGitSubmodule = submodule;
+        NotifyGitChanged();
+    }
+
+    public void SetGitDisplay(bool badges, bool cleanCheck, bool repositoryBadges,
+        bool submoduleBadges, bool dimIgnored)
+    {
+        if (_gitBadgesVisible == badges && _showGitClean == cleanCheck &&
+            _showGitRepository == repositoryBadges && _showGitSubmodule == submoduleBadges &&
+            _dimGitIgnored == dimIgnored)
+            return;
+
+        _gitBadgesVisible = badges;
+        _showGitClean = cleanCheck;
+        _showGitRepository = repositoryBadges;
+        _showGitSubmodule = submoduleBadges;
+        _dimGitIgnored = dimIgnored;
+        NotifyGitChanged();
+        OnPropertyChanged(nameof(IsDimmed));
+    }
+
+    private void NotifyGitChanged()
+    {
+        OnPropertyChanged(nameof(ShowGitBadge));
         OnPropertyChanged(nameof(IsGitDirectoryDirty));
+        OnPropertyChanged(nameof(IsGitIgnored));
+        OnPropertyChanged(nameof(IsGitRepository));
+        OnPropertyChanged(nameof(IsGitSubmodule));
         OnPropertyChanged(nameof(GitBadgeText));
         OnPropertyChanged(nameof(GitBadgeBrush));
         OnPropertyChanged(nameof(GitTooltip));
         OnPropertyChanged(nameof(TooltipText));
     }
+
+    private static IBrush BrushFor(GitFileChange change) => change.Kind switch
+    {
+        GitChangeKind.Untracked or GitChangeKind.Added => GitBrushes.Added,
+        GitChangeKind.Deleted or GitChangeKind.Conflicted => GitBrushes.Deleted,
+        GitChangeKind.Renamed or GitChangeKind.Copied => GitBrushes.Renamed,
+        GitChangeKind.TypeChanged => GitBrushes.Renamed,
+        _ => GitBrushes.Modified,
+    };
 
     public bool HasThumbnail => Thumbnail is not null;
     public bool IsTrashItem => Entry.OriginalPath is not null;
@@ -126,4 +226,6 @@ internal static class GitBrushes
     public static readonly IBrush Added = new SolidColorBrush(Color.Parse("#3E9B72"));
     public static readonly IBrush Deleted = new SolidColorBrush(Color.Parse("#C26A6A"));
     public static readonly IBrush Renamed = new SolidColorBrush(Color.Parse("#5A9BD5"));
+    public static readonly IBrush Submodule = new SolidColorBrush(Color.Parse("#8E6AD6"));
+    public static readonly IBrush Repository = new SolidColorBrush(Color.Parse("#6A5ACD"));
 }

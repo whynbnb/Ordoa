@@ -12,9 +12,9 @@ public sealed class GitFileItemViewModel
     public GitFileItemViewModel(GitFileChange change)
     {
         Change = change;
-        StatusLabel = string.IsNullOrWhiteSpace(change.Code) ? "M" : change.Code;
+        StatusLabel = change.IsSubmodule ? "S" : string.IsNullOrWhiteSpace(change.Code) ? "M" : change.Code;
         StatusText = change.Description;
-        LabelBrush = change.Kind switch
+        LabelBrush = change.IsSubmodule ? GitBrushes.Submodule : change.Kind switch
         {
             GitChangeKind.Untracked or GitChangeKind.Added => GitBrushes.Added,
             GitChangeKind.Deleted or GitChangeKind.Conflicted => GitBrushes.Deleted,

@@ -114,6 +114,15 @@ public sealed class AppSettings
     /// <summary>Session undo scope. System follows the platform file manager behavior.</summary>
     public UndoBehavior UndoBehavior { get; set; } = UndoBehavior.System;
 
+    /// <summary>Enable read-only git status probing and badges.</summary>
+    public bool EnableGitIntegration { get; set; } = true;
+    public bool ShowGitStatusBar { get; set; } = true;
+    public bool ShowGitFileBadges { get; set; } = true;
+    public bool ShowGitCleanCheck { get; set; } = true;
+    public bool ShowGitRepositoryBadges { get; set; } = true;
+    public bool ShowGitSubmoduleBadges { get; set; } = true;
+    public bool DimGitIgnored { get; set; } = true;
+
     /// <summary>Whether terminals are discovered from PATH or supplied manually.</summary>
     public TerminalDetectionMode TerminalMode { get; set; } = TerminalDetectionMode.Auto;
 
