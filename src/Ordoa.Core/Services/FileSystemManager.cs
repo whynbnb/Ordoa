@@ -91,6 +91,34 @@ public sealed class FileSystemManager : IAsyncDisposable
     public bool IsConnected(string connectionId)
         => _sessions.TryGetValue(connectionId, out var lazy) && lazy.IsValueCreated && lazy.Value.IsCompletedSuccessfully;
 
+    /// <summary>Replace a broken remote session, reusing a newer one if another pane already reconnected.</summary>
+    public async Task<IFileSystem> ReconnectAsync(string connectionId, IFileSystem current,
+        CancellationToken cancellationToken = default)
+    {
+        if (_sessions.TryGetValue(connectionId, out var existing) &&
+            existing.IsValueCreated && existing.Value.IsCompletedSuccessfully &&
+            !ReferenceEquals(existing.Value.Result, current))
+            return existing.Value.Result;
+
+        IFileSystem? old = null;
+        if (_sessions.TryRemove(connectionId, out var oldLazy))
+        {
+            try { old = await oldLazy.Value.ConfigureAwait(false); }
+            catch { /* old session is already broken */ }
+        }
+
+        var profile = Connections.Get(connectionId)
+            ?? throw new InvalidOperationException(L10n.T("找不到保存的远程连接"));
+        var fileSystem = await ConnectAsync(profile, null, profile.SavePassword, cancellationToken)
+            .ConfigureAwait(false);
+        if (old is not null && !ReferenceEquals(old, fileSystem))
+        {
+            try { await old.DisposeAsync().ConfigureAwait(false); }
+            catch { /* ignore */ }
+        }
+        return fileSystem;
+    }
+
     public async Task DisconnectAsync(string connectionId)
     {
         if (_sessions.TryRemove(connectionId, out var lazy) && lazy.IsValueCreated)

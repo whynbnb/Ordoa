@@ -50,6 +50,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private readonly Dictionary<string, List<FileEntry>> _treeChildren = new(StringComparer.Ordinal);
     private readonly Dictionary<string, IReadOnlyList<FileItemViewModel>> _millerCache = new(StringComparer.Ordinal);
     private readonly HashSet<string> _expandedTreePaths = new(StringComparer.Ordinal);
+    private bool _isReconnecting;
     private bool _disposed;
 
     public PaneViewModel(AppServices services, IFileSystem fileSystem, string path)
@@ -685,6 +686,23 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             {
                 RemoteLatencyText = L10n.T("离线");
                 RemoteLatencyBrush = new SolidColorBrush(Color.Parse("#D9534F"));
+            }
+            if (IsRemote && !_isReconnecting && ex is not OperationCanceledException)
+            {
+                _isReconnecting = true;
+                try
+                {
+                    if (await TryReconnectAsync(cancellationToken).ConfigureAwait(true))
+                    {
+                        _isReconnecting = false;
+                        await LoadAsync(resetFilter).ConfigureAwait(true);
+                        return;
+                    }
+                }
+                finally
+                {
+                    _isReconnecting = false;
+                }
             }
             _entries.Clear();
             VisibleItems = [];
@@ -2317,6 +2335,35 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
             return total;
         }, cancellationToken);
+
+    private async Task<bool> TryReconnectAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var fileSystem = await _services.FileSystems.ReconnectAsync(FileSystem.Id, FileSystem,
+                cancellationToken).ConfigureAwait(true);
+            if (ReferenceEquals(fileSystem, FileSystem))
+                return false;
+
+            FileSystem = fileSystem;
+            OnPropertyChanged(nameof(FileSystem));
+            OnPropertyChanged(nameof(IsRemote));
+            OnPropertyChanged(nameof(IsArchive));
+            OnPropertyChanged(nameof(IsTrash));
+            OnPropertyChanged(nameof(IsLocal));
+            OnPropertyChanged(nameof(FsBadgeText));
+            OnPropertyChanged(nameof(DisplayPath));
+            OnPropertyChanged(nameof(CanShowGitStatus));
+            TitleChanged?.Invoke(this);
+            Toast(L10n.T("已重新连接"), fileSystem.DisplayName, false);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"远程重连失败: {FileSystem.Id}", ex);
+            return false;
+        }
+    }
 
     private void UpdateRemoteLatency(TimeSpan elapsed)
     {
