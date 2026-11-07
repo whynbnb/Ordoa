@@ -1,0 +1,105 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:GitStatusDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.GitStatusWindow"
+        Title="{loc:Tr Git 状态}"
+        Width="760" Height="620" MinWidth="560" MinHeight="420" CanResize="True"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,15,22,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{loc:Tr Git 状态}" Classes="h2" />
+          <TextBlock Text="{Binding RepositoryText}" Classes="caption"
+                     TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RepositoryText}" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="{loc:Tr 关闭}" Click="OnCloseClick"
+                VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Padding="18,10" Background="{DynamicResource SurfaceAltBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Spacing="3">
+          <TextBlock Text="{Binding SummaryText}" FontSize="12.5" FontWeight="SemiBold"
+                     TextWrapping="Wrap" />
+          <TextBlock Text="{Binding BranchText}" Classes="caption"
+                     IsVisible="{Binding IsRepository}" FontFamily="{DynamicResource MonoFontFamily}" />
+          <TextBlock Text="{Binding CountsText}" Classes="tiny"
+                     IsVisible="{Binding IsRepository}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                    VerticalAlignment="Center">
+          <ProgressBar IsIndeterminate="True" Width="64" Height="3"
+                       IsVisible="{Binding IsLoading}" />
+          <Button Content="{loc:Tr 刷新}" Classes="subtle" Click="OnRefreshClick"
+                  IsEnabled="{Binding !IsLoading}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2" Margin="18,12,18,8">
+      <ListBox ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile, Mode=TwoWay}"
+               Background="Transparent" BorderThickness="0"
+               DoubleTapped="OnFileDoubleTapped"
+               ScrollViewer.VerticalScrollBarVisibility="Auto">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:GitFileItemViewModel">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="0,3">
+              <Border Background="{Binding LabelBrush}" CornerRadius="4" Padding="5,2"
+                      MinWidth="24" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StatusLabel}" FontSize="9.5" FontWeight="SemiBold"
+                           Foreground="White" HorizontalAlignment="Center"
+                           FontFamily="{DynamicResource MonoFontFamily}" />
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="{Binding RelativePath}" FontSize="12"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding FullPath}" Classes="tiny"
+                           TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Spacing="1" HorizontalAlignment="Right">
+                <TextBlock Text="{Binding StatusText}" Classes="tiny" TextAlignment="Right" />
+                <TextBlock Text="{Binding StageText}" Classes="tiny" TextAlignment="Right"
+                           Foreground="{DynamicResource AccentBrush}" />
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
+                  IsVisible="{Binding ShowNoRepository}">
+        <TextBlock Text="{loc:Tr 当前文件夹不在 Git 仓库中}" Classes="caption" />
+        <TextBlock Text="{loc:Tr 打开一个包含 .git 的文件夹即可查看状态。}" Classes="tiny" />
+      </StackPanel>
+
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
+                  IsVisible="{Binding ShowClean}">
+        <Path Data="{StaticResource IconCheckCircle}" Width="36" Height="36" Stretch="Uniform"
+              Fill="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="{loc:Tr 工作区干净}" Classes="caption" />
+        <TextBlock Text="{loc:Tr 当前仓库没有未提交的变更。}" Classes="tiny" />
+      </StackPanel>
+    </Grid>
+
+    <Border Grid.Row="3" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <TextBlock Text="{Binding UpdatedText}" Classes="tiny" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Content="{loc:Tr 在文件管理器中显示}" Classes="subtle"
+                  Click="OnRevealClick" IsEnabled="{Binding SelectedFile, Converter={StaticResource NotNullConverter}}" />
+          <Button Content="{loc:Tr 刷新}" Click="OnRefreshClick" IsEnabled="{Binding !IsLoading}" />
+          <Button Content="{loc:Tr 关闭}" Click="OnCloseClick" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

@@ -30,9 +30,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _loadCts;
     private CancellationTokenSource? _searchCts;
     private CancellationTokenSource? _thumbCts;
+    private CancellationTokenSource? _gitCts;
     private FileSystemWatcher? _watcher;
     private CancellationTokenSource? _watchDebounce;
     private int _loadVersion;
+    private GitRepositoryStatus? _gitStatus;
     private string _lastTitle = string.Empty;
     private bool _lastShowHidden;
     private bool _disposed;
@@ -328,6 +330,57 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         _ => L10n.T("远程"),
     };
 
+    public GitRepositoryStatus? GitStatus => _gitStatus;
+    public bool HasGitRepository => _gitStatus is not null;
+    public bool IsGitDirty => _gitStatus is { IsClean: false };
+    public bool CanShowGitStatus => FileSystem.IsLocal && !IsTrash && !IsArchive;
+
+    public string GitStatusText
+    {
+        get
+        {
+            if (_gitStatus is null)
+                return string.Empty;
+            var text = _gitStatus.BranchLabel;
+            if (_gitStatus.Ahead > 0)
+                text += $" ↑{_gitStatus.Ahead}";
+            if (_gitStatus.Behind > 0)
+                text += $" ↓{_gitStatus.Behind}";
+            text += _gitStatus.IsClean
+                ? " · " + L10n.T("干净")
+                : " · " + L10n.Format("{0} 个变更", _gitStatus.ChangedCount);
+            return text;
+        }
+    }
+
+    public IBrush? GitStatusBrush => _gitStatus is null
+        ? null
+        : _gitStatus.IsClean ? GitBrushes.Added : (IBrush)GitBrushes.Modified;
+
+    public string GitTooltipText
+    {
+        get
+        {
+            if (_gitStatus is null)
+                return string.Empty;
+
+            var lines = new List<string>
+            {
+                L10n.Format("仓库: {0}", _gitStatus.Root),
+                L10n.Format("分支: {0}", _gitStatus.BranchLabel),
+            };
+            if (!string.IsNullOrEmpty(_gitStatus.Upstream))
+                lines.Add(L10n.Format("上游: {0}", _gitStatus.Upstream));
+            if (_gitStatus.Ahead > 0 || _gitStatus.Behind > 0)
+                lines.Add(L10n.Format("领先 {0} · 落后 {1}", _gitStatus.Ahead, _gitStatus.Behind));
+            lines.Add(L10n.Format("已暂存 {0} · 未暂存 {1} · 未跟踪 {2}",
+                _gitStatus.StagedCount, _gitStatus.UnstagedCount, _gitStatus.UntrackedCount));
+            if (_gitStatus.ConflictedCount > 0)
+                lines.Add(L10n.Format("冲突 {0}", _gitStatus.ConflictedCount));
+            return string.Join(Environment.NewLine, lines);
+        }
+    }
+
     public bool CanGoBack => _back.Count > 0;
     public bool CanGoForward => _forward.Count > 0;
     public bool CanGoUp => !FileSystem.IsRoot(CurrentPath) && !IsTrash;
@@ -402,6 +455,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         StopWatcher();
         _loadCts?.Cancel();
         _loadCts?.Dispose();
+        _gitCts?.Cancel();
+        _gitCts?.Dispose();
+        _gitCts = null;
         _loadCts = new CancellationTokenSource();
         var cancellationToken = _loadCts.Token;
         var version = ++_loadVersion;
@@ -439,6 +495,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             NotifyNavigationState();
             BumpRecent();
             _ = UpdateFreeSpaceAsync(cancellationToken);
+            _ = RefreshGitStatusAsync(version, cancellationToken);
 
             if (IsGrid)
                 StartThumbnailLoading();
@@ -478,6 +535,76 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             return;
         }
         await LoadAsync().ConfigureAwait(true);
+    }
+
+    private async Task RefreshGitStatusAsync(int version, CancellationToken cancellationToken)
+    {
+        if (!CanShowGitStatus)
+        {
+            ApplyGitStatus(null);
+            return;
+        }
+
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _gitCts = cts;
+        try
+        {
+            var status = await GitService.GetStatusAsync(CurrentPath, cts.Token).ConfigureAwait(true);
+            if (cts.IsCancellationRequested || version != _loadVersion || _disposed)
+                return;
+            ApplyGitStatus(status);
+        }
+        catch (OperationCanceledException)
+        {
+            // Navigation or refresh superseded this request.
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("读取 Git 状态失败", ex);
+            if (version == _loadVersion)
+                ApplyGitStatus(null);
+        }
+        finally
+        {
+            if (ReferenceEquals(_gitCts, cts))
+                _gitCts = null;
+            cts.Dispose();
+        }
+    }
+
+    private void ApplyGitStatus(GitRepositoryStatus? status)
+    {
+        _gitStatus = status;
+        foreach (var item in _entries)
+        {
+            var itemPath = Path.TrimEndingDirectorySeparator(item.Path);
+            if (item.IsDirectory)
+            {
+                if (status is not null &&
+                    status.FilesByPath.TryGetValue(itemPath, out var exact))
+                {
+                    item.SetGitChange(exact);
+                }
+                else
+                {
+                    item.SetGitChange(null,
+                        status?.ChangedDirectories.Contains(itemPath) == true);
+                }
+                continue;
+            }
+
+            item.SetGitChange(status is not null &&
+                              status.FilesByPath.TryGetValue(itemPath, out var change)
+                ? change
+                : null);
+        }
+
+        OnPropertyChanged(nameof(GitStatus));
+        OnPropertyChanged(nameof(HasGitRepository));
+        OnPropertyChanged(nameof(IsGitDirty));
+        OnPropertyChanged(nameof(GitStatusText));
+        OnPropertyChanged(nameof(GitStatusBrush));
+        OnPropertyChanged(nameof(GitTooltipText));
     }
 
     [RelayCommand]
@@ -588,6 +715,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanOpenArchive));
+        OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
         OnPropertyChanged(nameof(CanOpenInNewWindow));
         OnPropertyChanged(nameof(CanOpenTerminal));
@@ -962,6 +1090,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanOpenArchive));
+        OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
         OnPropertyChanged(nameof(CanOpenInNewWindow));
         OnPropertyChanged(nameof(CanRestore));
@@ -1411,6 +1540,23 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         await _services.Dialogs.ShowDuplicateFinderAsync(TerminalTargetPath).ConfigureAwait(true);
     }
 
+    public async Task ShowGitStatusAsync()
+    {
+        if (!CanShowGitStatus)
+        {
+            Toast(L10n.T("无法查看 Git 状态"), L10n.T("仅支持本地文件夹"), true);
+            return;
+        }
+
+        var path = await _services.Dialogs.ShowGitStatusAsync(TerminalTargetPath).ConfigureAwait(true);
+        if (string.IsNullOrEmpty(path))
+            return;
+
+        var parent = FileSystem.GetParent(path);
+        await NavigateAsync(_services.FileSystems.Local, parent).ConfigureAwait(true);
+        SelectPaths([path]);
+    }
+
     public Task RunCustomCommandAsync(string id)
     {
         var command = _services.CustomCommands.Find(id);
@@ -1719,6 +1865,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanExtract));
         OnPropertyChanged(nameof(CanChecksum));
         OnPropertyChanged(nameof(CanOpenArchive));
+        OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
         OnPropertyChanged(nameof(CanOpenInNewWindow));
         OnPropertyChanged(nameof(CanOpenTerminal));
@@ -2048,6 +2195,9 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         _disposed = true;
         _loadCts?.Cancel();
         _loadCts?.Dispose();
+        _gitCts?.Cancel();
+        _gitCts?.Dispose();
+        _gitCts = null;
         CancelSearch();
         _thumbCts?.Cancel();
         _thumbCts?.Dispose();

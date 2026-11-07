@@ -783,6 +783,7 @@ public partial class PaneView : UserControl
     private void OnChecksumClick(object? sender, RoutedEventArgs e) => Run(pane => pane.ChecksumAsync());
     private void OnDiskUsageClick(object? sender, RoutedEventArgs e) => Run(pane => pane.AnalyzeDiskUsageAsync());
     private void OnDuplicateFinderClick(object? sender, RoutedEventArgs e) => Run(pane => pane.FindDuplicateFilesAsync());
+    private void OnGitStatusClick(object? sender, RoutedEventArgs e) => Run(pane => pane.ShowGitStatusAsync());
     private void OnOpenTerminalClick(object? sender, RoutedEventArgs e) => Run(pane => pane.OpenTerminalAsync());
     private void OnCopyPathClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CopyPathAsync());
     private void OnPropertiesClick(object? sender, RoutedEventArgs e) => Run(pane => pane.PropertiesAsync());
@@ -853,6 +854,7 @@ public partial class PaneView : UserControl
         analysisMenu.Items.Add(MenuItem(L10n.T("磁盘占用分析"), pane.AnalyzeDiskUsageAsync, pane.CanAnalyze));
         analysisMenu.Items.Add(MenuItem(L10n.T("查找重复文件"), pane.FindDuplicateFilesAsync, pane.CanAnalyze));
         menu.Items.Add(analysisMenu);
+        menu.Items.Add(MenuItem(L10n.T("Git 状态"), pane.ShowGitStatusAsync, pane.CanShowGitStatus));
         menu.Items.Add(new Separator());
         AddTerminalMenuItems(menu, pane);
         AddCustomCommandMenuItems(menu, pane);

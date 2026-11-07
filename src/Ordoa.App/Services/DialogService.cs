@@ -207,6 +207,16 @@ public sealed class DialogService : IDialogService
         await ShowDialogAsync("duplicates", window, owner).ConfigureAwait(true);
     }
 
+    public async Task<string?> ShowGitStatusAsync(string path)
+    {
+        if (!TryPrepareDialog("gitstatus", out var owner))
+            return null;
+
+        var viewModel = new GitStatusDialogViewModel(path);
+        var window = new GitStatusWindow { DataContext = viewModel };
+        return await ShowDialogAsync<string>("gitstatus", window, owner).ConfigureAwait(true);
+    }
+
     public async Task ShowErrorAsync(string title, string message)
     {
         var kind = "error:" + title;

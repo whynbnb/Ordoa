@@ -23,4 +23,5 @@ public interface IDialogService
     Task ShowErrorAsync(string title, string message);
     Task ShowDiskUsageAsync(string path);
     Task ShowDuplicateFinderAsync(string path);
+    Task<string?> ShowGitStatusAsync(string path);
 }

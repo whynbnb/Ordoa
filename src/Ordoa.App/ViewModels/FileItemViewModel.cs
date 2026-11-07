@@ -3,6 +3,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ordoa.App.Services;
 using Ordoa.Core.Models;
+using Ordoa.Core.Services;
 using Ordoa.Core.Util;
 using Ordoa.Core.Localization;
 
@@ -61,6 +62,8 @@ public sealed partial class FileItemViewModel : ObservableObject
                 text += $"\n{L10n.T("权限")}: {PermissionText}";
             if (Entry.Owner is not null || Entry.Group is not null)
                 text += $"\n{L10n.T("所有者")}: {OwnershipText}";
+            if (GitTooltip is not null)
+                text += $"\n{GitTooltip}";
             if (Entry.IsDirectory && Entry.OriginalPath is not null)
                 text += "\n" + L10n.Format("原位置: {0}", Entry.OriginalPath);
             return text;
@@ -74,7 +77,53 @@ public sealed partial class FileItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _thumbnailRequested;
 
+    private GitFileChange? _gitChange;
+    private bool _isGitDirectoryDirty;
+
+    public bool HasGitChange => _gitChange is not null || _isGitDirectoryDirty;
+    public bool IsGitDirectoryDirty => _isGitDirectoryDirty;
+    public string GitBadgeText => _gitChange?.Code ?? (_isGitDirectoryDirty ? "●" : string.Empty);
+
+    public IBrush? GitBadgeBrush => _gitChange?.Kind switch
+    {
+        GitChangeKind.Untracked or GitChangeKind.Added => GitBrushes.Added,
+        GitChangeKind.Deleted or GitChangeKind.Conflicted => GitBrushes.Deleted,
+        GitChangeKind.Renamed or GitChangeKind.Copied => GitBrushes.Renamed,
+        GitChangeKind.TypeChanged => GitBrushes.Renamed,
+        GitChangeKind.Modified => GitBrushes.Modified,
+        _ => _isGitDirectoryDirty ? GitBrushes.Modified : null,
+    };
+
+    public string? GitTooltip => _gitChange is not null
+        ? $"{_gitChange.Description}\n{_gitChange.RelativePath}"
+        : _isGitDirectoryDirty
+            ? L10n.T("此文件夹包含未提交的变更")
+            : null;
+
+    public void SetGitChange(GitFileChange? change, bool directoryDirty = false)
+    {
+        if (ReferenceEquals(_gitChange, change) && _isGitDirectoryDirty == directoryDirty)
+            return;
+
+        _gitChange = change;
+        _isGitDirectoryDirty = directoryDirty;
+        OnPropertyChanged(nameof(HasGitChange));
+        OnPropertyChanged(nameof(IsGitDirectoryDirty));
+        OnPropertyChanged(nameof(GitBadgeText));
+        OnPropertyChanged(nameof(GitBadgeBrush));
+        OnPropertyChanged(nameof(GitTooltip));
+        OnPropertyChanged(nameof(TooltipText));
+    }
+
     public bool HasThumbnail => Thumbnail is not null;
     public bool IsTrashItem => Entry.OriginalPath is not null;
     public string? DeletedText => Entry.DeletedAt is null ? null : Humanize.Date(Entry.DeletedAt);
+}
+
+internal static class GitBrushes
+{
+    public static readonly IBrush Modified = new SolidColorBrush(Color.Parse("#C08A3E"));
+    public static readonly IBrush Added = new SolidColorBrush(Color.Parse("#3E9B72"));
+    public static readonly IBrush Deleted = new SolidColorBrush(Color.Parse("#C26A6A"));
+    public static readonly IBrush Renamed = new SolidColorBrush(Color.Parse("#5A9BD5"));
 }
