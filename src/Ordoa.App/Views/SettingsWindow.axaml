@@ -26,6 +26,34 @@
       <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
+    <Style Selector="Button.palette">
+      <Setter Property="Padding" Value="5" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Margin" Value="0,0,3,4" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.palette /template/ ContentPresenter">
+      <Setter Property="CornerRadius" Value="9" />
+    </Style>
+    <Style Selector="Button.palette:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="Button.palette.active">
+      <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="Button.palette.active TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="WrapPanel.languages Button.chip">
+      <Setter Property="Padding" Value="10,5" />
+      <Setter Property="Margin" Value="0,0,4,4" />
+    </Style>
     <Style Selector="Border.accentdot">
       <Setter Property="Width" Value="26" />
       <Setter Property="Height" Value="26" />
@@ -122,10 +150,10 @@
           <StackPanel IsVisible="{Binding ShowAppearance}" Spacing="12">
             <StackPanel Spacing="2">
               <TextBlock Text="{loc:Tr 外观}" Classes="h2" />
-              <TextBlock Text="{loc:Tr 主题、强调色、密度与窗口外观}" Classes="caption" />
+              <TextBlock Text="{loc:Tr 主题、背景配色、强调色、密度与窗口外观}" Classes="caption" />
             </StackPanel>
 
-            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
+            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
               <TextBlock Text="{loc:Tr 主题}" Classes="fieldlabel" />
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                 <Button Classes="chip" Tag="System" Click="OnThemeClick"
@@ -165,12 +193,161 @@
                         Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Violet}" />
               </StackPanel>
 
-              <TextBlock Grid.Row="2" Text="{loc:Tr 密度}" Classes="fieldlabel" />
-              <CheckBox Grid.Row="2" Grid.Column="1" Content="{loc:Tr 紧凑模式（更小的行高与间距）}"
+              <TextBlock Grid.Row="2" Text="{loc:Tr 背景配色}" Classes="fieldlabel"
+                         VerticalAlignment="Top" Margin="0,6,0,0" />
+              <StackPanel Grid.Row="2" Grid.Column="1" Spacing="6">
+                <WrapPanel>
+                  <Button Classes="palette" Tag="Graphite" Click="OnDarkBackgroundClick"
+                          Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Graphite}">
+                    <StackPanel Spacing="5" Width="60">
+                      <Border Height="32" CornerRadius="5" ClipToBounds="True"
+                              Background="{DynamicResource PaletteGraphiteWindowBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                          <Border Margin="5" CornerRadius="4"
+                                  Background="{DynamicResource PaletteGraphiteSurfaceBrush}" />
+                          <StackPanel Margin="10,10,10,0" Spacing="2.5" VerticalAlignment="Top">
+                            <Border Height="2.5" CornerRadius="1.25" Opacity="0.75"
+                                    Background="{DynamicResource PaletteGraphiteTextBrush}" />
+                            <Border Height="2.5" Width="18" HorizontalAlignment="Left" CornerRadius="1.25"
+                                    Opacity="0.38" Background="{DynamicResource PaletteGraphiteTextBrush}" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                      <TextBlock Text="{loc:Tr 石墨}" FontSize="11.5" HorizontalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="palette" Tag="Midnight" Click="OnDarkBackgroundClick"
+                          Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Midnight}">
+                    <StackPanel Spacing="5" Width="60">
+                      <Border Height="32" CornerRadius="5" ClipToBounds="True"
+                              Background="{DynamicResource PaletteMidnightWindowBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                          <Border Margin="5" CornerRadius="4"
+                                  Background="{DynamicResource PaletteMidnightSurfaceBrush}" />
+                          <StackPanel Margin="10,10,10,0" Spacing="2.5" VerticalAlignment="Top">
+                            <Border Height="2.5" CornerRadius="1.25" Opacity="0.75"
+                                    Background="{DynamicResource PaletteMidnightTextBrush}" />
+                            <Border Height="2.5" Width="18" HorizontalAlignment="Left" CornerRadius="1.25"
+                                    Opacity="0.38" Background="{DynamicResource PaletteMidnightTextBrush}" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                      <TextBlock Text="{loc:Tr 午夜蓝}" FontSize="11.5" HorizontalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="palette" Tag="Slate" Click="OnDarkBackgroundClick"
+                          Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Slate}">
+                    <StackPanel Spacing="5" Width="60">
+                      <Border Height="32" CornerRadius="5" ClipToBounds="True"
+                              Background="{DynamicResource PaletteSlateWindowBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                          <Border Margin="5" CornerRadius="4"
+                                  Background="{DynamicResource PaletteSlateSurfaceBrush}" />
+                          <StackPanel Margin="10,10,10,0" Spacing="2.5" VerticalAlignment="Top">
+                            <Border Height="2.5" CornerRadius="1.25" Opacity="0.75"
+                                    Background="{DynamicResource PaletteSlateTextBrush}" />
+                            <Border Height="2.5" Width="18" HorizontalAlignment="Left" CornerRadius="1.25"
+                                    Opacity="0.38" Background="{DynamicResource PaletteSlateTextBrush}" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                      <TextBlock Text="{loc:Tr 冷灰}" FontSize="11.5" HorizontalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="palette" Tag="Ocean" Click="OnDarkBackgroundClick"
+                          Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Ocean}">
+                    <StackPanel Spacing="5" Width="60">
+                      <Border Height="32" CornerRadius="5" ClipToBounds="True"
+                              Background="{DynamicResource PaletteOceanWindowBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                          <Border Margin="5" CornerRadius="4"
+                                  Background="{DynamicResource PaletteOceanSurfaceBrush}" />
+                          <StackPanel Margin="10,10,10,0" Spacing="2.5" VerticalAlignment="Top">
+                            <Border Height="2.5" CornerRadius="1.25" Opacity="0.75"
+                                    Background="{DynamicResource PaletteOceanTextBrush}" />
+                            <Border Height="2.5" Width="18" HorizontalAlignment="Left" CornerRadius="1.25"
+                                    Opacity="0.38" Background="{DynamicResource PaletteOceanTextBrush}" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                      <TextBlock Text="{loc:Tr 深海}" FontSize="11.5" HorizontalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="palette" Tag="Forest" Click="OnDarkBackgroundClick"
+                          Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Forest}">
+                    <StackPanel Spacing="5" Width="60">
+                      <Border Height="32" CornerRadius="5" ClipToBounds="True"
+                              Background="{DynamicResource PaletteForestWindowBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                          <Border Margin="5" CornerRadius="4"
+                                  Background="{DynamicResource PaletteForestSurfaceBrush}" />
+                          <StackPanel Margin="10,10,10,0" Spacing="2.5" VerticalAlignment="Top">
+                            <Border Height="2.5" CornerRadius="1.25" Opacity="0.75"
+                                    Background="{DynamicResource PaletteForestTextBrush}" />
+                            <Border Height="2.5" Width="18" HorizontalAlignment="Left" CornerRadius="1.25"
+                                    Opacity="0.38" Background="{DynamicResource PaletteForestTextBrush}" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                      <TextBlock Text="{loc:Tr 森林}" FontSize="11.5" HorizontalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="palette" Tag="Warm" Click="OnDarkBackgroundClick"
+                          Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Warm}">
+                    <StackPanel Spacing="5" Width="60">
+                      <Border Height="32" CornerRadius="5" ClipToBounds="True"
+                              Background="{DynamicResource PaletteWarmWindowBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                          <Border Margin="5" CornerRadius="4"
+                                  Background="{DynamicResource PaletteWarmSurfaceBrush}" />
+                          <StackPanel Margin="10,10,10,0" Spacing="2.5" VerticalAlignment="Top">
+                            <Border Height="2.5" CornerRadius="1.25" Opacity="0.75"
+                                    Background="{DynamicResource PaletteWarmTextBrush}" />
+                            <Border Height="2.5" Width="18" HorizontalAlignment="Left" CornerRadius="1.25"
+                                    Opacity="0.38" Background="{DynamicResource PaletteWarmTextBrush}" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                      <TextBlock Text="{loc:Tr 暖棕}" FontSize="11.5" HorizontalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="palette" Tag="Black" Click="OnDarkBackgroundClick"
+                          Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Black}">
+                    <StackPanel Spacing="5" Width="60">
+                      <Border Height="32" CornerRadius="5" ClipToBounds="True"
+                              Background="{DynamicResource PaletteBlackWindowBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Grid>
+                          <Border Margin="5" CornerRadius="4"
+                                  Background="{DynamicResource PaletteBlackSurfaceBrush}" />
+                          <StackPanel Margin="10,10,10,0" Spacing="2.5" VerticalAlignment="Top">
+                            <Border Height="2.5" CornerRadius="1.25" Opacity="0.75"
+                                    Background="{DynamicResource PaletteBlackTextBrush}" />
+                            <Border Height="2.5" Width="18" HorizontalAlignment="Left" CornerRadius="1.25"
+                                    Opacity="0.38" Background="{DynamicResource PaletteBlackTextBrush}" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                      <TextBlock Text="{loc:Tr 纯黑}" FontSize="11.5" HorizontalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                </WrapPanel>
+                <TextBlock Text="{loc:Tr 深色模式使用深色版本，浅色模式使用同色系的淡色版本；每套配色都会同时调整窗口、侧栏、列表和弹窗。}"
+                           Classes="fieldhint" TextWrapping="Wrap" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="3" Text="{loc:Tr 密度}" Classes="fieldlabel" />
+              <CheckBox Grid.Row="3" Grid.Column="1" Content="{loc:Tr 紧凑模式（更小的行高与间距）}"
                         IsChecked="{Binding CompactMode, Mode=TwoWay}" />
 
-              <TextBlock Grid.Row="3" Text="{loc:Tr 默认视图}" Classes="fieldlabel" />
-              <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+              <TextBlock Grid.Row="4" Text="{loc:Tr 默认视图}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Spacing="6">
                 <Button Classes="chip" Tag="List" Click="OnViewClick"
                         Classes.active="{Binding View, Converter={StaticResource EqualsConverter}, ConverterParameter=List}">
                   <TextBlock Text="{loc:Tr 列表}" />
@@ -181,8 +358,8 @@
                 </Button>
               </StackPanel>
 
-              <TextBlock Grid.Row="4" Text="{loc:Tr 窗口}" Classes="fieldlabel" />
-              <Grid Grid.Row="4" Grid.Column="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+              <TextBlock Grid.Row="5" Text="{loc:Tr 窗口}" Classes="fieldlabel" />
+              <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                 <CheckBox Content="{loc:Tr 使用系统标题栏（非沉浸式）}"
                           IsChecked="{Binding UseSystemWindowFrame, Mode=TwoWay}" />
                 <views:HintBlock Classes="inlineHint" Classes.collapsed="{Binding CollapseHints}"
@@ -190,8 +367,8 @@
                                  IsCollapsed="{Binding CollapseHints}" />
               </Grid>
 
-              <TextBlock Grid.Row="5" Text="{loc:Tr 窗口按钮}" Classes="fieldlabel" />
-              <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+              <TextBlock Grid.Row="6" Text="{loc:Tr 窗口按钮}" Classes="fieldlabel" />
+              <Grid Grid.Row="6" Grid.Column="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <Button Classes="chip" Tag="Auto" Click="OnWindowButtonModeClick"
                           Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Auto}">
@@ -212,8 +389,8 @@
                                  IsCollapsed="{Binding CollapseHints}" />
               </Grid>
 
-              <TextBlock Grid.Row="6" Text="{loc:Tr 语言}" Classes="fieldlabel" />
-              <WrapPanel Grid.Row="6" Grid.Column="1" ItemHeight="32">
+              <TextBlock Grid.Row="7" Text="{loc:Tr 语言}" Classes="fieldlabel" />
+              <WrapPanel Grid.Row="7" Grid.Column="1" Classes="languages">
                 <Button Classes="chip" Tag="System" Click="OnLanguageClick"
                         Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
                   <TextBlock Text="{loc:Tr 跟随系统}" />
@@ -248,68 +425,11 @@
                 </Button>
               </WrapPanel>
 
-              <TextBlock Grid.Row="7" Text="{loc:Tr 说明}" Classes="fieldlabel" />
-              <CheckBox Grid.Row="7" Grid.Column="1"
+              <TextBlock Grid.Row="8" Text="{loc:Tr 说明}" Classes="fieldlabel" />
+              <CheckBox Grid.Row="8" Grid.Column="1"
                         Content="{loc:Tr 折叠说明文字（悬停查看）}"
                         IsChecked="{Binding CollapseHints, Mode=TwoWay}" />
             </Grid>
-
-            <StackPanel Spacing="6">
-              <TextBlock Text="{loc:Tr 深色背景}" Classes="section" />
-              <TextBlock Text="{loc:Tr 仅在深色模式下生效；每套配色都会同时调整窗口、侧栏、列表和弹窗。}"
-                         Classes="fieldhint" TextWrapping="Wrap" />
-              <WrapPanel ItemHeight="32">
-                <Button Classes="chip" Tag="Graphite" Click="OnDarkBackgroundClick"
-                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Graphite}">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="12" Height="12" CornerRadius="3" Background="#141816" BorderBrush="#3A433E" BorderThickness="1" />
-                    <TextBlock Text="{loc:Tr 石墨}" />
-                  </StackPanel>
-                </Button>
-                <Button Classes="chip" Tag="Midnight" Click="OnDarkBackgroundClick"
-                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Midnight}">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="12" Height="12" CornerRadius="3" Background="#0B1220" BorderBrush="#31425F" BorderThickness="1" />
-                    <TextBlock Text="{loc:Tr 午夜蓝}" />
-                  </StackPanel>
-                </Button>
-                <Button Classes="chip" Tag="Slate" Click="OnDarkBackgroundClick"
-                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Slate}">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="12" Height="12" CornerRadius="3" Background="#151719" BorderBrush="#3A414A" BorderThickness="1" />
-                    <TextBlock Text="{loc:Tr 冷灰}" />
-                  </StackPanel>
-                </Button>
-                <Button Classes="chip" Tag="Ocean" Click="OnDarkBackgroundClick"
-                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Ocean}">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="12" Height="12" CornerRadius="3" Background="#0C1719" BorderBrush="#2E565A" BorderThickness="1" />
-                    <TextBlock Text="{loc:Tr 深海}" />
-                  </StackPanel>
-                </Button>
-                <Button Classes="chip" Tag="Forest" Click="OnDarkBackgroundClick"
-                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Forest}">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="12" Height="12" CornerRadius="3" Background="#101713" BorderBrush="#3A5544" BorderThickness="1" />
-                    <TextBlock Text="{loc:Tr 森林}" />
-                  </StackPanel>
-                </Button>
-                <Button Classes="chip" Tag="Warm" Click="OnDarkBackgroundClick"
-                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Warm}">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="12" Height="12" CornerRadius="3" Background="#1A1512" BorderBrush="#4E4037" BorderThickness="1" />
-                    <TextBlock Text="{loc:Tr 暖棕}" />
-                  </StackPanel>
-                </Button>
-                <Button Classes="chip" Tag="Black" Click="OnDarkBackgroundClick"
-                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Black}">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="12" Height="12" CornerRadius="3" Background="#000000" BorderBrush="#2C2C2C" BorderThickness="1" />
-                    <TextBlock Text="{loc:Tr 纯黑}" />
-                  </StackPanel>
-                </Button>
-              </WrapPanel>
-            </StackPanel>
           </StackPanel>
 
           <!-- Browsing -->

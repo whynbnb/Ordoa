@@ -8,7 +8,7 @@ namespace Ordoa.App.Services;
 
 public static class ThemeService
 {
-    private sealed record DarkPalette(
+    private sealed record BackgroundPalette(
         string Window,
         string Surface,
         string SurfaceAlt,
@@ -27,7 +27,7 @@ public static class ThemeService
         string Scroll,
         string ScrollHover);
 
-    private static readonly Dictionary<DarkBackground, DarkPalette> DarkPalettes = new()
+    private static readonly Dictionary<DarkBackground, BackgroundPalette> DarkPalettes = new()
     {
         [DarkBackground.Graphite] = new("#141816", "#1B201D", "#222824", "#171C19", "#2A312D",
             "#3A433E", "#E9EEEA", "#A3ADA7", "#748078", "#252C28", "#2E3631", "#181D1A",
@@ -52,13 +52,31 @@ public static class ThemeService
             "#030303", "#0E0E0E", "#0D0D0D", "#2A2A2A", "#3B3B3B"),
     };
 
-    private static readonly string[] DarkPaletteKeys =
-    [
-        "WindowBackgroundBrush", "SurfaceBrush", "SurfaceAltBrush", "SidebarBrush",
-        "BorderBrush", "BorderStrongBrush", "TextPrimaryBrush", "TextSecondaryBrush",
-        "TextTertiaryBrush", "HoverBrush", "PressedBrush", "ToolbarBrush", "StatusBrush",
-        "MenuBackgroundBrush", "InputBackgroundBrush", "ScrollThumbBrush", "ScrollThumbHoverBrush",
-    ];
+    /// <summary>Pale counterparts used when the app is in light mode.</summary>
+    private static readonly Dictionary<DarkBackground, BackgroundPalette> LightPalettes = new()
+    {
+        [DarkBackground.Graphite] = new("#F6F7F6", "#FFFFFF", "#F0F2F1", "#EEF1EF", "#E3E7E4",
+            "#CBD3CE", "#1C2320", "#5E6A64", "#8B958F", "#E8ECE9", "#DDE3DF", "#FBFCFB",
+            "#F3F5F3", "#FFFFFF", "#FFFFFF", "#BEC6C1", "#A6B0AA"),
+        [DarkBackground.Midnight] = new("#F4F7FC", "#FFFFFF", "#E9EFF8", "#EDF2FA", "#DCE5F2",
+            "#C3D3E9", "#17202E", "#56677E", "#8493A8", "#E3EBF7", "#D5E1F2", "#FAFCFF",
+            "#F2F6FC", "#FFFFFF", "#FFFFFF", "#B9C7DB", "#9DAEC5"),
+        [DarkBackground.Slate] = new("#F5F6F7", "#FFFFFF", "#ECEEF0", "#EDEFF1", "#DEE2E6",
+            "#C7CDD4", "#1B1E22", "#5A616A", "#878F99", "#E6E9EC", "#D8DCE1", "#FBFBFC",
+            "#F3F4F6", "#FFFFFF", "#FFFFFF", "#C0C6CD", "#A7AFB8"),
+        [DarkBackground.Ocean] = new("#F2F8F8", "#FFFFFF", "#E6F1F1", "#EAF3F3", "#D7E8E7",
+            "#B9D7D5", "#122021", "#4F6B69", "#7C9593", "#E3EFEE", "#D3E5E4", "#F8FBFB",
+            "#EFF6F6", "#FFFFFF", "#FFFFFF", "#B0CCCA", "#93B7B4"),
+        [DarkBackground.Forest] = new("#F4F8F4", "#FFFFFF", "#E8F0E8", "#ECF3EC", "#D9E7D9",
+            "#BDD6BD", "#17251A", "#526B55", "#7E9581", "#E4F0E4", "#D5E7D5", "#F9FCF9",
+            "#F1F7F1", "#FFFFFF", "#FFFFFF", "#B3CDB5", "#97B89B"),
+        [DarkBackground.Warm] = new("#FAF6F2", "#FFFFFF", "#F3ECE5", "#F6EFE9", "#E9DDD2",
+            "#D7C4B5", "#2A211C", "#6F5D51", "#99857A", "#EFE5DC", "#E5D8CC", "#FDFAF7",
+            "#F7F1EA", "#FFFFFF", "#FFFFFF", "#CBB9AA", "#BBA596"),
+        [DarkBackground.Black] = new("#FFFFFF", "#FFFFFF", "#F5F5F5", "#F8F8F8", "#E5E5E5",
+            "#CACACA", "#101010", "#555555", "#808080", "#EEEEEE", "#E2E2E2", "#FFFFFF",
+            "#FCFCFC", "#FFFFFF", "#FFFFFF", "#C4C4C4", "#ABABAB"),
+    };
 
     private static readonly Dictionary<AccentKind, (string Base, string Text)> Accents = new()
     {
@@ -69,7 +87,7 @@ public static class ThemeService
         [AccentKind.Violet] = ("#7C63D8", "#FFFFFF"),
     };
 
-    private static DarkBackground _darkBackground = DarkBackground.Graphite;
+    private static DarkBackground _background = DarkBackground.Graphite;
     private static AccentKind _accent = AccentKind.Jade;
     private static bool _highContrast;
     private static bool _themeSubscribed;
@@ -85,7 +103,7 @@ public static class ThemeService
         if (app is null)
             return;
 
-        _darkBackground = settings.DarkBackground;
+        _background = settings.DarkBackground;
         _accent = settings.Accent;
         _highContrast = settings.Theme == AppTheme.HighContrast;
 
@@ -117,7 +135,7 @@ public static class ThemeService
         if (_highContrast)
             ApplyHighContrastPalette();
         else
-            ApplyDarkPalette(_darkBackground, isDark);
+            ApplyBackgroundPalette(_background, isDark);
     }
 
     private static void ApplyHighContrastPalette()
@@ -168,26 +186,22 @@ public static class ThemeService
             app.Resources.Remove(key);
     }
 
-    /// <summary>Overrides the neutral dark-theme brushes; removes them again in light mode.</summary>
-    private static void ApplyDarkPalette(DarkBackground background, bool dark)
+    /// <summary>
+    /// Applies the selected background palette. Dark mode uses the deep
+    /// variants, light mode uses the matching pale variants.
+    /// </summary>
+    private static void ApplyBackgroundPalette(DarkBackground background, bool dark)
     {
         var app = Application.Current;
         if (app is null)
             return;
 
-        var resources = app.Resources;
-        if (!dark)
-        {
-            foreach (var key in DarkPaletteKeys)
-                resources.Remove(key);
-            RemoveHighContrastOverrides();
-            return;
-        }
-
         RemoveHighContrastOverrides();
-        var palette = DarkPalettes.TryGetValue(background, out var value)
+        var palettes = dark ? DarkPalettes : LightPalettes;
+        var palette = palettes.TryGetValue(background, out var value)
             ? value
-            : DarkPalettes[DarkBackground.Graphite];
+            : palettes[DarkBackground.Graphite];
+        var resources = app.Resources;
         resources["WindowBackgroundBrush"] = Brush(palette.Window);
         resources["SurfaceBrush"] = Brush(palette.Surface);
         resources["SurfaceAltBrush"] = Brush(palette.SurfaceAlt);

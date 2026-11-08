@@ -69,7 +69,7 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Open With: on Linux, choose from installed applications and remember a default per extension; other platforms fall back to the system default application.
 - System file manager integration: register as the default file manager and expose the `org.freedesktop.FileManager1` D-Bus interface for browser/IDE "show in folder" requests on Linux; Finder and Explorer reveal actions are available on macOS and Windows.
 - Optional system-menu integration, off by default: Windows Explorer **Open in Ordoa** / **Open Ordoa here** verbs and a macOS **Open in Ordoa** Finder Quick Action. Both only write to the current user's registry or `~/Library/Services`.
-- Dark mode offers seven neutral palettes (Graphite, Midnight, Slate, Ocean, Forest, Warm, Black), applied consistently to windows, sidebars, lists, menus and dialogs.
+- Seven neutral palettes (Graphite, Midnight, Slate, Ocean, Forest, Warm, Black) each have a deep dark variant and a pale light variant, applied consistently to windows, sidebars, lists, menus and dialogs.
 
 ### Search and filtering
 
@@ -189,7 +189,7 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 ### Interface and themes
 
 - Light, dark, follow-system and high-contrast themes; five accent colors (jade, indigo, amber, rose, and violet).
-- Seven dark neutral palettes: Graphite, Midnight, Slate, Ocean, Forest, Warm and Black.
+- Seven neutral palettes with dark and pale light variants: Graphite, Midnight, Slate, Ocean, Forest, Warm and Black.
 - Compact mode; adjustable sidebar width; window size, sidebar state, sorting, and view preferences are persisted.
 - Command palette (`Ctrl+Shift+P`) covering all major actions.
 - Transfer panel, lightweight toasts, and an immersive custom title bar by default; tiling compositors such as niri, Sway, and Hyprland hide the custom window buttons automatically, and Settings can force them visible or restore the system title bar.

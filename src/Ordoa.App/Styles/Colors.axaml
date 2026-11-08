@@ -28,6 +28,27 @@
       <SolidColorBrush x:Key="SuccessBrush" Color="#2E8B61"/>
       <SolidColorBrush x:Key="DropOverlayBrush" Color="#141E9E8A"/>
       <SolidColorBrush x:Key="OverlayBrush" Color="#66000000"/>
+      <SolidColorBrush x:Key="PaletteGraphiteWindowBrush" Color="#F6F7F6"/>
+      <SolidColorBrush x:Key="PaletteGraphiteSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteGraphiteTextBrush" Color="#1C2320"/>
+      <SolidColorBrush x:Key="PaletteMidnightWindowBrush" Color="#F4F7FC"/>
+      <SolidColorBrush x:Key="PaletteMidnightSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteMidnightTextBrush" Color="#17202E"/>
+      <SolidColorBrush x:Key="PaletteSlateWindowBrush" Color="#F5F6F7"/>
+      <SolidColorBrush x:Key="PaletteSlateSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteSlateTextBrush" Color="#1B1E22"/>
+      <SolidColorBrush x:Key="PaletteOceanWindowBrush" Color="#F2F8F8"/>
+      <SolidColorBrush x:Key="PaletteOceanSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteOceanTextBrush" Color="#122021"/>
+      <SolidColorBrush x:Key="PaletteForestWindowBrush" Color="#F4F8F4"/>
+      <SolidColorBrush x:Key="PaletteForestSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteForestTextBrush" Color="#17251A"/>
+      <SolidColorBrush x:Key="PaletteWarmWindowBrush" Color="#FAF6F2"/>
+      <SolidColorBrush x:Key="PaletteWarmSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteWarmTextBrush" Color="#2A211C"/>
+      <SolidColorBrush x:Key="PaletteBlackWindowBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteBlackSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteBlackTextBrush" Color="#101010"/>
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F6F7F6"/>
@@ -56,6 +77,27 @@
       <SolidColorBrush x:Key="SuccessBrush" Color="#2E8B61"/>
       <SolidColorBrush x:Key="DropOverlayBrush" Color="#141E9E8A"/>
       <SolidColorBrush x:Key="OverlayBrush" Color="#66000000"/>
+      <SolidColorBrush x:Key="PaletteGraphiteWindowBrush" Color="#F6F7F6"/>
+      <SolidColorBrush x:Key="PaletteGraphiteSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteGraphiteTextBrush" Color="#1C2320"/>
+      <SolidColorBrush x:Key="PaletteMidnightWindowBrush" Color="#F4F7FC"/>
+      <SolidColorBrush x:Key="PaletteMidnightSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteMidnightTextBrush" Color="#17202E"/>
+      <SolidColorBrush x:Key="PaletteSlateWindowBrush" Color="#F5F6F7"/>
+      <SolidColorBrush x:Key="PaletteSlateSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteSlateTextBrush" Color="#1B1E22"/>
+      <SolidColorBrush x:Key="PaletteOceanWindowBrush" Color="#F2F8F8"/>
+      <SolidColorBrush x:Key="PaletteOceanSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteOceanTextBrush" Color="#122021"/>
+      <SolidColorBrush x:Key="PaletteForestWindowBrush" Color="#F4F8F4"/>
+      <SolidColorBrush x:Key="PaletteForestSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteForestTextBrush" Color="#17251A"/>
+      <SolidColorBrush x:Key="PaletteWarmWindowBrush" Color="#FAF6F2"/>
+      <SolidColorBrush x:Key="PaletteWarmSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteWarmTextBrush" Color="#2A211C"/>
+      <SolidColorBrush x:Key="PaletteBlackWindowBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteBlackSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="PaletteBlackTextBrush" Color="#101010"/>
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#141816"/>
@@ -84,6 +126,27 @@
       <SolidColorBrush x:Key="SuccessBrush" Color="#57BE8B"/>
       <SolidColorBrush x:Key="DropOverlayBrush" Color="#331E9E8A"/>
       <SolidColorBrush x:Key="OverlayBrush" Color="#99000000"/>
+      <SolidColorBrush x:Key="PaletteGraphiteWindowBrush" Color="#141816"/>
+      <SolidColorBrush x:Key="PaletteGraphiteSurfaceBrush" Color="#1B201D"/>
+      <SolidColorBrush x:Key="PaletteGraphiteTextBrush" Color="#E9EEEA"/>
+      <SolidColorBrush x:Key="PaletteMidnightWindowBrush" Color="#0B1220"/>
+      <SolidColorBrush x:Key="PaletteMidnightSurfaceBrush" Color="#111A2B"/>
+      <SolidColorBrush x:Key="PaletteMidnightTextBrush" Color="#E6EDF7"/>
+      <SolidColorBrush x:Key="PaletteSlateWindowBrush" Color="#151719"/>
+      <SolidColorBrush x:Key="PaletteSlateSurfaceBrush" Color="#1C1F23"/>
+      <SolidColorBrush x:Key="PaletteSlateTextBrush" Color="#ECEEF1"/>
+      <SolidColorBrush x:Key="PaletteOceanWindowBrush" Color="#0C1719"/>
+      <SolidColorBrush x:Key="PaletteOceanSurfaceBrush" Color="#112124"/>
+      <SolidColorBrush x:Key="PaletteOceanTextBrush" Color="#E3F2F1"/>
+      <SolidColorBrush x:Key="PaletteForestWindowBrush" Color="#101713"/>
+      <SolidColorBrush x:Key="PaletteForestSurfaceBrush" Color="#17211A"/>
+      <SolidColorBrush x:Key="PaletteForestTextBrush" Color="#E7F1E9"/>
+      <SolidColorBrush x:Key="PaletteWarmWindowBrush" Color="#1A1512"/>
+      <SolidColorBrush x:Key="PaletteWarmSurfaceBrush" Color="#221C18"/>
+      <SolidColorBrush x:Key="PaletteWarmTextBrush" Color="#F4ECE5"/>
+      <SolidColorBrush x:Key="PaletteBlackWindowBrush" Color="#000000"/>
+      <SolidColorBrush x:Key="PaletteBlackSurfaceBrush" Color="#0A0A0A"/>
+      <SolidColorBrush x:Key="PaletteBlackTextBrush" Color="#F2F2F2"/>
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 

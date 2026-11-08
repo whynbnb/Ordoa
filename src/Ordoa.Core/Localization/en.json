@@ -1517,5 +1517,8 @@
  "密码": "Password",
  "私钥": "Private key",
  "SSH Agent": "SSH Agent",
- "如果添加了跳板行，将以逐跳凭据为准；上方文本框只用于快速导入。": "When jump-host rows are present they take precedence; the text field above is only for quick import."
+ "如果添加了跳板行，将以逐跳凭据为准；上方文本框只用于快速导入。": "When jump-host rows are present they take precedence; the text field above is only for quick import.",
+ "背景配色": "Background palette",
+ "深色模式使用深色版本，浅色模式使用同色系的淡色版本；每套配色都会同时调整窗口、侧栏、列表和弹窗。": "Dark mode uses the deep variant and light mode the pale variant of the same color family; each palette adjusts the window, sidebar, lists and dialogs together.",
+ "主题、背景配色、强调色、密度与窗口外观": "Theme, background palette, accent, density and window appearance"
 }
