@@ -93,6 +93,8 @@ public sealed class AppSettings
     public List<string> CustomSidebarPaths { get; set; } = [];
     /// <summary>Known-folder keys hidden from the sidebar's Places section.</summary>
     public List<string> HiddenPlaces { get; set; } = [];
+    /// <summary>Volume mount points hidden from the sidebar's Disks section.</summary>
+    public List<string> HiddenVolumes { get; set; } = [];
     /// <summary>Connection ids hidden from the sidebar's Network section.</summary>
     public List<string> HiddenConnections { get; set; } = [];
     public double SidebarWidth { get; set; } = 232;
@@ -200,6 +202,7 @@ public sealed class AppSettings
         var clone = (AppSettings)MemberwiseClone();
         clone.CustomSidebarPaths = [.. CustomSidebarPaths];
         clone.HiddenPlaces = [.. HiddenPlaces];
+        clone.HiddenVolumes = [.. HiddenVolumes];
         clone.HiddenConnections = [.. HiddenConnections];
         clone.OpenWithDefaults = new Dictionary<string, string>(OpenWithDefaults, StringComparer.Ordinal);
         clone.ShortcutOverrides = new Dictionary<string, string>(ShortcutOverrides, StringComparer.Ordinal);

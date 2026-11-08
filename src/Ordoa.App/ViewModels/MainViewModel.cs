@@ -1869,10 +1869,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         SidebarSections.Add(bookmarks);
 
-        if (_services.Settings.Current.ShowVolumes && _volumes.Count > 0)
+        var hiddenVolumes = new HashSet<string>(
+            _services.Settings.Current.HiddenVolumes ?? [], StringComparer.OrdinalIgnoreCase);
+        var visibleVolumes = _volumes
+            .Where(volume => !hiddenVolumes.Contains(volume.MountPoint))
+            .ToList();
+        if (_services.Settings.Current.ShowVolumes && visibleVolumes.Count > 0)
         {
             var volumes = new SidebarSectionViewModel { Title = L10n.T("磁盘") };
-            foreach (var volume in _volumes)
+            foreach (var volume in visibleVolumes)
             {
                 volumes.Items.Add(new SidebarEntryViewModel
                 {

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
@@ -27,7 +28,19 @@ public partial class SettingsWindow : Window
 
             if (vm.IsLinux)
                 vm.SetIntegrationStatus(await services.Integration.GetStatusAsync());
+
+            await vm.LoadVolumesAsync();
+            vm.PropertyChanged += OnVolumeSettingsChanged;
         };
+    }
+
+    private void OnVolumeSettingsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsDialogViewModel.ShowHiddenVolumes) &&
+            DataContext is SettingsDialogViewModel vm)
+        {
+            _ = vm.LoadVolumesAsync(force: true);
+        }
     }
 
     private void OnLanguageClick(object? sender, RoutedEventArgs e)

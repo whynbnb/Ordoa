@@ -342,6 +342,16 @@ public sealed partial class PlaceVisibilityViewModel : ObservableObject
     private bool _isVisible;
 }
 
+public sealed partial class VolumeVisibilityViewModel : ObservableObject
+{
+    public required string Key { get; init; }
+    public required string Label { get; init; }
+    public required string Detail { get; init; }
+
+    [ObservableProperty]
+    private bool _isVisible;
+}
+
 public sealed class CustomPathViewModel
 {
     public required string Path { get; init; }
@@ -610,6 +620,52 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     }
 
     public System.Collections.ObjectModel.ObservableCollection<PlaceVisibilityViewModel> Places { get; } = [];
+
+    public System.Collections.ObjectModel.ObservableCollection<VolumeVisibilityViewModel> Volumes { get; } = [];
+
+    public bool HasVolumes => Volumes.Count > 0;
+
+    private bool _volumesLoaded;
+
+    public async Task LoadVolumesAsync(bool force = false)
+    {
+        if (_volumesLoaded && !force)
+            return;
+        _volumesLoaded = true;
+
+        // Keep unsaved checkbox changes when reloading (for example after
+        // toggling macOS hidden volumes).
+        var current = Volumes.ToDictionary(volume => volume.Key, volume => volume.IsVisible,
+            StringComparer.OrdinalIgnoreCase);
+        var hidden = new HashSet<string>(_original.HiddenVolumes ?? [], StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            var volumes = await VolumeService.GetVolumesAsync(ShowHiddenVolumes).ConfigureAwait(true);
+            Volumes.Clear();
+            foreach (var volume in volumes)
+            {
+                var label = volume.IsSystem
+                    ? L10n.T("系统")
+                    : string.IsNullOrWhiteSpace(volume.Name) ? volume.MountPoint : volume.Name;
+                Volumes.Add(new VolumeVisibilityViewModel
+                {
+                    Key = volume.MountPoint,
+                    Label = label,
+                    Detail = volume.MountPoint,
+                    IsVisible = current.TryGetValue(volume.MountPoint, out var visible)
+                        ? visible
+                        : !hidden.Contains(volume.MountPoint),
+                });
+            }
+        }
+        catch
+        {
+            // Keep the previous list if enumeration fails.
+        }
+
+        OnPropertyChanged(nameof(HasVolumes));
+    }
 
     public System.Collections.ObjectModel.ObservableCollection<CustomPathViewModel> CustomPaths { get; } = [];
 
@@ -1165,6 +1221,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             .ToDictionary(group => group.Key, group => group.Last().Gesture, StringComparer.Ordinal);
         settings.CustomSidebarPaths = CustomPaths.Select(item => item.Path).ToList();
         settings.HiddenPlaces = Places.Where(place => !place.IsVisible).Select(place => place.Key).ToList();
+        settings.HiddenVolumes = Volumes.Where(volume => !volume.IsVisible).Select(volume => volume.Key).ToList();
         if (_fileSystems is not null)
             settings.HiddenConnections = Connections.Where(item => !item.IsVisible).Select(item => item.Id).ToList();
         return settings;
@@ -1235,6 +1292,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         foreach (var connection in Connections)
             connection.IsVisible = true;
         ResetPlaces();
+        ResetVolumes();
         ResetShortcuts();
     }
 
@@ -1248,6 +1306,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     {
         foreach (var place in Places)
             place.IsVisible = true;
+    }
+
+    public void ResetVolumes()
+    {
+        foreach (var volume in Volumes)
+            volume.IsVisible = true;
     }
 
     public void SetLanguage(string value)

@@ -346,6 +346,24 @@
               </Grid>
             </StackPanel>
 
+            <StackPanel Spacing="2" IsVisible="{Binding HasVolumes}">
+              <TextBlock Text="{loc:Tr 显示的磁盘}" Classes="section" />
+              <ItemsControl ItemsSource="{Binding Volumes}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:VolumeVisibilityViewModel">
+                    <CheckBox Width="220" Margin="0,2,8,2" Content="{Binding Label}"
+                              IsChecked="{Binding IsVisible, Mode=TwoWay}"
+                              ToolTip.Tip="{Binding Detail}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
             <Border Classes="divider" />
 
             <Grid ColumnDefinitions="*,Auto">
