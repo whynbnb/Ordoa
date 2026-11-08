@@ -244,6 +244,13 @@
               <CheckBox Content="{loc:Tr 文件夹排在文件之前}" IsChecked="{Binding FoldersFirst, Mode=TwoWay}" />
               <CheckBox Content="{loc:Tr 在网格视图中加载图片缩略图}" IsChecked="{Binding ShowThumbnails, Mode=TwoWay}" />
               <CheckBox Content="{loc:Tr 耗时操作时自动展开传输队列}" IsChecked="{Binding ShowTransferPanel, Mode=TwoWay}" />
+              <Grid IsVisible="{Binding IsMacOS}" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                <CheckBox Content="{loc:Tr 将 .app 识别为应用程序}"
+                          IsChecked="{Binding MacAppBundles, Mode=TwoWay}" />
+                <views:HintBlock Classes="inlineHint" Classes.collapsed="{Binding CollapseHints}"
+                                 Text="{loc:Tr macOS 上把 .app 文件夹显示为应用程序，双击直接启动；右键可显示包内容。}"
+                                 IsCollapsed="{Binding CollapseHints}" />
+              </Grid>
             </StackPanel>
 
             <TextBlock Text="{loc:Tr 列表列}" Classes="section" />

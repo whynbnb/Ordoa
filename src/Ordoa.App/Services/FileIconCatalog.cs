@@ -8,6 +8,7 @@ namespace Ordoa.App.Services;
 public enum FileVisualKind
 {
     Folder,
+    Application,
     File,
     Image,
     Audio,
@@ -30,6 +31,7 @@ public static class FileIconCatalog
     private static readonly Dictionary<FileVisualKind, (string Data, string Color)> Definitions = new()
     {
         [FileVisualKind.Folder] = ("M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z", "#E0A63C"),
+        [FileVisualKind.Application] = ("M16,20H20V16H16M16,14H20V10H16M10,8H14V4H10M16,8H20V4H16M10,14H14V10H10M4,8H8V4H4M4,14H8V10H4M4,20H8V16H4M10,20H14V16H10V20Z", "#4D8FD6"),
         [FileVisualKind.File] = ("M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z", "#87918B"),
         [FileVisualKind.Image] = ("M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z", "#2FAE9B"),
         [FileVisualKind.Audio] = ("M12,3V13.55C11.41,13.21 10.73,13 10,13A3,3 0 0,0 7,16A3,3 0 0,0 10,19A3,3 0 0,0 13,16V7H17V3H12Z", "#D969A7"),
@@ -43,9 +45,9 @@ public static class FileIconCatalog
         [FileVisualKind.Slide] = ("M21,16V4C21,2.89 20.1,2 19,2H5A2,2 0 0,0 3,4V16A2,2 0 0,0 5,18H10.5V20H8V22H16V20H13.5V18H19A2,2 0 0,0 21,16M19,16H5V4H19V16Z", "#DD7A45"),
     };
 
-    public static FileVisual For(FileEntry entry)
+    public static FileVisual For(FileEntry entry, bool isApplication = false)
     {
-        var kind = Classify(entry);
+        var kind = isApplication ? FileVisualKind.Application : Classify(entry);
         if (Cache.TryGetValue(kind, out var visual))
             return visual;
 

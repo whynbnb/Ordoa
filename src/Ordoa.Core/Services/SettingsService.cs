@@ -79,6 +79,8 @@ public sealed class AppSettings
     public bool CompactMode { get; set; }
     /// <summary>Collapse explanatory hints into an info icon with a tooltip.</summary>
     public bool CollapseHints { get; set; } = true;
+    /// <summary>Treat macOS .app directories as applications (macOS only).</summary>
+    public bool MacAppBundles { get; set; } = OperatingSystem.IsMacOS();
     public bool ShowHidden { get; set; }
     public bool FoldersFirst { get; set; } = true;
     public SortColumn SortColumn { get; set; } = SortColumn.Name;

@@ -38,6 +38,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private GitRepositoryStatus? _gitStatus;
     private string _lastTitle = string.Empty;
     private bool _lastShowHidden;
+    private bool _lastMacAppBundles;
     private bool _lastGitEnabled;
     private bool _lastGitBadges;
     private bool _lastGitCleanCheck;
@@ -66,6 +67,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         _viewMode = settings.View;
         _showHidden = settings.ShowHidden;
         _lastShowHidden = settings.ShowHidden;
+        _lastMacAppBundles = settings.MacAppBundles;
         _lastGitEnabled = settings.EnableGitIntegration;
         _lastGitBadges = settings.ShowGitFileBadges;
         _lastGitCleanCheck = settings.ShowGitCleanCheck;
@@ -653,7 +655,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             {
                 if (!ShowHidden && entry.IsHidden)
                     continue;
-                var item = new FileItemViewModel(entry);
+                var item = new FileItemViewModel(entry, isLocal: FileSystem.IsLocal);
                 ApplyTagItem(item);
                 _entries.Add(item);
             }
@@ -1102,6 +1104,13 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     public Task OpenEntryAsync(FileItemViewModel item) => OpenAsync(item);
 
+    /// <summary>Browse inside a macOS .app bundle instead of launching it.</summary>
+    public async Task OpenPackageContentsAsync()
+    {
+        if (PrimarySelection is { IsApplicationBundle: true } item)
+            await NavigateAsync(FileSystem, item.Path).ConfigureAwait(true);
+    }
+
     public async Task OpenAsync(FileItemViewModel? item = null)
     {
         item ??= PrimarySelection;
@@ -1111,6 +1120,19 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (IsTrash)
         {
             await RestoreAndOpenAsync(item).ConfigureAwait(true);
+            return;
+        }
+
+        if (item.IsApplicationBundle && FileSystem.IsLocal)
+        {
+            try
+            {
+                await _services.Shell.OpenAsync(item.Path).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                Toast(L10n.T("无法打开应用程序"), ex.Message, true);
+            }
             return;
         }
 
@@ -2561,7 +2583,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                     break;
 
                 var parent = FileSystem.GetParent(entry.Path);
-                var resultItem = new FileItemViewModel(entry, FileSystem.GetDisplayPath(parent));
+                var resultItem = new FileItemViewModel(entry, FileSystem.GetDisplayPath(parent),
+                    FileSystem.IsLocal);
                 ApplyTagItem(resultItem);
                 _searchResults.Add(resultItem);
                 count++;
@@ -2730,7 +2753,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                     .OrderBy(entry => entry, comparer)
                     .Select(entry =>
                     {
-                        var child = new FileItemViewModel(entry, FileSystem.GetDisplayPath(item.Path));
+                        var child = new FileItemViewModel(entry, FileSystem.GetDisplayPath(item.Path),
+                            FileSystem.IsLocal);
                         ApplyTagItem(child);
                         return child;
                     })
@@ -2799,7 +2823,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 .OrderBy(child => child, comparer)
                 .Select(child =>
                 {
-                    var viewModel = new FileItemViewModel(child, FileSystem.GetDisplayPath(item.Path));
+                    var viewModel = new FileItemViewModel(child, FileSystem.GetDisplayPath(item.Path),
+                        FileSystem.IsLocal);
                     ApplyTagItem(viewModel);
                     return viewModel;
                 });
@@ -3201,6 +3226,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             _lastShowHidden = settings.ShowHidden;
             ShowHidden = settings.ShowHidden;
+            _ = LoadAsync().ConfigureAwait(true);
+        }
+
+        if (settings.MacAppBundles != _lastMacAppBundles)
+        {
+            _lastMacAppBundles = settings.MacAppBundles;
             _ = LoadAsync().ConfigureAwait(true);
         }
 

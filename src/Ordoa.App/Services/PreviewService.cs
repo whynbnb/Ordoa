@@ -533,10 +533,11 @@ public sealed class PreviewService
 
     private static PreviewRow ToRow(FileEntry entry)
     {
-        var visual = FileIconCatalog.For(entry);
+        var isApplication = MacAppBundles.IsApplication(entry);
+        var visual = FileIconCatalog.For(entry, isApplication);
         return new PreviewRow(
             entry.Name,
-            entry.IsDirectory ? L10n.T("文件夹") : Humanize.Size(entry.Size),
+            isApplication ? L10n.T("应用程序") : entry.IsDirectory ? L10n.T("文件夹") : Humanize.Size(entry.Size),
             entry.IsDirectory,
             visual.Geometry,
             visual.Brush);
@@ -546,7 +547,9 @@ public sealed class PreviewService
     {
         var details = new List<PreviewDetail>
         {
-            new(L10n.T("类型"), entry.TypeDescription),
+            new(L10n.T("类型"), MacAppBundles.IsApplication(entry, fileSystem.IsLocal)
+                ? L10n.T("应用程序")
+                : entry.TypeDescription),
             new(L10n.T("大小"), entry.IsDirectory ? "—" : Humanize.Size(entry.Size)),
             new(L10n.T("修改时间"), Humanize.DateTimeFull(entry.Modified)),
         };

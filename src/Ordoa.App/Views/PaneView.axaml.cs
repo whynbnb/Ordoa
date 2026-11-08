@@ -877,7 +877,9 @@ public partial class PaneView : UserControl
             return;
 
         e.Handled = true;
-        if (item.IsDirectory && list.DataContext is MillerColumnViewModel column)
+        if (item.IsApplicationBundle)
+            await _pane.OpenEntryAsync(item);
+        else if (item.IsDirectory && list.DataContext is MillerColumnViewModel column)
             await _pane.SetMillerSelectionAsync(column, item);
         else
             await _pane.OpenEntryAsync(item);
@@ -886,7 +888,7 @@ public partial class PaneView : UserControl
     private async void OnMillerDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
         if (_pane is null || sender is not ListBox list || list.SelectedItem is not FileItemViewModel item ||
-            item.IsDirectory)
+            item.IsDirectory && !item.IsApplicationBundle)
             return;
         await _pane.OpenEntryAsync(item);
     }
@@ -941,6 +943,8 @@ public partial class PaneView : UserControl
         var menu = new ContextMenu();
 
         menu.Items.Add(MenuItem(L10n.T("打开"), () => pane.OpenAsync(), pane.HasSelection));
+        if (pane.PrimarySelection is { IsApplicationBundle: true })
+            menu.Items.Add(MenuItem(L10n.T("显示包内容"), pane.OpenPackageContentsAsync, true));
         menu.Items.Add(MenuItem(L10n.T("以压缩包浏览"), () => pane.OpenArchiveAsync(), pane.CanOpenArchive));
         menu.Items.Add(MenuItem(L10n.T("打开方式"), pane.OpenWithAsync, pane.CanOpenWith));
         menu.Items.Add(MenuItem(L10n.T("快速预览"), () =>

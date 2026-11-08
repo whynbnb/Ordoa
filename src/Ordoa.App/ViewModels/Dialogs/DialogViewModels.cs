@@ -478,6 +478,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _accent = settings.Accent;
         _compactMode = settings.CompactMode;
         _collapseHints = settings.CollapseHints;
+        _macAppBundles = settings.MacAppBundles;
         _showHidden = settings.ShowHidden;
         _foldersFirst = settings.FoldersFirst;
         _view = settings.View;
@@ -772,6 +773,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _collapseHints;
+
+    [ObservableProperty]
+    private bool _macAppBundles;
 
     [ObservableProperty]
     private bool _showHidden;
@@ -1128,6 +1132,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.Accent = Accent;
         settings.CompactMode = CompactMode;
         settings.CollapseHints = CollapseHints;
+        settings.MacAppBundles = MacAppBundles;
         settings.ShowHidden = ShowHidden;
         settings.FoldersFirst = FoldersFirst;
         settings.View = View;
@@ -1235,6 +1240,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         Accent = defaults.Accent;
         CompactMode = defaults.CompactMode;
         CollapseHints = defaults.CollapseHints;
+        MacAppBundles = defaults.MacAppBundles;
         ShowHidden = defaults.ShowHidden;
         FoldersFirst = defaults.FoldersFirst;
         View = defaults.View;

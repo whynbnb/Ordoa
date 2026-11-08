@@ -29,7 +29,7 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
         _fileSystem = fileSystem;
         _mode = entry.UnixMode;
         _octalInput = entry.UnixMode is { } initialMode ? Humanize.OctalPermissions(initialMode) : string.Empty;
-        var visual = FileIconCatalog.For(entry);
+        var visual = FileIconCatalog.For(entry, MacAppBundles.IsApplication(entry, fileSystem.IsLocal));
         Icon = visual.Geometry;
         IconBrush = visual.Brush;
         IsDirectory = entry.IsDirectory;
@@ -85,7 +85,9 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
     public Geometry Icon { get; }
     public IBrush IconBrush { get; }
     public string Name => Entry.Name;
-    public string KindText => Entry.TypeDescription;
+    public string KindText => MacAppBundles.IsApplication(Entry, _fileSystem.IsLocal)
+        ? L10n.T("应用程序")
+        : Entry.TypeDescription;
     public string PathText => _fileSystem.GetDisplayPath(Entry.Path);
     public string LocationText => _fileSystem.GetDisplayPath(_fileSystem.GetParent(Entry.Path));
     public string SizeText => Entry.IsDirectory ? "—" : Humanize.Size(Entry.Size);

@@ -14,10 +14,11 @@ public sealed partial class FileItemViewModel : ObservableObject
 {
     private readonly FileVisual _visual;
 
-    public FileItemViewModel(FileEntry entry, string? displayLocation = null)
+    public FileItemViewModel(FileEntry entry, string? displayLocation = null, bool isLocal = true)
     {
         Entry = entry;
-        _visual = FileIconCatalog.For(entry);
+        IsApplicationBundle = MacAppBundles.IsApplication(entry, isLocal);
+        _visual = FileIconCatalog.For(entry, IsApplicationBundle);
         DisplayLocation = displayLocation ?? entry.Path;
     }
 
@@ -25,6 +26,7 @@ public sealed partial class FileItemViewModel : ObservableObject
     public string Name => Entry.Name;
     public string Path => Entry.Path;
     public bool IsDirectory => Entry.IsDirectory;
+    public bool IsApplicationBundle { get; }
     public bool IsSymlink => Entry.IsSymlink;
     public bool IsHidden => Entry.IsHidden;
     public string Extension => Entry.Extension;
@@ -126,13 +128,15 @@ public sealed partial class FileItemViewModel : ObservableObject
         ? FolderSizeText ?? (IsCalculatingFolderSize ? "…" : "—")
         : Humanize.Size(Entry.Size);
     public string ModifiedText => Humanize.Date(Entry.Modified);
-    public string TypeText => Entry.TypeDescription;
+    public string TypeText => IsApplicationBundle ? L10n.T("应用程序") : Entry.TypeDescription;
     public string PermissionText => FilePermission.Format(Entry.UnixMode);
     public string OwnerText => Entry.Owner ?? "—";
     public string OwnershipText => Entry.Owner is null && Entry.Group is null
         ? L10n.T("未知所有者")
         : $"{Entry.Owner ?? "—"}:{Entry.Group ?? "—"}";
-    public string GridSubtitle => Entry.IsDirectory ? L10n.T("文件夹") : Humanize.Size(Entry.Size);
+    public string GridSubtitle => IsApplicationBundle
+        ? L10n.T("应用程序")
+        : Entry.IsDirectory ? L10n.T("文件夹") : Humanize.Size(Entry.Size);
     public string? OriginalPath => Entry.OriginalPath;
     public string? LinkTarget => Entry.LinkTarget;
 
