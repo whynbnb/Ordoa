@@ -8,7 +8,7 @@
     <Deterministic>true</Deterministic>
     <!-- Keep this fallback in sync with the latest git tag; builds checked out
          from git replace it with the tag automatically. -->
-    <Version>0.3</Version>
+    <Version>0.4</Version>
     <Authors>Ordoa Contributors</Authors>
     <Product>Ordoa</Product>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -16,7 +16,7 @@
     <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
-  <!-- Align the application version with the nearest git tag (v0.3 -> 0.3). -->
+  <!-- Align the application version with the nearest git tag (v0.4 -> 0.4). -->
   <Target Name="SetVersionFromGitTag" BeforeTargets="GetAssemblyVersion"
           Condition="Exists('$(MSBuildThisFileDirectory).git')">
     <Exec Command="git describe --tags --abbrev=0"
