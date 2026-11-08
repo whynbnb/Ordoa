@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -433,7 +436,52 @@ public sealed partial class ConflictDialogViewModel : ObservableObject
 
 public sealed class AboutDialogViewModel
 {
-    public string Version { get; } = typeof(AboutDialogViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.1.0";
-    public string Runtime { get; } = $".NET {Environment.Version}";
-    public string Platform { get; } = $"{Environment.OSVersion.Platform} · {Environment.OSVersion.Version}";
+    private static readonly string? InformationalVersion = typeof(AboutDialogViewModel).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+    public string Version { get; } = ResolveVersion();
+    public string Commit { get; } = ResolveCommit();
+
+    /// <summary>NativeAOT compiles away the JIT, so report AOT instead of a runtime version.</summary>
+    public string Runtime { get; } = RuntimeFeature.IsDynamicCodeSupported
+        ? $".NET {Environment.Version}"
+        : "AOT";
+
+    public string Platform { get; } = ResolvePlatform();
+
+    private static string ResolveVersion()
+    {
+        // InformationalVersion is "0.2+<hash>"; only the tag-aligned major.minor is shown.
+        var core = InformationalVersion?.Split('+')[0];
+        if (string.IsNullOrWhiteSpace(core))
+            core = typeof(AboutDialogViewModel).Assembly.GetName().Version?.ToString(2) ?? "0.1";
+
+        var parts = core.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2 ? $"{parts[0]}.{parts[1]}" : core;
+    }
+
+    private static string ResolveCommit()
+    {
+        var plus = InformationalVersion?.IndexOf('+') ?? -1;
+        if (plus < 0 || plus == InformationalVersion!.Length - 1)
+            return "dev";
+
+        var hash = InformationalVersion[(plus + 1)..].Trim();
+        return hash.Length > 6 ? hash[..6] : hash;
+    }
+
+    private static string ResolvePlatform()
+    {
+        var version = Environment.OSVersion.Version;
+        var text = version.Build >= 0 ? version.ToString(3) : version.ToString(2);
+
+        if (OperatingSystem.IsMacOS())
+            return $"macOS · {text}";
+        if (OperatingSystem.IsWindows())
+            return $"Windows · {text}";
+        if (OperatingSystem.IsLinux())
+            return $"Linux · {text}";
+
+        return RuntimeInformation.OSDescription;
+    }
 }

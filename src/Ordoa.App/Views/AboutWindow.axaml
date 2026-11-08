@@ -27,11 +27,15 @@
           <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
             <TextBlock Text="{loc:Tr Ordoa}" Classes="h1" />
             <TextBlock Text="{loc:Tr 有秩序的文件管理 · Linux 优先，同时兼容 macOS 与 Windows}" Classes="muted" />
-            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
-              <TextBlock Text="{loc:Tr 版本}" Classes="tiny" />
-              <TextBlock Text="{Binding Version}" Classes="tiny" FontFamily="{DynamicResource MonoFontFamily}" />
-              <TextBlock Text="{Binding Runtime}" Classes="tiny" />
-            </StackPanel>
+            <TextBlock Classes="tiny" Margin="0,4,0,0">
+              <Run Text="{loc:Tr 版本}" />
+              <Run Text="  " />
+              <Run Text="{Binding Version}" FontFamily="{DynamicResource MonoFontFamily}" />
+              <Run Text="  ·  " />
+              <Run Text="{Binding Commit}" FontFamily="{DynamicResource MonoFontFamily}" />
+              <Run Text="  ·  " />
+              <Run Text="{Binding Runtime}" />
+            </TextBlock>
           </StackPanel>
         </Grid>
 
