@@ -84,6 +84,10 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         _privateKeyPath = _source.PrivateKeyPath;
         _secure = _source.Secure;
         _allowInvalidCertificate = _source.AllowInvalidCertificate;
+        _s3Bucket = _source.S3Bucket;
+        _s3Region = _source.S3Region;
+        _s3UsePathStyle = _source.S3UsePathStyle;
+        _s3SessionToken = _source.S3SessionToken;
         _saveProfile = true;
         ReloadSshProfiles();
     }
@@ -144,6 +148,7 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         RemoteProtocol.Sftp => L10n.T("SFTP · SSH 文件传输"),
         RemoteProtocol.Smb => L10n.T("SMB · Windows 共享"),
         RemoteProtocol.WebDav => L10n.T("WebDAV · 基于 HTTP 的文件访问"),
+        RemoteProtocol.S3 => L10n.T("S3 · 对象存储"),
         _ => string.Empty,
     };
 
@@ -156,9 +161,16 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsSmb))]
     [NotifyPropertyChangedFor(nameof(IsWebDav))]
     [NotifyPropertyChangedFor(nameof(DefaultPortText))]
+    [NotifyPropertyChangedFor(nameof(HostLabel))]
+    [NotifyPropertyChangedFor(nameof(UsernameLabel))]
+    [NotifyPropertyChangedFor(nameof(SecureLabel))]
+    [NotifyPropertyChangedFor(nameof(CanDiscover))]
+    [NotifyPropertyChangedFor(nameof(ShowSecureToggle))]
     [NotifyPropertyChangedFor(nameof(ShowAnonymous))]
     [NotifyPropertyChangedFor(nameof(ShowTlsOptions))]
     [NotifyPropertyChangedFor(nameof(IsSftp))]
+    [NotifyPropertyChangedFor(nameof(IsS3))]
+    [NotifyPropertyChangedFor(nameof(ShowS3Fields))]
     [NotifyPropertyChangedFor(nameof(ShowSshAuth))]
     [NotifyPropertyChangedFor(nameof(ShowSecretField))]
     [NotifyPropertyChangedFor(nameof(ShowPrivateKeyField))]
@@ -223,6 +235,18 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     private bool _allowInvalidCertificate;
 
     [ObservableProperty]
+    private string _s3Bucket = string.Empty;
+
+    [ObservableProperty]
+    private string _s3Region = "us-east-1";
+
+    [ObservableProperty]
+    private bool _s3UsePathStyle = true;
+
+    [ObservableProperty]
+    private string _s3SessionToken = string.Empty;
+
+    [ObservableProperty]
     private bool _saveProfile;
 
     [ObservableProperty]
@@ -242,26 +266,40 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     public bool IsSmb => Protocol == RemoteProtocol.Smb;
     public bool IsWebDav => Protocol == RemoteProtocol.WebDav;
     public bool IsSftp => Protocol == RemoteProtocol.Sftp;
+    public bool IsS3 => Protocol == RemoteProtocol.S3;
+    public bool ShowS3Fields => IsS3;
     public bool ShowAnonymous => IsFtp;
     public bool ShowAuthFields => !Anonymous;
-    public bool ShowTlsOptions => Protocol is RemoteProtocol.Ftps or RemoteProtocol.WebDav;
+    public bool ShowTlsOptions => Protocol is RemoteProtocol.Ftps or RemoteProtocol.WebDav or RemoteProtocol.S3;
     public bool ShowSshAuth => IsSftp && !Anonymous;
     public bool ShowSecretField => ShowAuthFields && (!IsSftp || SshAuth != SshAuthMethod.Agent);
     public bool ShowPrivateKeyField => IsSftp && SshAuth == SshAuthMethod.PrivateKey;
     public bool ShowAgentHint => IsSftp && SshAuth == SshAuthMethod.Agent;
     public bool ShowSaveSecret => ShowSecretField;
     public bool ShowKnownHostsHint => IsSftp;
-    public string SecretLabel => IsSftp && SshAuth == SshAuthMethod.PrivateKey
-        ? L10n.T("私钥密码（可选）")
-        : L10n.T("密码");
-    public string SecretPlaceholder => IsSftp && SshAuth == SshAuthMethod.PrivateKey
-        ? L10n.T("私钥未加密时留空")
-        : L10n.T("登录密码");
-    public string SaveSecretLabel => IsSftp && SshAuth == SshAuthMethod.PrivateKey
-        ? L10n.T("保存私钥密码到系统密钥环")
-        : L10n.T("保存密码到系统密钥环");
+    public string SecretLabel => IsS3
+        ? L10n.T("Secret Access Key")
+        : IsSftp && SshAuth == SshAuthMethod.PrivateKey
+            ? L10n.T("私钥密码（可选）")
+            : L10n.T("密码");
+    public string SecretPlaceholder => IsS3
+        ? L10n.T("S3 Secret Access Key")
+        : IsSftp && SshAuth == SshAuthMethod.PrivateKey
+            ? L10n.T("私钥未加密时留空")
+            : L10n.T("登录密码");
+    public string SaveSecretLabel => IsS3
+        ? L10n.T("保存 Secret Key 到系统密钥环")
+        : IsSftp && SshAuth == SshAuthMethod.PrivateKey
+            ? L10n.T("保存私钥密码到系统密钥环")
+            : L10n.T("保存密码到系统密钥环");
     public bool CanTest => !IsTesting && !string.IsNullOrWhiteSpace(Host);
     public string DefaultPortText => new ConnectionProfile { Protocol = Protocol, Secure = Secure }.EffectivePort.ToString();
+    public string HostLabel => IsS3 ? L10n.T("S3 端点") : L10n.T("服务器");
+    public string UsernameLabel => IsS3 ? L10n.T("Access Key") : L10n.T("用户名");
+    public string SecureLabel => IsS3 ? L10n.T("使用 HTTPS") : L10n.T("使用 HTTPS（WebDAV）");
+    public bool ShowSecureToggle => IsWebDav || IsS3;
+    public bool CanDiscover => Protocol is RemoteProtocol.Ftp or RemoteProtocol.Ftps or
+        RemoteProtocol.Sftp or RemoteProtocol.Smb or RemoteProtocol.WebDav;
 
     partial void OnProtocolChanged(RemoteProtocol value)
     {
@@ -282,6 +320,22 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     {
         if (Enum.TryParse<SshAuthMethod>(method, true, out var value))
             SshAuth = value;
+    }
+
+    public void ApplyDiscoveredService(DiscoveredService service)
+    {
+        if (service.Protocol is not { } protocol || !service.CanUse)
+            return;
+
+        Protocol = protocol;
+        Host = service.Host;
+        PortText = service.Port.ToString();
+        if (string.IsNullOrWhiteSpace(Name))
+            Name = service.Name;
+        InitialPath = "/";
+        if (protocol == RemoteProtocol.WebDav)
+            Secure = service.Port == 443;
+        ValidationMessage = null;
     }
 
     public async Task TestAsync(CancellationToken cancellationToken = default)
@@ -335,9 +389,17 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         }
 
         var username = Anonymous ? "anonymous" : Username.Trim();
-        if (!Anonymous && string.IsNullOrWhiteSpace(username) && Protocol is RemoteProtocol.Sftp or RemoteProtocol.Smb)
+        if (!Anonymous && string.IsNullOrWhiteSpace(username) &&
+            Protocol is RemoteProtocol.Sftp or RemoteProtocol.Smb or RemoteProtocol.S3)
         {
-            ValidationMessage = L10n.T("请输入用户名");
+            ValidationMessage = Protocol == RemoteProtocol.S3
+                ? L10n.T("Access Key 不能为空")
+                : L10n.T("请输入用户名");
+            return null;
+        }
+        if (Protocol == RemoteProtocol.S3 && string.IsNullOrWhiteSpace(S3Bucket))
+        {
+            ValidationMessage = L10n.T("S3 Bucket 不能为空");
             return null;
         }
 
@@ -369,6 +431,10 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         profile.PrivateKeyPath = (PrivateKeyPath ?? string.Empty).Trim();
         profile.Secure = Secure;
         profile.AllowInvalidCertificate = AllowInvalidCertificate;
+        profile.S3Bucket = S3Bucket.Trim();
+        profile.S3Region = string.IsNullOrWhiteSpace(S3Region) ? "us-east-1" : S3Region.Trim();
+        profile.S3UsePathStyle = S3UsePathStyle;
+        profile.S3SessionToken = (S3SessionToken ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(profile.Name))
             profile.Name = ConnectionStore.DefaultName(profile);
         return profile;

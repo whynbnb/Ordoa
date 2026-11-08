@@ -42,4 +42,5 @@ public interface IDialogService
     Task ShowUndoHistoryAsync(UndoService undo);
     Task ShowImageConversionAsync(IReadOnlyList<string> paths, string outputDirectory);
     Task<IReadOnlyList<string>> PickFilesAsync(string title);
+    Task<Ordoa.Core.Services.DiscoveredService?> ShowNetworkDiscoveryAsync();
 }

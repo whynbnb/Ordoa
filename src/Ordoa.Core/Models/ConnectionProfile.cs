@@ -8,6 +8,7 @@ public enum RemoteProtocol
     Sftp,
     Smb,
     WebDav,
+    S3,
 }
 
 public enum SshAuthMethod
@@ -39,6 +40,14 @@ public sealed class ConnectionProfile
     public string? HostKeyFingerprint { get; set; }
     public bool AllowInvalidCertificate { get; set; }
 
+    /// <summary>S3-compatible bucket. The Host field holds the endpoint.</summary>
+    public string S3Bucket { get; set; } = string.Empty;
+    public string S3Region { get; set; } = "us-east-1";
+    /// <summary>Use path-style URLs (required by MinIO and many S3-compatible services).</summary>
+    public bool S3UsePathStyle { get; set; } = true;
+    /// <summary>Optional temporary-credential session token.</summary>
+    public string S3SessionToken { get; set; } = string.Empty;
+
     public int EffectivePort => Port > 0 ? Port : DefaultPort;
 
     public int DefaultPort => Protocol switch
@@ -47,6 +56,7 @@ public sealed class ConnectionProfile
         RemoteProtocol.Sftp => 22,
         RemoteProtocol.Smb => 445,
         RemoteProtocol.WebDav => Secure ? 443 : 80,
+        RemoteProtocol.S3 => Secure ? 443 : 80,
         _ => 21,
     };
 
@@ -57,6 +67,7 @@ public sealed class ConnectionProfile
         RemoteProtocol.Sftp => "sftp",
         RemoteProtocol.Smb => "smb",
         RemoteProtocol.WebDav => "webdav",
+        RemoteProtocol.S3 => "s3",
         _ => "remote",
     };
 
@@ -66,11 +77,14 @@ public sealed class ConnectionProfile
             => $"{Username}@{Host}:{EffectivePort}",
         RemoteProtocol.Smb => $"\\\\{Host}\\{(string.IsNullOrWhiteSpace(InitialPath) ? string.Empty : InitialPath.Trim('/').Split('/')[0])}",
         RemoteProtocol.WebDav => $"{(Secure ? "https" : "http")}://{Host}:{EffectivePort}",
+        RemoteProtocol.S3 => $"{S3Bucket}@{(Secure ? "https" : "http")}://{Host}:{EffectivePort}",
         _ => Host,
     };
 
     public string BuildUri(string path)
     {
+        if (Protocol == RemoteProtocol.S3)
+            return $"s3://{S3Bucket}{NormalizeInitialPath(path)}";
         var user = string.IsNullOrEmpty(Username) ? string.Empty : Uri.EscapeDataString(Username) + "@";
         return $"{Scheme}://{user}{Host}:{EffectivePort}{NormalizeInitialPath(path)}";
     }
@@ -96,6 +110,7 @@ public sealed class ConnectionProfile
         RemoteProtocol.Sftp => "SFTP",
         RemoteProtocol.Smb => "SMB",
         RemoteProtocol.WebDav => Secure ? "WebDAV (HTTPS)" : "WebDAV",
+        RemoteProtocol.S3 => "S3",
         _ => L10n.T("远程"),
     };
 }

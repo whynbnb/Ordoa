@@ -29,6 +29,16 @@ public partial class ConnectionWindow : Window
         };
     }
 
+    private async void OnDiscoverClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ConnectionDialogViewModel viewModel || App.Services is not { } services)
+            return;
+
+        var service = await services.Dialogs.ShowNetworkDiscoveryAsync();
+        if (service is not null)
+            viewModel.ApplyDiscoveredService(service);
+    }
+
     private void OnReloadSshProfilesClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is ConnectionDialogViewModel vm)

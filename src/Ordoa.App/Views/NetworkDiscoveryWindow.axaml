@@ -1,0 +1,75 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        xmlns:core="using:Ordoa.Core.Services"
+        x:DataType="vm:NetworkDiscoveryDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.NetworkDiscoveryWindow"
+        Title="{loc:Tr 发现局域网设备}"
+        Width="640" Height="480" MinWidth="480" MinHeight="320" CanResize="True"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,16,22,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{loc:Tr 发现局域网设备}" Classes="h2" />
+          <TextBlock Text="{loc:Tr 通过 mDNS 和 WS-Discovery 查找 SFTP、SMB、FTP 和 WebDAV 服务。}"
+                     Classes="caption" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="{loc:Tr 重新扫描}" Classes="subtle"
+                Click="OnRescanClick" IsEnabled="{Binding !IsScanning}" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" RowDefinitions="Auto,*">
+      <StackPanel Orientation="Horizontal" Spacing="8" Margin="18,10,18,4">
+        <ProgressBar IsIndeterminate="True" Width="80" Height="3" IsVisible="{Binding IsScanning}" />
+        <TextBlock Text="{Binding Status}" Classes="caption" VerticalAlignment="Center"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+
+      <ListBox Grid.Row="1" ItemsSource="{Binding Services}" SelectedItem="{Binding SelectedService, Mode=TwoWay}"
+               Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="core:DiscoveredService">
+            <Grid ColumnDefinitions="150,70,*,Auto" ColumnSpacing="10" Margin="18,5,14,5">
+              <StackPanel Spacing="1">
+                <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Source}" Classes="tiny" />
+              </StackPanel>
+              <TextBlock Grid.Column="1" Text="{Binding ProtocolLabel}" Classes="caption"
+                         VerticalAlignment="Center" />
+              <StackPanel Grid.Column="2" Spacing="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding DisplayTarget}" FontSize="11.5" FontFamily="{DynamicResource MonoFontFamily}"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Detail}" Classes="tiny" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <Border Grid.Column="3" CornerRadius="4" Padding="5,1"
+                      Background="{DynamicResource SurfaceAltBrush}" VerticalAlignment="Center"
+                      IsVisible="{Binding CanUse}">
+                <TextBlock Text="{loc:Tr 可使用}" Classes="tiny" />
+              </Border>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+
+    <Border Grid.Row="2" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <TextBlock Text="{loc:Tr 发现依赖局域网组播；防火墙或容器网络可能限制结果。}"
+                   Classes="tiny" VerticalAlignment="Center" TextWrapping="Wrap" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Content="{loc:Tr 取消}" Click="OnCancelClick" />
+          <Button Content="{loc:Tr 使用此设备}" Classes="accent" Click="OnUseClick"
+                  IsEnabled="{Binding CanUseSelected}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

@@ -101,7 +101,13 @@
                     Classes.active="{Binding Protocol, Converter={StaticResource EqualsConverter}, ConverterParameter=WebDav}">
               <TextBlock Text="WebDAV" />
             </Button>
+            <Button Classes="chip" Tag="S3" Click="OnProtocolClick"
+                    Classes.active="{Binding Protocol, Converter={StaticResource EqualsConverter}, ConverterParameter=S3}">
+              <TextBlock Text="S3" />
+            </Button>
           </WrapPanel>
+          <Button Content="{loc:Tr 发现局域网设备…}" Classes="link" HorizontalAlignment="Left"
+                  Click="OnDiscoverClick" IsVisible="{Binding CanDiscover}" />
         </StackPanel>
 
         <Separator />
@@ -112,16 +118,36 @@
         </Grid>
 
         <Grid ColumnDefinitions="100,*,86,*">
-          <TextBlock Text="{loc:Tr 服务器}" Classes="fieldlabel" />
+          <TextBlock Text="{Binding HostLabel}" Classes="fieldlabel" />
           <TextBox x:Name="HostBox" Grid.Column="1" Text="{Binding Host, Mode=TwoWay}" PlaceholderText="{loc:Tr 主机名或 IP 地址}" />
           <TextBlock Grid.Column="2" Text="{loc:Tr 端口}" Classes="fieldlabel" Margin="14,0,10,0" />
           <TextBox Grid.Column="3" Text="{Binding PortText, Mode=TwoWay}" PlaceholderText="{Binding DefaultPortText}" />
         </Grid>
 
         <Grid ColumnDefinitions="100,*" IsVisible="{Binding ShowAuthFields}">
-          <TextBlock Text="{loc:Tr 用户名}" Classes="fieldlabel" />
+          <TextBlock Text="{Binding UsernameLabel}" Classes="fieldlabel" />
           <TextBox Grid.Column="1" Text="{Binding Username, Mode=TwoWay}" PlaceholderText="{loc:Tr 登录用户名}" />
         </Grid>
+
+        <StackPanel Spacing="8" IsVisible="{Binding ShowS3Fields}">
+          <Grid ColumnDefinitions="100,*">
+            <TextBlock Text="{loc:Tr S3 Bucket}" Classes="fieldlabel" />
+            <TextBox Grid.Column="1" Text="{Binding S3Bucket, Mode=TwoWay}" PlaceholderText="my-bucket" />
+          </Grid>
+          <Grid ColumnDefinitions="100,*">
+            <TextBlock Text="{loc:Tr S3 区域}" Classes="fieldlabel" />
+            <TextBox Grid.Column="1" Text="{Binding S3Region, Mode=TwoWay}" PlaceholderText="us-east-1" />
+          </Grid>
+          <Grid ColumnDefinitions="100,*">
+            <TextBlock Text="{loc:Tr Session Token}" Classes="fieldlabel" />
+            <TextBox Grid.Column="1" Text="{Binding S3SessionToken, Mode=TwoWay}"
+                     PlaceholderText="{loc:Tr 可选，仅临时凭据需要}" PasswordChar="●" />
+          </Grid>
+          <CheckBox Content="{loc:Tr 使用路径风格 URL（MinIO、R2 等通常需要）}"
+                    IsChecked="{Binding S3UsePathStyle, Mode=TwoWay}" />
+          <TextBlock Text="{loc:Tr Access Key 填在用户名，Secret Key 填在密码；Bucket 根目录显示为 /。}"
+                     Classes="tiny" TextWrapping="Wrap" />
+        </StackPanel>
 
         <StackPanel Spacing="6" IsVisible="{Binding ShowSshAuth}">
           <TextBlock Text="{loc:Tr 认证方式}" Classes="section" />
@@ -182,8 +208,8 @@
                    IsVisible="{Binding IsSmb}" TextWrapping="Wrap" />
         <CheckBox Content="{loc:Tr 匿名登录（仅 FTP）}" IsChecked="{Binding Anonymous, Mode=TwoWay}"
                   IsVisible="{Binding ShowAnonymous}" />
-        <CheckBox Content="{loc:Tr 使用 HTTPS（WebDAV）}" IsChecked="{Binding Secure, Mode=TwoWay}"
-                  IsVisible="{Binding IsWebDav}" />
+        <CheckBox Content="{Binding SecureLabel}" IsChecked="{Binding Secure, Mode=TwoWay}"
+                  IsVisible="{Binding ShowSecureToggle}" />
         <CheckBox Content="{loc:Tr 允许无效或自签名证书（不安全）}" IsChecked="{Binding AllowInvalidCertificate, Mode=TwoWay}"
                   IsVisible="{Binding ShowTlsOptions}" />
         <CheckBox Content="{Binding SaveSecretLabel}" IsChecked="{Binding SavePassword, Mode=TwoWay}"

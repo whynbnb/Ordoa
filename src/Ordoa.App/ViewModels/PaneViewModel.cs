@@ -1325,6 +1325,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             "sftp" => RemoteProtocol.Sftp,
             "smb" => RemoteProtocol.Smb,
             "webdav" or "dav" or "http" or "https" => RemoteProtocol.WebDav,
+            "s3" => RemoteProtocol.S3,
             _ => throw new NotSupportedException(L10n.Format("不支持的位置类型: {0}", scheme)),
         };
 
@@ -1333,9 +1334,16 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         string? uriPassword = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null;
         var host = uri.Host;
         var port = uri.IsDefaultPort ? 0 : uri.Port;
+        var s3Bucket = protocol == RemoteProtocol.S3 ? uri.Host : string.Empty;
+        if (protocol == RemoteProtocol.S3)
+        {
+            host = "s3.amazonaws.com";
+            port = 443;
+        }
         var saved = _services.FileSystems.Connections.GetAll().FirstOrDefault(p =>
             p.Protocol == protocol &&
-            string.Equals(p.Host, host, StringComparison.OrdinalIgnoreCase) &&
+            (protocol != RemoteProtocol.S3 || string.Equals(p.S3Bucket, s3Bucket, StringComparison.Ordinal)) &&
+            (protocol == RemoteProtocol.S3 || string.Equals(p.Host, host, StringComparison.OrdinalIgnoreCase)) &&
             (port == 0 || p.EffectivePort == port) &&
             (string.IsNullOrEmpty(user) || string.Equals(p.Username, user, StringComparison.Ordinal)));
         if (saved is null)
@@ -1352,8 +1360,11 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 Host = host,
                 Port = port,
                 Username = user,
-                InitialPath = "/",
+                InitialPath = protocol == RemoteProtocol.S3 ? uri.AbsolutePath : "/",
                 Secure = scheme is "https" or "webdav" or "dav" || protocol != RemoteProtocol.WebDav,
+                S3Bucket = s3Bucket,
+                S3Region = "us-east-1",
+                S3UsePathStyle = true,
             };
             var result = await _services.Dialogs.ShowConnectionAsync(profile).ConfigureAwait(true);
             if (result is null)

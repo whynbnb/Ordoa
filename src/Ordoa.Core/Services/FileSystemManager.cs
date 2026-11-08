@@ -30,7 +30,7 @@ public sealed class FileSystemManager : IAsyncDisposable
     {
         if (profile.Protocol == RemoteProtocol.Ftp || profile.Protocol == RemoteProtocol.Ftps ||
             profile.Protocol == RemoteProtocol.Sftp || profile.Protocol == RemoteProtocol.Smb ||
-            profile.Protocol == RemoteProtocol.WebDav)
+            profile.Protocol == RemoteProtocol.WebDav || profile.Protocol == RemoteProtocol.S3)
         {
             if (_sessions.TryGetValue(profile.Id, out var existing))
             {
@@ -138,7 +138,7 @@ public sealed class FileSystemManager : IAsyncDisposable
         try
         {
             var path = profile.NormalizeInitialPath(profile.InitialPath);
-            if (!fs.IsRoot(path) || profile.Protocol == RemoteProtocol.Smb || profile.Protocol == RemoteProtocol.WebDav)
+            if (!fs.IsRoot(path) || profile.Protocol is RemoteProtocol.Smb or RemoteProtocol.WebDav or RemoteProtocol.S3)
             {
                 try
                 {
@@ -298,6 +298,11 @@ public sealed class FileSystemManager : IAsyncDisposable
         var safeProfile = profile.Clone();
         if (string.IsNullOrWhiteSpace(safeProfile.Host))
             throw new ArgumentException(L10n.T("服务器地址不能为空"));
+        if (safeProfile.Protocol == RemoteProtocol.S3 &&
+            string.IsNullOrWhiteSpace(safeProfile.S3Bucket))
+        {
+            throw new ArgumentException(L10n.T("S3 Bucket 不能为空"));
+        }
 
         IFileSystem fs = safeProfile.Protocol switch
         {
@@ -308,6 +313,8 @@ public sealed class FileSystemManager : IAsyncDisposable
             RemoteProtocol.Smb => await SmbFileSystem.ConnectAsync(safeProfile, password, cancellationToken)
                 .ConfigureAwait(false),
             RemoteProtocol.WebDav => await WebDavFileSystem.ConnectAsync(safeProfile, password, cancellationToken)
+                .ConfigureAwait(false),
+            RemoteProtocol.S3 => await S3FileSystem.ConnectAsync(safeProfile, password, cancellationToken)
                 .ConfigureAwait(false),
             _ => throw new NotSupportedException($"不支持的协议: {safeProfile.Protocol}"),
         };

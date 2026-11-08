@@ -321,6 +321,17 @@ public sealed class DialogService : IDialogService
         await ShowDialogAsync("imageconvert", window, owner).ConfigureAwait(true);
     }
 
+    public async Task<Ordoa.Core.Services.DiscoveredService?> ShowNetworkDiscoveryAsync()
+    {
+        if (!TryPrepareDialog("discovery", out var owner))
+            return null;
+
+        var viewModel = new NetworkDiscoveryDialogViewModel();
+        var window = new NetworkDiscoveryWindow { DataContext = viewModel };
+        return await ShowDialogAsync<Ordoa.Core.Services.DiscoveredService?>("discovery", window, owner)
+            .ConfigureAwait(true);
+    }
+
     public async Task<IReadOnlyList<string>> PickFilesAsync(string title)
     {
         var owner = _ownerProvider();
