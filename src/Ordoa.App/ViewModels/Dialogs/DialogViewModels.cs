@@ -494,6 +494,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _showTypeColumn = settings.ShowTypeColumn;
         _showPermissionColumn = settings.ShowPermissionColumn;
         _showOwnerColumn = settings.ShowOwnerColumn;
+        _showTagsColumn = settings.ShowTagsColumn;
+        _gridThumbnailSize = settings.GridThumbnailSize;
+        _listDensity = settings.ListDensity;
+        _groupBy = settings.GroupBy;
         _showPreviewPanel = settings.ShowPreviewPanel;
         _previewPanelPlacementIndex = settings.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         _searchDepth = settings.SearchDepth;
@@ -829,6 +833,18 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private bool _showOwnerColumn;
 
     [ObservableProperty]
+    private bool _showTagsColumn;
+
+    [ObservableProperty]
+    private GridThumbnailSize _gridThumbnailSize;
+
+    [ObservableProperty]
+    private ListDensity _listDensity;
+
+    [ObservableProperty]
+    private GroupByMode _groupBy;
+
+    [ObservableProperty]
     private bool _showPreviewPanel;
 
     [ObservableProperty]
@@ -1148,6 +1164,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.ShowTypeColumn = ShowTypeColumn;
         settings.ShowPermissionColumn = ShowPermissionColumn;
         settings.ShowOwnerColumn = ShowOwnerColumn;
+        settings.ShowTagsColumn = ShowTagsColumn;
+        settings.GridThumbnailSize = GridThumbnailSize;
+        settings.ListDensity = ListDensity;
+        settings.GroupBy = GroupBy;
         settings.ShowPreviewPanel = ShowPreviewPanel;
         settings.PreviewPanelPlacement = PreviewPanelPlacementIndex == 1
             ? PreviewPanelPlacement.Bottom
@@ -1256,6 +1276,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         ShowTypeColumn = defaults.ShowTypeColumn;
         ShowPermissionColumn = defaults.ShowPermissionColumn;
         ShowOwnerColumn = defaults.ShowOwnerColumn;
+        ShowTagsColumn = defaults.ShowTagsColumn;
+        GridThumbnailSize = defaults.GridThumbnailSize;
+        ListDensity = defaults.ListDensity;
+        GroupBy = defaults.GroupBy;
         ShowPreviewPanel = defaults.ShowPreviewPanel;
         PreviewPanelPlacementIndex = defaults.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         SearchDepth = defaults.SearchDepth;
@@ -1336,6 +1360,24 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     {
         if (Enum.TryParse<ViewKind>(value, true, out var view))
             View = view;
+    }
+
+    public void SetGridThumbnailSize(string value)
+    {
+        if (Enum.TryParse<GridThumbnailSize>(value, true, out var size))
+            GridThumbnailSize = size;
+    }
+
+    public void SetListDensity(string value)
+    {
+        if (Enum.TryParse<ListDensity>(value, true, out var density))
+            ListDensity = density;
+    }
+
+    public void SetGroupBy(string value)
+    {
+        if (Enum.TryParse<GroupByMode>(value, true, out var mode))
+            GroupBy = mode;
     }
 
     public void SetAccent(string value)

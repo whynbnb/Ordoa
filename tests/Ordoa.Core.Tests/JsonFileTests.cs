@@ -23,6 +23,29 @@ public sealed class JsonFileTests
                 WindowButtonMode = WindowButtonMode.Show,
                 ShowVolumes = false,
                 ShowHiddenVolumes = true,
+                ShowTagsColumn = true,
+                ColumnOrder =
+                [
+                    nameof(FileListColumn.Name),
+                    nameof(FileListColumn.Owner),
+                    nameof(FileListColumn.Tags),
+                    nameof(FileListColumn.Size),
+                    nameof(FileListColumn.Modified),
+                    nameof(FileListColumn.Type),
+                    nameof(FileListColumn.Permissions),
+                ],
+                ColumnWidths = new Dictionary<string, double> { ["Size"] = 91, ["Tags"] = 132 },
+                GridThumbnailSize = GridThumbnailSize.Large,
+                ListDensity = ListDensity.Compact,
+                GroupBy = GroupByMode.Modified,
+                FolderViews = new Dictionary<string, FolderViewState>
+                {
+                    ["local|/tmp"] = new FolderViewState
+                    {
+                        ColumnOrder = [nameof(FileListColumn.Name), nameof(FileListColumn.Size)],
+                        ColumnWidths = new Dictionary<string, double> { ["Size"] = 120 },
+                    },
+                },
                 CustomSidebarPaths = ["/home/why/Projects"],
                 TerminalMode = TerminalDetectionMode.Manual,
                 ManualTerminalPath = "/usr/bin/kitty",
@@ -62,6 +85,16 @@ public sealed class JsonFileTests
             Assert.Equal(WindowButtonMode.Show, loaded.WindowButtonMode);
             Assert.False(loaded.ShowVolumes);
             Assert.True(loaded.ShowHiddenVolumes);
+            Assert.True(loaded.ShowTagsColumn);
+            Assert.Equal(7, loaded.ColumnOrder.Count);
+            Assert.Equal(nameof(FileListColumn.Owner), loaded.ColumnOrder[1]);
+            Assert.Equal(91, loaded.ColumnWidths["Size"]);
+            Assert.Equal(132, loaded.ColumnWidths["Tags"]);
+            Assert.Equal(GridThumbnailSize.Large, loaded.GridThumbnailSize);
+            Assert.Equal(ListDensity.Compact, loaded.ListDensity);
+            Assert.Equal(GroupByMode.Modified, loaded.GroupBy);
+            Assert.Equal(120, loaded.FolderViews["local|/tmp"].ColumnWidths!["Size"]);
+            Assert.Equal(2, loaded.FolderViews["local|/tmp"].ColumnOrder!.Count);
             Assert.Equal(["/home/why/Projects"], loaded.CustomSidebarPaths);
             Assert.Equal(TerminalDetectionMode.Manual, loaded.TerminalMode);
             Assert.Equal("/usr/bin/kitty", loaded.ManualTerminalPath);

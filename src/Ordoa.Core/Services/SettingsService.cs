@@ -54,6 +54,40 @@ public enum CopyVerificationMode
     Sha256,
 }
 
+/// <summary>Logical columns of the detailed list view.</summary>
+public enum FileListColumn
+{
+    Name,
+    Size,
+    Modified,
+    Type,
+    Tags,
+    Permissions,
+    Owner,
+}
+
+public enum GridThumbnailSize
+{
+    Small,
+    Medium,
+    Large,
+}
+
+public enum ListDensity
+{
+    Compact,
+    Normal,
+    Spacious,
+}
+
+public enum GroupByMode
+{
+    None,
+    Type,
+    Modified,
+    Size,
+}
+
 /// <summary>Per-folder view and ordering overrides.</summary>
 public sealed class FolderViewState
 {
@@ -62,12 +96,22 @@ public sealed class FolderViewState
     public bool FoldersFirst { get; set; } = true;
     public ViewKind View { get; set; } = ViewKind.List;
 
+    /// <summary>Optional per-folder column order; null uses the global order.</summary>
+    public List<string>? ColumnOrder { get; set; }
+
+    /// <summary>Optional per-folder column widths; null uses the global widths.</summary>
+    public Dictionary<string, double>? ColumnWidths { get; set; }
+
     public FolderViewState Clone() => new()
     {
         SortColumn = SortColumn,
         SortDescending = SortDescending,
         FoldersFirst = FoldersFirst,
         View = View,
+        ColumnOrder = ColumnOrder is null ? null : [.. ColumnOrder],
+        ColumnWidths = ColumnWidths is null
+            ? null
+            : new Dictionary<string, double>(ColumnWidths, StringComparer.Ordinal),
     };
 }
 
@@ -108,6 +152,24 @@ public sealed class AppSettings
     public bool ShowTypeColumn { get; set; } = true;
     public bool ShowPermissionColumn { get; set; } = true;
     public bool ShowOwnerColumn { get; set; } = true;
+    /// <summary>Show the tag/color column in the detailed list.</summary>
+    public bool ShowTagsColumn { get; set; }
+    /// <summary>Global logical column order for the detailed list.</summary>
+    public List<string> ColumnOrder { get; set; } =
+    [
+        nameof(FileListColumn.Name),
+        nameof(FileListColumn.Size),
+        nameof(FileListColumn.Modified),
+        nameof(FileListColumn.Type),
+        nameof(FileListColumn.Tags),
+        nameof(FileListColumn.Permissions),
+        nameof(FileListColumn.Owner),
+    ];
+    /// <summary>Global pixel widths for fixed list columns, keyed by column name.</summary>
+    public Dictionary<string, double> ColumnWidths { get; set; } = [];
+    public GridThumbnailSize GridThumbnailSize { get; set; } = GridThumbnailSize.Medium;
+    public ListDensity ListDensity { get; set; } = ListDensity.Normal;
+    public GroupByMode GroupBy { get; set; } = GroupByMode.None;
     /// <summary>Remembered sort/view settings keyed by filesystem id and path.</summary>
     public Dictionary<string, FolderViewState> FolderViews { get; set; } = [];
     /// <summary>Keep a preview panel open for the current selection.</summary>
@@ -208,6 +270,8 @@ public sealed class AppSettings
         clone.HiddenConnections = [.. HiddenConnections];
         clone.OpenWithDefaults = new Dictionary<string, string>(OpenWithDefaults, StringComparer.Ordinal);
         clone.ShortcutOverrides = new Dictionary<string, string>(ShortcutOverrides, StringComparer.Ordinal);
+        clone.ColumnOrder = [.. ColumnOrder];
+        clone.ColumnWidths = new Dictionary<string, double>(ColumnWidths, StringComparer.Ordinal);
         clone.TerminalPreferences = (TerminalPreferences ?? [])
             .Where(preference => preference is not null)
             .Select(preference => preference.Clone())
@@ -289,6 +353,21 @@ public sealed class SettingsService
             Current.PreviewPanelPlacement = PreviewPanelPlacement.Right;
         if (!Enum.IsDefined(Current.TerminalMode))
             Current.TerminalMode = TerminalDetectionMode.Auto;
+        if (!Enum.IsDefined(Current.GridThumbnailSize))
+            Current.GridThumbnailSize = GridThumbnailSize.Medium;
+        if (!Enum.IsDefined(Current.ListDensity))
+            Current.ListDensity = ListDensity.Normal;
+        if (!Enum.IsDefined(Current.GroupBy))
+            Current.GroupBy = GroupByMode.None;
+        Current.ColumnOrder = (Current.ColumnOrder ?? [])
+            .Where(value => Enum.TryParse<FileListColumn>(value, ignoreCase: true, out _))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        Current.ColumnWidths = (Current.ColumnWidths ?? [])
+            .Where(pair => Enum.TryParse<FileListColumn>(pair.Key, ignoreCase: true, out _) &&
+                           double.IsFinite(pair.Value) && pair.Value > 0)
+            .GroupBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Last().Value, StringComparer.Ordinal);
         Current.ManualTerminalName = (Current.ManualTerminalName ?? string.Empty).Trim();
         Current.ManualTerminalPath = (Current.ManualTerminalPath ?? string.Empty).Trim();
         Current.ManualTerminalArguments = (Current.ManualTerminalArguments ?? string.Empty).Trim();

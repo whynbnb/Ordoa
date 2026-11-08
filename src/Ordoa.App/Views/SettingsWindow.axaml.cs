@@ -73,6 +73,24 @@ public partial class SettingsWindow : Window
             vm.SetWindowButtonMode(mode);
     }
 
+    private void OnGridSizeClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string size })
+            vm.SetGridThumbnailSize(size);
+    }
+
+    private void OnDensityClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string density })
+            vm.SetListDensity(density);
+    }
+
+    private void OnGroupClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string mode })
+            vm.SetGroupBy(mode);
+    }
+
     private void OnResetPlacesClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm)

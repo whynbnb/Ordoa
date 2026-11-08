@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -38,6 +39,12 @@ public partial class PaneView : UserControl
     private bool _marqueeAdditive;
     private Point _marqueeStart;
     private ListBox? _marqueeList;
+    private FileListColumn? _resizeColumn;
+    private double _resizeStartX;
+    private double _resizeStartWidth;
+    private FileListColumn? _reorderColumn;
+    private Point _reorderStart;
+    private bool _reorderActive;
 
     public PaneView()
     {
@@ -66,6 +73,37 @@ public partial class PaneView : UserControl
         AddHandler(PointerReleasedEvent, OnAnyPointerReleased, RoutingStrategies.Tunnel);
         FileList.AddHandler(PointerPressedEvent, OnListPointerPressedTunnel, RoutingStrategies.Tunnel);
         FileGrid.AddHandler(PointerPressedEvent, OnListPointerPressedTunnel, RoutingStrategies.Tunnel);
+        FileList.ContainerPrepared += OnFileListContainerPrepared;
+        FileGrid.LayoutUpdated += (_, _) => UpdateGridMetrics();
+    }
+
+    private void OnFileListContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container is not ListBoxItem item || item.DataContext is not FileItemViewModel file)
+            return;
+
+        item.IsHitTestVisible = !file.IsGroupHeader;
+        item.Focusable = !file.IsGroupHeader;
+        if (file.IsGroupHeader)
+        {
+            item.MinHeight = 0;
+            item.Padding = default;
+        }
+        else
+        {
+            item.ClearValue(MinHeightProperty);
+        }
+    }
+
+    private void UpdateGridMetrics()
+    {
+        if (_pane is null || FileGrid.ItemsPanelRoot is not VirtualizingWrapPanel panel)
+            return;
+
+        if (Math.Abs(panel.ItemWidth - _pane.GridItemWidth) > 0.1)
+            panel.ItemWidth = _pane.GridItemWidth;
+        if (Math.Abs(panel.ItemHeight - _pane.GridItemHeight) > 0.1)
+            panel.ItemHeight = _pane.GridItemHeight;
     }
 
     private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -152,7 +190,7 @@ public partial class PaneView : UserControl
             return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
-        if (GetItemAt(e.Source) is not { } item)
+        if (GetItemAt(e.Source) is not { } item || item.IsGroupHeader)
             return;
 
         // ListBoxItem handles the bubbling press event itself, so start
@@ -209,13 +247,15 @@ public partial class PaneView : UserControl
             if (grid.Classes.Contains("rowwide"))
                 grid.ColumnDefinitions = new ColumnDefinitions(_pane.WideColumnLayout);
         }
+
+        UpdateGridMetrics();
     }
 
     private void UpdateNarrowState()
     {
         if (_pane is null)
             return;
-        _pane.IsNarrow = Bounds.Width is > 0 and < 560;
+        _pane.IsNarrow = Bounds.Width is > 0 && Bounds.Width < _pane.NarrowThreshold;
         if (_pane.IsNarrow)
         {
             if (!FileList.Classes.Contains("narrow"))
@@ -233,6 +273,10 @@ public partial class PaneView : UserControl
             ScrollBreadcrumbToEnd();
         if (e.PropertyName == nameof(PaneViewModel.WideColumnLayout))
             ApplyColumnDefinitions();
+        if (e.PropertyName == nameof(PaneViewModel.NarrowThreshold))
+            UpdateNarrowState();
+        if (e.PropertyName is nameof(PaneViewModel.GridItemWidth) or nameof(PaneViewModel.GridItemHeight))
+            UpdateGridMetrics();
     }
 
     private void ScrollBreadcrumbToEnd()
@@ -265,7 +309,22 @@ public partial class PaneView : UserControl
 
     private void OnSelectAllRequested(PaneViewModel pane)
     {
-        GetActiveList()?.SelectAll();
+        var list = GetActiveList();
+        if (list is null)
+            return;
+
+        if (list.Selection is not { } selection)
+            return;
+
+        using (selection.BatchUpdate())
+        {
+            selection.Clear();
+            for (var index = 0; index < list.ItemCount; index++)
+            {
+                if (list.Items[index] is FileItemViewModel item && !item.IsGroupHeader)
+                    selection.Select(index);
+            }
+        }
     }
 
     private ListBox? GetActiveList() => _pane is null ? null : _pane.IsGrid ? FileGrid : FileList;
@@ -291,6 +350,9 @@ public partial class PaneView : UserControl
             return;
 
         var item = GetItemAt(e.Source);
+        if (item?.IsGroupHeader == true)
+            return;
+
         var point = e.GetCurrentPoint(this);
         var list = GetActiveList();
 
@@ -725,11 +787,199 @@ public partial class PaneView : UserControl
         if (_pane is null)
             return;
         var item = GetItemAt(e.Source) ?? _pane.PrimarySelection;
-        if (item is null)
+        if (item is null || item.IsGroupHeader)
             return;
         e.Handled = true;
         await _pane.OpenAsync(item);
     }
+
+    private void OnColumnResizePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_pane is null || sender is not Control control ||
+            !TryGetColumn(control.Tag, out var column) ||
+            !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _resizeColumn = column;
+        _resizeStartX = e.GetPosition(this).X;
+        _resizeStartWidth = _pane.GetColumnWidth(column);
+        e.Pointer.Capture(control);
+        e.Handled = true;
+    }
+
+    private void OnColumnResizeMoved(object? sender, PointerEventArgs e)
+    {
+        if (_pane is null || _resizeColumn is not { } column)
+            return;
+
+        var delta = e.GetPosition(this).X - _resizeStartX;
+        _pane.SetColumnWidth(column, _resizeStartWidth + delta);
+        e.Handled = true;
+    }
+
+    private void OnColumnResizeReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_pane is null || _resizeColumn is null)
+            return;
+
+        _pane.CommitColumnLayout();
+        _resizeColumn = null;
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void OnColumnResizeDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (_pane is null || sender is not Control control ||
+            !TryGetColumn(control.Tag, out var column))
+        {
+            return;
+        }
+
+        var width = MeasureColumnWidth(column);
+        if (width > 0)
+        {
+            _pane.SetColumnWidth(column, width, commit: true);
+            e.Handled = true;
+        }
+    }
+
+    private void OnColumnReorderPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control control ||
+            !TryGetColumn(control.Tag, out var column) ||
+            !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _reorderColumn = column;
+        _reorderStart = e.GetPosition(WideHeader);
+        _reorderActive = false;
+        e.Pointer.Capture(control);
+        e.Handled = true;
+    }
+
+    private void OnColumnReorderMoved(object? sender, PointerEventArgs e)
+    {
+        if (_reorderColumn is null)
+            return;
+
+        var point = e.GetPosition(WideHeader);
+        if (!_reorderActive && Math.Abs(point.X - _reorderStart.X) < 6)
+            return;
+
+        _reorderActive = true;
+        e.Handled = true;
+    }
+
+    private void OnColumnReorderReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_reorderColumn is not { } source)
+            return;
+
+        var moved = _reorderActive;
+        _reorderColumn = null;
+        _reorderActive = false;
+        e.Pointer.Capture(null);
+        e.Handled = true;
+
+        if (!moved || _pane is null)
+            return;
+
+        var target = ColumnAt(e.GetPosition(WideHeader));
+        if (target is { } column && column != source)
+            _pane.MoveColumn(source, column);
+    }
+
+    private FileListColumn? ColumnAt(Point point)
+    {
+        foreach (var child in WideHeader.Children)
+        {
+            if (child is not Control control || !control.IsVisible || control.Bounds.Width <= 0 ||
+                !TryGetColumn(control.Tag, out var column))
+            {
+                continue;
+            }
+
+            var origin = control.TranslatePoint(default, WideHeader);
+            if (origin is { } topLeft && new Rect(topLeft, control.Bounds.Size).Contains(point))
+                return column;
+        }
+
+        return null;
+    }
+
+    private static bool TryGetColumn(object? tag, out FileListColumn column)
+    {
+        column = default;
+        return tag is string text && Enum.TryParse(text, ignoreCase: true, out column);
+    }
+
+    private double MeasureColumnWidth(FileListColumn column)
+    {
+        if (_pane is null)
+            return 0;
+
+        var typeface = new Typeface("Inter");
+        var measured = new FormattedText(
+            ColumnLabel(column),
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            11.5,
+            Brushes.Black).Width;
+
+        var inspected = 0;
+        foreach (var item in _pane.VisibleItems)
+        {
+            if (item.IsGroupHeader)
+                continue;
+
+            var text = ColumnText(column, item);
+            if (string.IsNullOrEmpty(text))
+                continue;
+
+            var width = new FormattedText(
+                text,
+                CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                11.5,
+                Brushes.Black).Width;
+            if (width > measured)
+                measured = width;
+
+            if (++inspected >= 2000)
+                break;
+        }
+
+        return Math.Clamp(measured + 24, 50, 400);
+    }
+
+    private static string ColumnLabel(FileListColumn column) => column switch
+    {
+        FileListColumn.Size => L10n.T("大小"),
+        FileListColumn.Modified => L10n.T("修改时间"),
+        FileListColumn.Type => L10n.T("类型"),
+        FileListColumn.Tags => L10n.T("标签"),
+        FileListColumn.Permissions => L10n.T("权限"),
+        FileListColumn.Owner => L10n.T("所有者"),
+        _ => L10n.T("名称"),
+    };
+
+    private static string ColumnText(FileListColumn column, FileItemViewModel item) => column switch
+    {
+        FileListColumn.Size => item.SizeText,
+        FileListColumn.Modified => item.ModifiedText,
+        FileListColumn.Type => item.TypeText,
+        FileListColumn.Tags => item.TagsColumnText,
+        FileListColumn.Permissions => item.PermissionText,
+        FileListColumn.Owner => item.OwnerText,
+        _ => item.Name,
+    };
 
     private void OnSortHeaderClick(object? sender, RoutedEventArgs e)
     {
@@ -933,6 +1183,38 @@ public partial class PaneView : UserControl
         if (_pane is not null)
             _pane.FoldersFirst = !_pane.FoldersFirst;
     }
+
+    private void OnGroupNoneClick(object? sender, RoutedEventArgs e) => SetGroupBy(GroupByMode.None);
+    private void OnGroupTypeClick(object? sender, RoutedEventArgs e) => SetGroupBy(GroupByMode.Type);
+    private void OnGroupModifiedClick(object? sender, RoutedEventArgs e) => SetGroupBy(GroupByMode.Modified);
+    private void OnGroupSizeClick(object? sender, RoutedEventArgs e) => SetGroupBy(GroupByMode.Size);
+
+    private void SetGroupBy(GroupByMode mode)
+    {
+        if (_pane is not null)
+            _pane.GroupBy = mode;
+    }
+
+    private void OnGridSmallClick(object? sender, RoutedEventArgs e) =>
+        _pane?.SetGridThumbnailSize(Core.Services.GridThumbnailSize.Small);
+
+    private void OnGridMediumClick(object? sender, RoutedEventArgs e) =>
+        _pane?.SetGridThumbnailSize(Core.Services.GridThumbnailSize.Medium);
+
+    private void OnGridLargeClick(object? sender, RoutedEventArgs e) =>
+        _pane?.SetGridThumbnailSize(Core.Services.GridThumbnailSize.Large);
+
+    private void OnDensityCompactClick(object? sender, RoutedEventArgs e) =>
+        _pane?.SetListDensity(Core.Services.ListDensity.Compact);
+
+    private void OnDensityNormalClick(object? sender, RoutedEventArgs e) =>
+        _pane?.SetListDensity(Core.Services.ListDensity.Normal);
+
+    private void OnDensitySpaciousClick(object? sender, RoutedEventArgs e) =>
+        _pane?.SetListDensity(Core.Services.ListDensity.Spacious);
+
+    private void OnToggleTagsColumnClick(object? sender, RoutedEventArgs e) =>
+        _pane?.ToggleTagsColumn();
 
     private void OnFileContextRequested(object? sender, ContextRequestedEventArgs e)
     {

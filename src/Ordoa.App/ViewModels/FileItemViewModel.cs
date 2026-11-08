@@ -22,6 +22,22 @@ public sealed partial class FileItemViewModel : ObservableObject
         DisplayLocation = displayLocation ?? entry.Path;
     }
 
+    /// <summary>Creates a non-selectable heading row for grouped list views.</summary>
+    public static FileItemViewModel CreateGroupHeader(string text, int count)
+    {
+        var label = count > 0
+            ? $"{text} · {L10n.Format("{0} 项", count)}"
+            : text;
+        return new FileItemViewModel(new FileEntry { Name = text, Path = string.Empty })
+        {
+            IsGroupHeader = true,
+            GroupHeaderText = label,
+        };
+    }
+
+    public bool IsGroupHeader { get; private init; }
+    public string GroupHeaderText { get; private init; } = string.Empty;
+
     public FileEntry Entry { get; }
     public string Name => Entry.Name;
     public string Path => Entry.Path;
@@ -38,6 +54,7 @@ public sealed partial class FileItemViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(TypeText));
         OnPropertyChanged(nameof(GridSubtitle));
+        OnPropertyChanged(nameof(TagsColumnText));
         OnPropertyChanged(nameof(ModifiedText));
         OnPropertyChanged(nameof(GitTooltip));
         OnPropertyChanged(nameof(TooltipText));
@@ -75,6 +92,9 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     public bool HasTagColor => TagBrush is not null;
     public bool HasTags => TagsText.Length > 0;
+
+    /// <summary>Compact text for the optional tags column.</summary>
+    public string TagsColumnText => TagsText.Length > 0 ? TagsText : TagText;
 
     public string? TagTooltip
     {
@@ -121,6 +141,7 @@ public sealed partial class FileItemViewModel : ObservableObject
         };
         TagsText = string.Join(", ", tags);
         OnPropertyChanged(nameof(TagText));
+        OnPropertyChanged(nameof(TagsColumnText));
         OnPropertyChanged(nameof(TooltipText));
     }
 

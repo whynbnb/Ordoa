@@ -260,7 +260,63 @@
               <CheckBox Content="{loc:Tr 显示类型列}" IsChecked="{Binding ShowTypeColumn, Mode=TwoWay}" />
               <CheckBox Content="{loc:Tr 显示权限列}" IsChecked="{Binding ShowPermissionColumn, Mode=TwoWay}" />
               <CheckBox Content="{loc:Tr 显示所有者列}" IsChecked="{Binding ShowOwnerColumn, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示标签 / 颜色列}" IsChecked="{Binding ShowTagsColumn, Mode=TwoWay}" />
             </StackPanel>
+
+            <TextBlock Text="{loc:Tr 网格与行密度}" Classes="section" />
+            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+              <TextBlock Text="{loc:Tr 网格缩略图}" Classes="fieldlabel" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <Button Classes="chip" Tag="Small" Click="OnGridSizeClick"
+                        Classes.active="{Binding GridThumbnailSize, Converter={StaticResource EqualsConverter}, ConverterParameter=Small}">
+                  <TextBlock Text="{loc:Tr 小}" />
+                </Button>
+                <Button Classes="chip" Tag="Medium" Click="OnGridSizeClick"
+                        Classes.active="{Binding GridThumbnailSize, Converter={StaticResource EqualsConverter}, ConverterParameter=Medium}">
+                  <TextBlock Text="{loc:Tr 中}" />
+                </Button>
+                <Button Classes="chip" Tag="Large" Click="OnGridSizeClick"
+                        Classes.active="{Binding GridThumbnailSize, Converter={StaticResource EqualsConverter}, ConverterParameter=Large}">
+                  <TextBlock Text="{loc:Tr 大}" />
+                </Button>
+              </StackPanel>
+
+              <TextBlock Grid.Row="1" Text="{loc:Tr 列表行高}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <Button Classes="chip" Tag="Compact" Click="OnDensityClick"
+                        Classes.active="{Binding ListDensity, Converter={StaticResource EqualsConverter}, ConverterParameter=Compact}">
+                  <TextBlock Text="{loc:Tr 紧凑}" />
+                </Button>
+                <Button Classes="chip" Tag="Normal" Click="OnDensityClick"
+                        Classes.active="{Binding ListDensity, Converter={StaticResource EqualsConverter}, ConverterParameter=Normal}">
+                  <TextBlock Text="{loc:Tr 标准}" />
+                </Button>
+                <Button Classes="chip" Tag="Spacious" Click="OnDensityClick"
+                        Classes.active="{Binding ListDensity, Converter={StaticResource EqualsConverter}, ConverterParameter=Spacious}">
+                  <TextBlock Text="{loc:Tr 宽松}" />
+                </Button>
+              </StackPanel>
+
+              <TextBlock Grid.Row="2" Text="{loc:Tr 列表分组}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <Button Classes="chip" Tag="None" Click="OnGroupClick"
+                        Classes.active="{Binding GroupBy, Converter={StaticResource EqualsConverter}, ConverterParameter=None}">
+                  <TextBlock Text="{loc:Tr 不分组}" />
+                </Button>
+                <Button Classes="chip" Tag="Type" Click="OnGroupClick"
+                        Classes.active="{Binding GroupBy, Converter={StaticResource EqualsConverter}, ConverterParameter=Type}">
+                  <TextBlock Text="{loc:Tr 类型}" />
+                </Button>
+                <Button Classes="chip" Tag="Modified" Click="OnGroupClick"
+                        Classes.active="{Binding GroupBy, Converter={StaticResource EqualsConverter}, ConverterParameter=Modified}">
+                  <TextBlock Text="{loc:Tr 修改时间}" />
+                </Button>
+                <Button Classes="chip" Tag="Size" Click="OnGroupClick"
+                        Classes.active="{Binding GroupBy, Converter={StaticResource EqualsConverter}, ConverterParameter=Size}">
+                  <TextBlock Text="{loc:Tr 大小}" />
+                </Button>
+              </StackPanel>
+            </Grid>
 
             <Border Classes="divider" />
 

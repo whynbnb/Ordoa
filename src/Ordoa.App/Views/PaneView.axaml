@@ -82,6 +82,39 @@
     <Style Selector="StackPanel.filetile.dim.gitignored">
       <Setter Property="Opacity" Value="0.48" />
     </Style>
+    <Style Selector="Border.colgrip">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Cursor" Value="SizeAll" />
+    </Style>
+    <Style Selector="Border.colgrip:pointerover">
+      <Setter Property="Background" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
+    <Style Selector="Border.colresize">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Cursor" Value="SizeWestEast" />
+    </Style>
+    <Style Selector="Border.colresize:pointerover">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="ListBox.files.densitycompact ListBoxItem">
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Margin" Value="16,0,14,0" />
+    </Style>
+    <Style Selector="ListBox.files.densityspacious ListBoxItem">
+      <Setter Property="MinHeight" Value="40" />
+      <Setter Property="Margin" Value="16,2,14,2" />
+    </Style>
+    <Style Selector="Border.groupheaderrow">
+      <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="9,3" />
+      <Setter Property="Margin" Value="0,7,0,2" />
+    </Style>
+    <Style Selector="TextBlock.groupheadertitle">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
     <Style Selector="Border.sortbadge">
       <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
       <Setter Property="CornerRadius" Value="4" />
@@ -272,6 +305,23 @@
                 <Separator />
                 <MenuItem Header="{loc:Tr 文件夹优先}" Click="OnToggleFoldersFirstClick" />
               </MenuItem>
+              <MenuItem Header="{loc:Tr 分组}">
+                <MenuItem Header="{loc:Tr 不分组}" Click="OnGroupNoneClick" />
+                <MenuItem Header="{loc:Tr 按类型}" Click="OnGroupTypeClick" />
+                <MenuItem Header="{loc:Tr 按修改时间}" Click="OnGroupModifiedClick" />
+                <MenuItem Header="{loc:Tr 按大小}" Click="OnGroupSizeClick" />
+              </MenuItem>
+              <MenuItem Header="{loc:Tr 网格缩略图}">
+                <MenuItem Header="{loc:Tr 小}" Click="OnGridSmallClick" />
+                <MenuItem Header="{loc:Tr 中}" Click="OnGridMediumClick" />
+                <MenuItem Header="{loc:Tr 大}" Click="OnGridLargeClick" />
+              </MenuItem>
+              <MenuItem Header="{loc:Tr 列表行高}">
+                <MenuItem Header="{loc:Tr 紧凑}" Click="OnDensityCompactClick" />
+                <MenuItem Header="{loc:Tr 标准}" Click="OnDensityNormalClick" />
+                <MenuItem Header="{loc:Tr 宽松}" Click="OnDensitySpaciousClick" />
+              </MenuItem>
+              <MenuItem Header="{loc:Tr 显示/隐藏标签列}" Click="OnToggleTagsColumnClick" />
               <MenuItem Header="{loc:Tr 新建文件夹}" Click="OnNewFolderClick" />
               <MenuItem Header="{loc:Tr 新建空文件}" Click="OnNewFileClick" />
               <MenuItem Header="{loc:Tr 粘贴}" Click="OnPasteClick" />
@@ -348,69 +398,127 @@
         <Border Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1" Padding="16,0,14,0" Height="27">
           <Grid>
-          <Grid x:Name="WideHeader" Classes="headerwide" IsVisible="{Binding !IsNarrow}" ColumnDefinitions="*,74,116,88,86,92" ColumnSpacing="0">
-            <Button Classes="header" Tag="Name" Click="OnSortHeaderClick">
-              <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="{loc:Tr 名称}" Classes="columnvalue" />
-                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
-                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
-                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
-                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Name}" />
-              </StackPanel>
-            </Button>
-            <Button Grid.Column="1" Classes="header" Tag="Size" Click="OnSortHeaderClick"
-                    IsVisible="{Binding ShowSizeColumn}" HorizontalContentAlignment="Stretch">
-              <Grid ColumnDefinitions="*,15">
-                <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" HorizontalAlignment="Right" />
-                <!-- Reserve the right margin as the sort-arrow slot so the
-                     right-aligned label never shifts when sorting by size. -->
-                <Path Grid.Column="1" Data="{StaticResource IconArrowDown}" Width="9" Height="9"
-                      Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
-                      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0"
-                      RenderTransformOrigin="50%,50%"
-                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
-                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Size}" />
+          <Grid x:Name="WideHeader" Classes="headerwide" IsVisible="{Binding !IsNarrow}" ColumnDefinitions="*,74,116,88,110,86,92" ColumnSpacing="0">
+            <Button Grid.Column="{Binding NameColumnIndex}" Classes="header" Tag="Name" Click="OnSortHeaderClick">
+              <Grid ColumnDefinitions="6,*,4">
+                <Border Grid.Column="0" Classes="colgrip" Tag="Name" ToolTip.Tip="{loc:Tr 拖动调整列顺序}"
+                        PointerPressed="OnColumnReorderPressed" PointerMoved="OnColumnReorderMoved"
+                        PointerReleased="OnColumnReorderReleased" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                  <TextBlock Text="{loc:Tr 名称}" Classes="columnvalue" />
+                  <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                        Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                        RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                        IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Name}" />
+                </StackPanel>
+                <Border Grid.Column="2" Classes="colresize" Tag="Name"
+                        PointerPressed="OnColumnResizePressed" PointerMoved="OnColumnResizeMoved"
+                        PointerReleased="OnColumnResizeReleased" DoubleTapped="OnColumnResizeDoubleTapped" />
               </Grid>
             </Button>
-            <Button Grid.Column="2" Classes="header" Tag="Modified" Click="OnSortHeaderClick"
+            <Button Grid.Column="{Binding SizeColumnIndex}" Classes="header" Tag="Size" Click="OnSortHeaderClick"
+                    IsVisible="{Binding ShowSizeColumn}" HorizontalContentAlignment="Stretch">
+              <Grid ColumnDefinitions="6,*,4">
+                <Border Grid.Column="0" Classes="colgrip" Tag="Size" ToolTip.Tip="{loc:Tr 拖动调整列顺序}"
+                        PointerPressed="OnColumnReorderPressed" PointerMoved="OnColumnReorderMoved"
+                        PointerReleased="OnColumnReorderReleased" />
+                <Grid Grid.Column="1" ColumnDefinitions="*,15" Margin="2,0,0,0">
+                  <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" HorizontalAlignment="Right" />
+                  <Path Grid.Column="1" Data="{StaticResource IconArrowDown}" Width="9" Height="9"
+                        Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0"
+                        RenderTransformOrigin="50%,50%"
+                        RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                        IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Size}" />
+                </Grid>
+                <Border Grid.Column="2" Classes="colresize" Tag="Size"
+                        PointerPressed="OnColumnResizePressed" PointerMoved="OnColumnResizeMoved"
+                        PointerReleased="OnColumnResizeReleased" DoubleTapped="OnColumnResizeDoubleTapped" />
+              </Grid>
+            </Button>
+            <Button Grid.Column="{Binding ModifiedColumnIndex}" Classes="header" Tag="Modified" Click="OnSortHeaderClick"
                     IsVisible="{Binding ShowModifiedColumn}">
-              <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="{loc:Tr 修改时间}" Classes="columnvalue" />
-                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
-                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
-                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
-                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Modified}" />
-              </StackPanel>
+              <Grid ColumnDefinitions="6,*,4">
+                <Border Grid.Column="0" Classes="colgrip" Tag="Modified" ToolTip.Tip="{loc:Tr 拖动调整列顺序}"
+                        PointerPressed="OnColumnReorderPressed" PointerMoved="OnColumnReorderMoved"
+                        PointerReleased="OnColumnReorderReleased" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                  <TextBlock Text="{loc:Tr 修改时间}" Classes="columnvalue" />
+                  <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                        Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                        RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                        IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Modified}" />
+                </StackPanel>
+                <Border Grid.Column="2" Classes="colresize" Tag="Modified"
+                        PointerPressed="OnColumnResizePressed" PointerMoved="OnColumnResizeMoved"
+                        PointerReleased="OnColumnResizeReleased" DoubleTapped="OnColumnResizeDoubleTapped" />
+              </Grid>
             </Button>
-            <Button Grid.Column="3" Classes="header" Tag="Type" Click="OnSortHeaderClick"
+            <Button Grid.Column="{Binding TypeColumnIndex}" Classes="header" Tag="Type" Click="OnSortHeaderClick"
                     IsVisible="{Binding ShowTypeColumn}">
-              <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="{loc:Tr 类型}" Classes="columnvalue" />
-                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
-                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
-                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
-                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Type}" />
-              </StackPanel>
+              <Grid ColumnDefinitions="6,*,4">
+                <Border Grid.Column="0" Classes="colgrip" Tag="Type" ToolTip.Tip="{loc:Tr 拖动调整列顺序}"
+                        PointerPressed="OnColumnReorderPressed" PointerMoved="OnColumnReorderMoved"
+                        PointerReleased="OnColumnReorderReleased" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                  <TextBlock Text="{loc:Tr 类型}" Classes="columnvalue" />
+                  <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                        Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                        RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                        IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Type}" />
+                </StackPanel>
+                <Border Grid.Column="2" Classes="colresize" Tag="Type"
+                        PointerPressed="OnColumnResizePressed" PointerMoved="OnColumnResizeMoved"
+                        PointerReleased="OnColumnResizeReleased" DoubleTapped="OnColumnResizeDoubleTapped" />
+              </Grid>
             </Button>
-            <Button Grid.Column="4" Classes="header" Tag="Permissions" Click="OnSortHeaderClick"
-                    IsVisible="{Binding ShowPermissionColumn}" Margin="0,0,8,0">
-              <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="{loc:Tr 权限}" Classes="columnvalue" />
-                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
-                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
-                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
-                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Permissions}" />
-              </StackPanel>
+            <Button Grid.Column="{Binding TagsColumnIndex}" Classes="header" Tag="Tags"
+                    IsVisible="{Binding ShowTagsColumn}">
+              <Grid ColumnDefinitions="6,*,4">
+                <Border Grid.Column="0" Classes="colgrip" Tag="Tags" ToolTip.Tip="{loc:Tr 拖动调整列顺序}"
+                        PointerPressed="OnColumnReorderPressed" PointerMoved="OnColumnReorderMoved"
+                        PointerReleased="OnColumnReorderReleased" />
+                <TextBlock Grid.Column="1" Text="{loc:Tr 标签}" Classes="columnvalue" Margin="2,0,0,0" />
+                <Border Grid.Column="2" Classes="colresize" Tag="Tags"
+                        PointerPressed="OnColumnResizePressed" PointerMoved="OnColumnResizeMoved"
+                        PointerReleased="OnColumnResizeReleased" DoubleTapped="OnColumnResizeDoubleTapped" />
+              </Grid>
             </Button>
-            <Button Grid.Column="5" Classes="header" Tag="Owner" Click="OnSortHeaderClick"
+            <Button Grid.Column="{Binding PermissionsColumnIndex}" Classes="header" Tag="Permissions"
+                    Click="OnSortHeaderClick" IsVisible="{Binding ShowPermissionColumn}">
+              <Grid ColumnDefinitions="6,*,4">
+                <Border Grid.Column="0" Classes="colgrip" Tag="Permissions" ToolTip.Tip="{loc:Tr 拖动调整列顺序}"
+                        PointerPressed="OnColumnReorderPressed" PointerMoved="OnColumnReorderMoved"
+                        PointerReleased="OnColumnReorderReleased" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                  <TextBlock Text="{loc:Tr 权限}" Classes="columnvalue" />
+                  <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                        Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                        RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                        IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Permissions}" />
+                </StackPanel>
+                <Border Grid.Column="2" Classes="colresize" Tag="Permissions"
+                        PointerPressed="OnColumnResizePressed" PointerMoved="OnColumnResizeMoved"
+                        PointerReleased="OnColumnResizeReleased" DoubleTapped="OnColumnResizeDoubleTapped" />
+              </Grid>
+            </Button>
+            <Button Grid.Column="{Binding OwnerColumnIndex}" Classes="header" Tag="Owner" Click="OnSortHeaderClick"
                     IsVisible="{Binding ShowOwnerColumn}">
-              <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="{loc:Tr 所有者}" Classes="columnvalue" />
-                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
-                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
-                      RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
-                      IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Owner}" />
-              </StackPanel>
+              <Grid ColumnDefinitions="6,*,4">
+                <Border Grid.Column="0" Classes="colgrip" Tag="Owner" ToolTip.Tip="{loc:Tr 拖动调整列顺序}"
+                        PointerPressed="OnColumnReorderPressed" PointerMoved="OnColumnReorderMoved"
+                        PointerReleased="OnColumnReorderReleased" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                  <TextBlock Text="{loc:Tr 所有者}" Classes="columnvalue" />
+                  <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
+                        Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                        RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
+                        IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Owner}" />
+                </StackPanel>
+                <Border Grid.Column="2" Classes="colresize" Tag="Owner"
+                        PointerPressed="OnColumnResizePressed" PointerMoved="OnColumnResizeMoved"
+                        PointerReleased="OnColumnResizeReleased" DoubleTapped="OnColumnResizeDoubleTapped" />
+              </Grid>
             </Button>
           </Grid>
           <Grid Classes="headernarrow" IsVisible="{Binding IsNarrow}" ColumnDefinitions="*,74" ColumnSpacing="0">
@@ -441,7 +549,9 @@
           </Grid>
         </Border>
 
-        <ListBox x:Name="FileList" Grid.Row="1" Classes="files" ItemsSource="{Binding VisibleItems}"
+        <ListBox x:Name="FileList" Grid.Row="1" Classes="files"
+                 Classes.densitycompact="{Binding IsDensityCompact}"
+                 Classes.densityspacious="{Binding IsDensitySpacious}" ItemsSource="{Binding VisibleItems}"
                  Background="Transparent" SelectionMode="Multiple" DragDrop.AllowDrop="True"
                  SelectionChanged="OnListSelectionChanged"
                  DoubleTapped="OnListDoubleTapped"
@@ -454,97 +564,114 @@
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:FileItemViewModel">
               <Panel Classes="fileitem" Classes.dim="{Binding IsHidden}" Classes.gitignored="{Binding IsGitIgnoredDimmed}" ToolTip.Tip="{Binding TooltipText}" Background="Transparent">
-                <Grid Classes="rowwide" ColumnDefinitions="*,74,116,88,86,92" AttachedToVisualTree="OnWideRowAttached">
-                  <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="{Binding Indent}">
-                    <Button Classes="tool" Width="14" Height="14" Padding="0" Margin="0,0,1,0"
-                            IsVisible="{Binding ShowTreeExpander}" Click="OnTreeExpanderClick"
-                            ToolTip.Tip="{loc:Tr 展开或收起文件夹}">
-                      <Panel Width="9" Height="9">
-                        <Path Data="{StaticResource IconChevronRight}" Width="9" Height="9" Stretch="Uniform"
-                              Fill="{DynamicResource TextSecondaryBrush}"
-                              IsVisible="{Binding !IsTreeExpanded}" />
-                        <Path Data="{StaticResource IconChevronDown}" Width="9" Height="9" Stretch="Uniform"
-                              Fill="{DynamicResource TextSecondaryBrush}"
-                              IsVisible="{Binding IsTreeExpanded}" />
+                <Border Classes="groupheaderrow" IsVisible="{Binding IsGroupHeader}">
+                  <TextBlock Text="{Binding GroupHeaderText}" Classes="groupheadertitle" />
+                </Border>
+                <Panel IsVisible="{Binding !IsGroupHeader}">
+                  <Grid Classes="rowwide" ColumnDefinitions="*,74,116,88,110,86,92"
+                        AttachedToVisualTree="OnWideRowAttached">
+                    <Grid Grid.Column="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).NameColumnIndex}"
+                          ColumnDefinitions="Auto,Auto,*,Auto" Margin="{Binding Indent}">
+                      <Button Classes="tool" Width="14" Height="14" Padding="0" Margin="0,0,1,0"
+                              IsVisible="{Binding ShowTreeExpander}" Click="OnTreeExpanderClick"
+                              ToolTip.Tip="{loc:Tr 展开或收起文件夹}">
+                        <Panel Width="9" Height="9">
+                          <Path Data="{StaticResource IconChevronRight}" Width="9" Height="9" Stretch="Uniform"
+                                Fill="{DynamicResource TextSecondaryBrush}"
+                                IsVisible="{Binding !IsTreeExpanded}" />
+                          <Path Data="{StaticResource IconChevronDown}" Width="9" Height="9" Stretch="Uniform"
+                                Fill="{DynamicResource TextSecondaryBrush}"
+                                IsVisible="{Binding IsTreeExpanded}" />
+                        </Panel>
+                      </Button>
+                      <Panel Grid.Column="1" Width="22" Height="22" VerticalAlignment="Center">
+                        <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="17" Height="17"
+                              Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <Image Source="{Binding Thumbnail}" Width="20" Height="20" Stretch="UniformToFill"
+                               IsVisible="{Binding HasThumbnail}" HorizontalAlignment="Left" />
+                        <Path Data="{StaticResource IconLink}" Width="8" Height="8" Stretch="Uniform"
+                              Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Right"
+                              VerticalAlignment="Bottom" IsVisible="{Binding IsSymlink}" />
+                        <Border Width="7" Height="7" CornerRadius="4" Background="{Binding TagBrush}"
+                                IsVisible="{Binding HasTagColor}" HorizontalAlignment="Right"
+                                VerticalAlignment="Top" Margin="0,1,2,0" />
                       </Panel>
-                    </Button>
-                    <Panel Grid.Column="1" Width="22" Height="22" VerticalAlignment="Center">
-                      <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="17" Height="17"
-                            Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                      <Image Source="{Binding Thumbnail}" Width="20" Height="20" Stretch="UniformToFill"
-                             IsVisible="{Binding HasThumbnail}" HorizontalAlignment="Left" />
-                      <Path Data="{StaticResource IconLink}" Width="8" Height="8" Stretch="Uniform"
-                            Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Right"
-                            VerticalAlignment="Bottom" IsVisible="{Binding IsSymlink}" />
-                      <Border Width="7" Height="7" CornerRadius="4" Background="{Binding TagBrush}"
-                              IsVisible="{Binding HasTagColor}" HorizontalAlignment="Right"
-                              VerticalAlignment="Top" Margin="0,1,2,0" />
-                    </Panel>
-                    <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
-                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Border Grid.Column="3" IsVisible="{Binding ShowGitBadge}"
-                            Background="{Binding GitBadgeBrush}" CornerRadius="4"
-                            Padding="4,1" Margin="5,0,4,0" MinWidth="15" VerticalAlignment="Center"
-                            ToolTip.Tip="{Binding GitTooltip}">
-                      <TextBlock Text="{Binding GitBadgeText}" FontSize="8.5" FontWeight="SemiBold"
-                                 Foreground="White" HorizontalAlignment="Center" />
-                    </Border>
+                      <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
+                                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <Border Grid.Column="3" IsVisible="{Binding ShowGitBadge}"
+                              Background="{Binding GitBadgeBrush}" CornerRadius="4"
+                              Padding="4,1" Margin="5,0,4,0" MinWidth="15" VerticalAlignment="Center"
+                              ToolTip.Tip="{Binding GitTooltip}">
+                        <TextBlock Text="{Binding GitBadgeText}" FontSize="8.5" FontWeight="SemiBold"
+                                   Foreground="White" HorizontalAlignment="Center" />
+                      </Border>
+                    </Grid>
+                    <TextBlock Grid.Column="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).SizeColumnIndex}"
+                               Text="{Binding SizeText}" Classes="columnvalue"
+                               IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowSizeColumn}"
+                               HorizontalAlignment="Right" Margin="0,0,15,0" />
+                    <TextBlock Grid.Column="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ModifiedColumnIndex}"
+                               Text="{Binding ModifiedText}" Classes="columnvalue"
+                               IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowModifiedColumn}"
+                               Margin="0,0,8,0" />
+                    <TextBlock Grid.Column="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).TypeColumnIndex}"
+                               Text="{Binding TypeText}" Classes="columnvalue"
+                               IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowTypeColumn}"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).TagsColumnIndex}"
+                               Text="{Binding TagsColumnText}" Classes="columnvalue"
+                               IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowTagsColumn}"
+                               ToolTip.Tip="{Binding TagTooltip}" Margin="0,0,8,0"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).PermissionsColumnIndex}"
+                               Text="{Binding PermissionText}" Classes="columnvalue"
+                               IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowPermissionColumn}"
+                               FontFamily="{DynamicResource MonoFontFamily}" Margin="0,0,8,0" />
+                    <TextBlock Grid.Column="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).OwnerColumnIndex}"
+                               Text="{Binding OwnerText}" Classes="columnvalue"
+                               IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowOwnerColumn}"
+                               ToolTip.Tip="{Binding OwnershipText}" TextTrimming="CharacterEllipsis" />
                   </Grid>
-                  <TextBlock Grid.Column="1" Text="{Binding SizeText}" Classes="columnvalue"
-                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowSizeColumn}"
-                             HorizontalAlignment="Right" Margin="0,0,15,0" />
-                  <TextBlock Grid.Column="2" Text="{Binding ModifiedText}" Classes="columnvalue"
-                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowModifiedColumn}"
-                             Margin="0,0,8,0" />
-                  <TextBlock Grid.Column="3" Text="{Binding TypeText}" Classes="columnvalue"
-                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowTypeColumn}"
-                             TextTrimming="CharacterEllipsis" />
-                  <TextBlock Grid.Column="4" Text="{Binding PermissionText}" Classes="columnvalue"
-                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowPermissionColumn}"
-                             FontFamily="{DynamicResource MonoFontFamily}" Margin="0,0,8,0" />
-                  <TextBlock Grid.Column="5" Text="{Binding OwnerText}" Classes="columnvalue"
-                             IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowOwnerColumn}"
-                             ToolTip.Tip="{Binding OwnershipText}" TextTrimming="CharacterEllipsis" />
-                </Grid>
-                <Grid Classes="rownarrow" ColumnDefinitions="*,74">
-                  <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="{Binding Indent}">
-                    <Button Classes="tool" Width="14" Height="14" Padding="0" Margin="0,0,1,0"
-                            IsVisible="{Binding ShowTreeExpander}" Click="OnTreeExpanderClick"
-                            ToolTip.Tip="{loc:Tr 展开或收起文件夹}">
-                      <Panel Width="9" Height="9">
-                        <Path Data="{StaticResource IconChevronRight}" Width="9" Height="9" Stretch="Uniform"
-                              Fill="{DynamicResource TextSecondaryBrush}"
-                              IsVisible="{Binding !IsTreeExpanded}" />
-                        <Path Data="{StaticResource IconChevronDown}" Width="9" Height="9" Stretch="Uniform"
-                              Fill="{DynamicResource TextSecondaryBrush}"
-                              IsVisible="{Binding IsTreeExpanded}" />
+                  <Grid Classes="rownarrow" ColumnDefinitions="*,74">
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="{Binding Indent}">
+                      <Button Classes="tool" Width="14" Height="14" Padding="0" Margin="0,0,1,0"
+                              IsVisible="{Binding ShowTreeExpander}" Click="OnTreeExpanderClick"
+                              ToolTip.Tip="{loc:Tr 展开或收起文件夹}">
+                        <Panel Width="9" Height="9">
+                          <Path Data="{StaticResource IconChevronRight}" Width="9" Height="9" Stretch="Uniform"
+                                Fill="{DynamicResource TextSecondaryBrush}"
+                                IsVisible="{Binding !IsTreeExpanded}" />
+                          <Path Data="{StaticResource IconChevronDown}" Width="9" Height="9" Stretch="Uniform"
+                                Fill="{DynamicResource TextSecondaryBrush}"
+                                IsVisible="{Binding IsTreeExpanded}" />
+                        </Panel>
+                      </Button>
+                      <Panel Grid.Column="1" Width="22" Height="22" VerticalAlignment="Center">
+                        <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="17" Height="17"
+                              Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <Image Source="{Binding Thumbnail}" Width="20" Height="20" Stretch="UniformToFill"
+                               IsVisible="{Binding HasThumbnail}" HorizontalAlignment="Left" />
+                        <Path Data="{StaticResource IconLink}" Width="8" Height="8" Stretch="Uniform"
+                              Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Right"
+                              VerticalAlignment="Bottom" IsVisible="{Binding IsSymlink}" />
+                        <Border Width="7" Height="7" CornerRadius="4" Background="{Binding TagBrush}"
+                                IsVisible="{Binding HasTagColor}" HorizontalAlignment="Right"
+                                VerticalAlignment="Top" Margin="0,1,2,0" />
                       </Panel>
-                    </Button>
-                    <Panel Grid.Column="1" Width="22" Height="22" VerticalAlignment="Center">
-                      <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="17" Height="17"
-                            Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                      <Image Source="{Binding Thumbnail}" Width="20" Height="20" Stretch="UniformToFill"
-                             IsVisible="{Binding HasThumbnail}" HorizontalAlignment="Left" />
-                      <Path Data="{StaticResource IconLink}" Width="8" Height="8" Stretch="Uniform"
-                            Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Right"
-                            VerticalAlignment="Bottom" IsVisible="{Binding IsSymlink}" />
-                      <Border Width="7" Height="7" CornerRadius="4" Background="{Binding TagBrush}"
-                              IsVisible="{Binding HasTagColor}" HorizontalAlignment="Right"
-                              VerticalAlignment="Top" Margin="0,1,2,0" />
-                    </Panel>
-                    <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
-                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Border Grid.Column="3" IsVisible="{Binding ShowGitBadge}"
-                            Background="{Binding GitBadgeBrush}" CornerRadius="4"
-                            Padding="4,1" Margin="5,0,4,0" MinWidth="15" VerticalAlignment="Center"
-                            ToolTip.Tip="{Binding GitTooltip}">
-                      <TextBlock Text="{Binding GitBadgeText}" FontSize="8.5" FontWeight="SemiBold"
-                                 Foreground="White" HorizontalAlignment="Center" />
-                    </Border>
+                      <TextBlock Grid.Column="2" Text="{Binding Name}" FontSize="12.5" Margin="7,0,0,0"
+                                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <Border Grid.Column="3" IsVisible="{Binding ShowGitBadge}"
+                              Background="{Binding GitBadgeBrush}" CornerRadius="4"
+                              Padding="4,1" Margin="5,0,4,0" MinWidth="15" VerticalAlignment="Center"
+                              ToolTip.Tip="{Binding GitTooltip}">
+                        <TextBlock Text="{Binding GitBadgeText}" FontSize="8.5" FontWeight="SemiBold"
+                                   Foreground="White" HorizontalAlignment="Center" />
+                      </Border>
+                    </Grid>
+                    <TextBlock Grid.Column="1" Text="{Binding SizeText}" Classes="columnvalue"
+                               HorizontalAlignment="Right" Margin="0,0,15,0" />
                   </Grid>
-                  <TextBlock Grid.Column="1" Text="{Binding SizeText}" Classes="columnvalue"
-                             HorizontalAlignment="Right" Margin="0,0,15,0" />
-                </Grid>
+                </Panel>
               </Panel>
             </DataTemplate>
           </ListBox.ItemTemplate>
@@ -568,12 +695,18 @@
         </ListBox.ItemsPanel>
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:FileItemViewModel">
-            <StackPanel Classes="filetile" Classes.dim="{Binding IsHidden}" Classes.gitignored="{Binding IsGitIgnoredDimmed}" Width="104" Spacing="3" ToolTip.Tip="{Binding TooltipText}">
-              <Panel Height="62" HorizontalAlignment="Center">
-                <Path Data="{Binding Icon}" Fill="{Binding IconBrush}" Width="44" Height="44"
+            <StackPanel Classes="filetile" Classes.dim="{Binding IsHidden}" Classes.gitignored="{Binding IsGitIgnoredDimmed}"
+                        Width="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).TileWidth}"
+                        Spacing="3" ToolTip.Tip="{Binding TooltipText}">
+              <Panel Height="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).TileImageHeight}"
+                     HorizontalAlignment="Center">
+                <Path Data="{Binding Icon}" Fill="{Binding IconBrush}"
+                      Width="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).TileIconSize}"
+                      Height="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).TileIconSize}"
                       Stretch="Uniform" IsVisible="{Binding !HasThumbnail}" />
-                <Image Source="{Binding Thumbnail}" Height="60" Stretch="Uniform"
-                       IsVisible="{Binding HasThumbnail}" />
+                <Image Source="{Binding Thumbnail}"
+                       Height="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).TileImageHeight}"
+                       Stretch="Uniform" IsVisible="{Binding HasThumbnail}" />
                 <Border IsVisible="{Binding ShowGitBadge}" Background="{Binding GitBadgeBrush}"
                         CornerRadius="4" Padding="4,1" MinWidth="15"
                         HorizontalAlignment="Right" VerticalAlignment="Top"
@@ -585,7 +718,8 @@
                         IsVisible="{Binding HasTagColor}" HorizontalAlignment="Left"
                         VerticalAlignment="Bottom" Margin="2,0,0,2" />
               </Panel>
-              <TextBlock Text="{Binding Name}" FontSize="11.5" TextAlignment="Center"
+              <TextBlock Text="{Binding Name}" TextAlignment="Center"
+                         FontSize="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).TileFontSize}"
                          TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
               <TextBlock Text="{Binding GridSubtitle}" Classes="tiny" TextAlignment="Center" />
             </StackPanel>
