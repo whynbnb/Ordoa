@@ -19,5 +19,32 @@ public partial class PropertiesWindow : Window
         Closed += (_, _) => (DataContext as PropertiesDialogViewModel)?.Dispose();
     }
 
+    private void OnAddAttributeClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is PropertiesDialogViewModel vm)
+            vm.AddAttribute();
+    }
+
+    private void OnRemoveAttributeClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is PropertiesDialogViewModel vm &&
+            sender is Button { DataContext: ExtendedAttributeEditorViewModel attribute })
+        {
+            vm.RemoveAttribute(attribute);
+        }
+    }
+
+    private async void OnSaveAttributesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is PropertiesDialogViewModel vm)
+            await vm.SaveAttributesAsync();
+    }
+
+    private async void OnApplyAclClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is PropertiesDialogViewModel vm)
+            await vm.ApplyAclAsync();
+    }
+
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
 }

@@ -17,6 +17,21 @@ namespace Ordoa.App.ViewModels.Dialogs;
 
 public sealed record PropertyItem(string Label, string Value, bool IsMono = false);
 
+public sealed partial class ExtendedAttributeEditorViewModel : ObservableObject
+{
+    public ExtendedAttributeEditorViewModel(string name, string value)
+    {
+        _name = name;
+        _value = value;
+    }
+
+    [ObservableProperty]
+    private string _name;
+
+    [ObservableProperty]
+    private string _value;
+}
+
 public sealed partial class PropertiesDialogViewModel : ObservableObject, IDisposable
 {
     private readonly IFileSystem _fileSystem;
@@ -109,6 +124,28 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
     public bool CanEditPermissions { get; }
     public bool CanEditOwnership { get; }
     public ObservableCollection<PropertyItem> ExtendedItems { get; } = [];
+    public ObservableCollection<ExtendedAttributeEditorViewModel> EditableAttributes { get; } = [];
+    public bool CanEditAttributes => ShowExtendedMetadata && ExtendedMetadata.CanEditAttributes;
+    public bool CanEditAcl => ShowExtendedMetadata && ExtendedMetadata.CanEditAcl;
+
+    [ObservableProperty]
+    private string _newAttributeName = string.Empty;
+
+    [ObservableProperty]
+    private string _newAttributeValue = string.Empty;
+
+    [ObservableProperty]
+    private string? _attributeStatus;
+
+    [ObservableProperty]
+    private bool _isSavingAttributes;
+
+    [ObservableProperty]
+    private string _aclEditText = string.Empty;
+
+    [ObservableProperty]
+    private string? _aclEditStatus;
+
     public bool HasUnixMode { get; }
     public bool HasLink { get; }
     public bool HasOriginalPath { get; }
@@ -160,16 +197,102 @@ public sealed partial class PropertiesDialogViewModel : ObservableObject, IDispo
         {
             var attributes = await Task.Run(() => ExtendedMetadata.ReadAttributes(Entry.Path)).ConfigureAwait(true);
             ExtendedItems.Clear();
+            EditableAttributes.Clear();
             foreach (var attribute in attributes)
+            {
                 ExtendedItems.Add(new PropertyItem(attribute.Name, attribute.Value, true));
+                EditableAttributes.Add(new ExtendedAttributeEditorViewModel(attribute.Name, attribute.Value));
+            }
             AclText = await ExtendedMetadata.ReadAclAsync(Entry.Path, _cts.Token).ConfigureAwait(true);
+            AclEditText = AclText ?? string.Empty;
         }
         finally
         {
             IsLoadingMetadata = false;
+            OnPropertyChanged(nameof(CanEditAttributes));
+            OnPropertyChanged(nameof(CanEditAcl));
             OnPropertyChanged(nameof(HasAcl));
             OnPropertyChanged(nameof(HasExtendedMetadata));
             OnPropertyChanged(nameof(ShowNoExtendedMetadata));
+        }
+    }
+
+    public void AddAttribute()
+    {
+        var name = NewAttributeName.Trim();
+        if (name.Length == 0)
+        {
+            AttributeStatus = L10n.T("属性名不能为空");
+            return;
+        }
+        if (EditableAttributes.Any(attribute =>
+                string.Equals(attribute.Name, name, StringComparison.Ordinal)))
+        {
+            AttributeStatus = L10n.T("属性名已存在");
+            return;
+        }
+
+        EditableAttributes.Add(new ExtendedAttributeEditorViewModel(name, NewAttributeValue));
+        NewAttributeName = string.Empty;
+        NewAttributeValue = string.Empty;
+        AttributeStatus = null;
+    }
+
+    public void RemoveAttribute(ExtendedAttributeEditorViewModel? attribute)
+    {
+        if (attribute is null)
+            return;
+        EditableAttributes.Remove(attribute);
+        AttributeStatus = null;
+    }
+
+    public async Task SaveAttributesAsync()
+    {
+        if (!CanEditAttributes || IsSavingAttributes)
+            return;
+
+        IsSavingAttributes = true;
+        AttributeStatus = null;
+        try
+        {
+            var attributes = EditableAttributes
+                .Where(attribute => !string.IsNullOrWhiteSpace(attribute.Name))
+                .Select(attribute => new ExtendedMetadata.AttributeValue(attribute.Name.Trim(), attribute.Value))
+                .ToList();
+            await Task.Run(() => ExtendedMetadata.WriteAttributes(Entry.Path, attributes), _cts.Token)
+                .ConfigureAwait(true);
+            AttributeStatus = L10n.T("扩展属性已保存");
+            await LoadMetadataAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            AttributeStatus = ex.Message;
+        }
+        finally
+        {
+            IsSavingAttributes = false;
+        }
+    }
+
+    public async Task ApplyAclAsync()
+    {
+        if (!CanEditAcl)
+            return;
+
+        AclEditStatus = null;
+        try
+        {
+            await ExtendedMetadata.SetAclAsync(Entry.Path, AclEditText, _cts.Token).ConfigureAwait(true);
+            AclText = await ExtendedMetadata.ReadAclAsync(Entry.Path, _cts.Token).ConfigureAwait(true);
+            AclEditText = AclText ?? string.Empty;
+            AclEditStatus = L10n.T("ACL 已更新");
+            OnPropertyChanged(nameof(HasAcl));
+            OnPropertyChanged(nameof(HasExtendedMetadata));
+            OnPropertyChanged(nameof(ShowNoExtendedMetadata));
+        }
+        catch (Exception ex)
+        {
+            AclEditStatus = ex.Message;
         }
     }
 

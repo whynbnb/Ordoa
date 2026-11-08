@@ -23,11 +23,13 @@ public sealed class CredentialStore : ICredentialStore
     private readonly SemaphoreSlim _fileGate = new(1, 1);
     private readonly bool _useSecretTool;
     private readonly bool _useMacKeychain;
+    private readonly bool _useWindowsCredentialManager;
 
     public CredentialStore()
     {
         _useSecretTool = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && FindExecutable("secret-tool") is not null;
         _useMacKeychain = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && FindExecutable("security") is not null;
+        _useWindowsCredentialManager = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
     }
 
     public async Task<string?> GetPasswordAsync(string connectionId, CancellationToken cancellationToken = default)
@@ -49,6 +51,9 @@ public sealed class CredentialStore : ICredentialStore
             if (result.ExitCode == 0)
                 return result.StandardOutput.TrimEnd('\r', '\n');
         }
+
+        if (_useWindowsCredentialManager && TryReadWindowsCredential(connectionId) is { } windowsPassword)
+            return windowsPassword;
 
         return await ReadFallbackAsync(connectionId, cancellationToken).ConfigureAwait(false);
     }
@@ -79,6 +84,12 @@ public sealed class CredentialStore : ICredentialStore
             }
         }
 
+        if (_useWindowsCredentialManager && TryWriteWindowsCredential(connectionId, password))
+        {
+            await RemoveFallbackAsync(connectionId, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         await WriteFallbackAsync(connectionId, password, cancellationToken).ConfigureAwait(false);
     }
 
@@ -98,8 +109,102 @@ public sealed class CredentialStore : ICredentialStore
                 .ConfigureAwait(false);
         }
 
+        if (_useWindowsCredentialManager)
+            TryDeleteWindowsCredential(connectionId);
+
         await RemoveFallbackAsync(connectionId, cancellationToken).ConfigureAwait(false);
     }
+
+    private static string WindowsTarget(string connectionId) => ServiceName + ":" + connectionId;
+
+    private static string? TryReadWindowsCredential(string connectionId)
+    {
+        if (!CredRead(WindowsTarget(connectionId), CredentialType.Generic, 0, out var handle))
+            return null;
+
+        try
+        {
+            var credential = Marshal.PtrToStructure<Credential>(handle);
+            if (credential.CredentialBlob == IntPtr.Zero || credential.CredentialBlobSize == 0)
+                return string.Empty;
+            var bytes = new byte[credential.CredentialBlobSize];
+            Marshal.Copy(credential.CredentialBlob, bytes, 0, bytes.Length);
+            return Encoding.Unicode.GetString(bytes).TrimEnd('\0');
+        }
+        finally
+        {
+            CredFree(handle);
+        }
+    }
+
+    private static bool TryWriteWindowsCredential(string connectionId, string password)
+    {
+        var bytes = Encoding.Unicode.GetBytes(password);
+        var blob = Marshal.AllocHGlobal(bytes.Length);
+        try
+        {
+            Marshal.Copy(bytes, 0, blob, bytes.Length);
+            var credential = new Credential
+            {
+                Type = CredentialType.Generic,
+                TargetName = WindowsTarget(connectionId),
+                UserName = ServiceName,
+                CredentialBlob = blob,
+                CredentialBlobSize = bytes.Length,
+                Persist = CredentialPersist.LocalMachine,
+            };
+            return CredWrite(ref credential, 0);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(blob);
+        }
+    }
+
+    private static void TryDeleteWindowsCredential(string connectionId)
+    {
+        try { CredDelete(WindowsTarget(connectionId), CredentialType.Generic, 0); }
+        catch { /* fall back to the file store */ }
+    }
+
+    private enum CredentialType
+    {
+        Generic = 1,
+    }
+
+    private enum CredentialPersist
+    {
+        LocalMachine = 2,
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct Credential
+    {
+        public int Flags;
+        public CredentialType Type;
+        public string TargetName;
+        public string? Comment;
+        public long LastWritten;
+        public int CredentialBlobSize;
+        public IntPtr CredentialBlob;
+        public CredentialPersist Persist;
+        public int AttributeCount;
+        public IntPtr Attributes;
+        public string? TargetAlias;
+        public string UserName;
+    }
+
+    [DllImport("advapi32.dll", EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CredRead(string target, CredentialType type, int reservedFlag, out IntPtr credentialPtr);
+
+    [DllImport("advapi32.dll", EntryPoint = "CredWriteW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CredWrite(ref Credential credential, int flags);
+
+    [DllImport("advapi32.dll", EntryPoint = "CredDeleteW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CredDelete(string target, CredentialType type, int flags);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern void CredFree(IntPtr buffer);
 
     private async Task<string?> ReadFallbackAsync(string connectionId, CancellationToken cancellationToken)
     {
