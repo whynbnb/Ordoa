@@ -44,7 +44,7 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Tabs: create, duplicate, close, close others, middle-click close, and switch; drag to reorder, pin tabs, and restore recently closed tabs with `Ctrl+Shift+T`.
 - Multiple windows and single-instance mode: `Ctrl+N` opens a new window; launching Ordoa again reuses the running process by default. Settings can choose whether external folder requests open in the current window or a new one, and multi-window mode can be disabled.
 - Split panes: two panes per tab with a draggable divider; narrow panes automatically simplify their toolbars.
-- List and grid views, with local image thumbnails in the grid.
+- List and grid views, with local image, PDF and video thumbnails in the grid; PDF and video frames use optional poppler/ffmpeg tools and are capped per listing.
 - Breadcrumb navigation, an editable path bar (`Ctrl+L`), and back/forward/up history.
 - Natural sorting (`file2` before `file10`) by name, size, modified time, type, permissions, or owner, with folders first.
 - List, grid, tree, and Miller column views: the tree view expands child folders on demand; the Miller view browses multiple directory levels in columns, appends a column when a folder is clicked, opens files on double-click, and keeps Git markers and tag dots.
@@ -67,7 +67,9 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Selection modifiers: `Ctrl+click` toggles selection, `Shift+click` selects a range, and dragging on empty space draws a selection rectangle; hold `Ctrl` or `Shift` while rubber-band selecting to add to the selection.
 - System clipboard: copying or cutting local files writes both the file list and text paths, so other file managers can interoperate.
 - Open With: on Linux, choose from installed applications and remember a default per extension; other platforms fall back to the system default application.
-- System file manager integration: register as the default file manager and expose the `org.freedesktop.FileManager1` D-Bus interface for browser/IDE "show in folder" requests.
+- System file manager integration: register as the default file manager and expose the `org.freedesktop.FileManager1` D-Bus interface for browser/IDE "show in folder" requests on Linux; Finder and Explorer reveal actions are available on macOS and Windows.
+- Optional system-menu integration, off by default: Windows Explorer **Open in Ordoa** / **Open Ordoa here** verbs and a macOS **Open in Ordoa** Finder Quick Action. Both only write to the current user's registry or `~/Library/Services`.
+- Dark mode offers seven neutral palettes (Graphite, Midnight, Slate, Ocean, Forest, Warm, Black), applied consistently to windows, sidebars, lists, menus and dialogs.
 
 ### Search and filtering
 
@@ -88,7 +90,9 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Images use Avalonia/Skia native decoding, supplemented by the fully managed [SimdCodecs](https://www.nuget.org/packages/Sdcb.SimdCodecs) package for TIFF, JPEG 2000, QOI, Netpbm, and other formats; EXIF orientation, zooming, and the first frame of animations are supported.
 - Video previews show a first-frame thumbnail plus duration, resolution, codec, bitrate, and audio tracks; audio previews show container, duration, codec, sample rate, and channels. Both use optional `ffmpeg`/`ffprobe`, which Ordoa does not bundle.
 - ZIP/JAR/tar/tar.gz previews list the first 200 entries; folder previews list folder contents.
-- PDF previews render the first page when poppler-utils (`pdftoppm`) is installed; Office/ODF/EPUB previews try to read embedded document thumbnails.
+- Markdown previews render headings, paragraphs, lists, quotes, fenced code, tables, links and inline emphasis through a native Avalonia renderer; Markdig is used only as a .NET parser.
+- Code and configuration files get lightweight syntax highlighting and line numbers; CSV/TSV files render as bounded tables.
+- PDF previews are multi-page with previous/next and zoom controls when poppler-utils (`pdftoppm`/`pdfinfo`) is installed; Office/ODF/EPUB previews try to read embedded document thumbnails.
 - Other binary files show type, size, timestamps, and a hexadecimal file-header dump; unknown formats fail visibly rather than silently.
 - No WebView, browser engine, or native image-processing dependency is introduced.
 
@@ -121,7 +125,7 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Write inside archives: add files, rename, and delete entries in zip, tar, tar.gz, and 7z; rar is read-only. zip uses the built-in updater when 7z is unavailable; other formats require the system 7z.
 - Undo/redo: session-level history covering rename, move, move-to-trash, create, and copy; a batch operation is merged into one entry. Before undoing, Ordoa checks whether targets are occupied or modified and reports conflicts instead of overwriting.
 - Links: create symbolic links, relative symbolic links, or hard links from the context menu; hard links apply to files only.
-- The Properties window can show extended attributes and POSIX ACLs and change owner/group with `chown`; the latter usually requires administrator privileges.
+- The Properties window can show extended attributes and POSIX ACLs and change owner/group with `chown`; on Linux, extended attributes and ACL text are editable directly, while macOS attributes are read through `xattr`. The latter usually requires administrator privileges.
 - Local copies preserve extended attributes where possible; permissions and modification times follow the existing handling.
 - Undo scope can be system-following, full (including copies), structural operations only, or disabled; Windows/macOS default to full undo, while Linux defaults to renaming, moving, trash, and creation only.
 - Batch rename: find/replace, regex capture groups (`$1`, `${name}`), numbering, case conversion, extension and date variables; live preview checks illegal names, duplicates, and existing-file conflicts, and works on local and remote filesystems.
@@ -137,7 +141,10 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - The undo history panel shows undoable and redoable steps with timestamps and can perform undo/redo directly.
 - Conflict handling: replace, skip, keep both (auto-rename), and apply to all.
 - Trash: Linux fully implements the freedesktop.org Trash specification (home trash and `.Trash-$uid` / `.Trash/$uid`) with restore, permanent delete, and empty; macOS uses `~/.Trash` and keeps restore information; Windows uses the system Recycle Bin.
-- Compression: ZIP, tar, tar.gz, and 7z; 7z supports compression level and split size (Settings → Transfer → Compression); extraction validates paths and rejects zip-slip and archive links.
+- Compression: ZIP, tar, tar.gz, and 7z; 7z supports compression level, split size, and optional password/header encryption (Settings → Transfer → Compression); extraction validates paths and rejects zip-slip and archive links.
+- Legacy ZIP filename encodings are detected automatically (UTF-8, GBK, Shift-JIS, CP437) and can be overridden in Settings for archives written without the UTF-8 flag.
+- `~/.ssh/config` import reads concrete Host aliases, HostName, User, Port, IdentityFile and ProxyJump metadata into the SFTP connection dialog; wildcard and Match blocks are ignored. ProxyJump is surfaced for reference but is not yet used by the SFTP connector.
+- Passwords prefer the desktop keyring: libsecret on Linux, Keychain on macOS, and Windows Credential Manager on Windows; the 0600 JSON file remains only a fallback.
 - Checksums: MD5, SHA-1, SHA-256, and SHA-512 with batch calculation and copy support; verify against GNU/BSD checksum files and switch algorithms without closing the dialog.
 - Properties: type, path, size, timestamps, MIME type, Unix permissions (rwx and octal), owner/group (local and remote), symlink target, trash original location, and folder content statistics.
 - Local chmod editing (and SFTP `chmod`).
@@ -472,13 +479,15 @@ tests/Ordoa.Core.Tests
 
 - Trash: Linux fully supports browsing, restoring, and emptying; macOS uses the Finder Trash while keeping Ordoa restore information; Windows uses the system Recycle Bin, whose browsing and restore depend on the Shell and may be unavailable in restricted sessions.
 - SMB uses port 445 and does not yet support SMB over QUIC, encryption-required shares, or DFS redirection.
-- SFTP known_hosts is read-only and is never written back to `~/.ssh/known_hosts`; unknown hosts have their fingerprints stored in Ordoa's connection profile.
+- SFTP known_hosts is read-only and is never written back to `~/.ssh/known_hosts`; unknown hosts have their fingerprints stored in Ordoa's connection profile. SSH `Include`, `Match`, wildcard hosts and ProxyJump execution are not fully supported.
 - WebDAV currently supports Basic authentication only; Digest, OAuth, and chunked uploads are not implemented.
 - Quick Look is not a full media player; normal opening still uses the system default application unless a default was remembered in Open With.
+- Markdown rendering is intentionally a preview subset, not a full CommonMark/GFM implementation; raw HTML is reduced to text and interactive scripts are never executed.
+- Code highlighting is a compact lexer, not a language server; uncommon languages fall back to plain monospaced text.
 - The search index covers local files and the configured roots only. Content, tag, color, remote, and disabled/stale-index queries fall back to the scan-based search.
 - Folder sync copies missing or newer files and creates directories; it does not delete extra items, so it is not a destructive mirror mode.
 - Transfer journal recovery requeues unfinished copy/move operations after a restart, but a partially copied file is copied again from the start rather than resumed at a byte offset.
-- Default file-manager registration and `org.freedesktop.FileManager1` are currently Linux-only; other platforms still use the system default application and window behavior.
+- Default file-manager registration and `org.freedesktop.FileManager1` are currently Linux-only. Windows and macOS provide opt-in Explorer/Finder context actions instead; they do not change the system default file manager.
 - Undo history is kept only for the current session and is cleared when Ordoa exits. Permanent deletion, emptying the trash, overwriting copies/moves, and operations outside the undo scope cannot be undone and clear the history, preventing `Ctrl+Z` from undoing older steps by mistake.
 - System-level mounts are not implemented.
 - Linux prefers the native Wayland backend (Avalonia 12.1, experimental) and falls back to X11/XWayland when no compositor is available. Set `ORDOA_NO_WAYLAND=1` to force X11. On Wayland, KDE global menus, window icons, and background blur are not yet available.
