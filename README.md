@@ -48,10 +48,13 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Breadcrumb navigation, an editable path bar (`Ctrl+L`), and back/forward/up history.
 - Natural sorting (`file2` before `file10`) by name, size, modified time, type, permissions, or owner, with folders first.
 - List, grid, tree, and Miller column views: the tree view expands child folders on demand; the Miller view browses multiple directory levels in columns, appends a column when a folder is clicked, opens files on double-click, and keeps Git markers and tag dots.
-- Configurable list columns: size, modified time, type, permissions, and owner can be shown or hidden independently; each folder remembers its own sort, folders-first setting, and list/grid/tree view.
+- Configurable list columns: size, modified time, type, permissions, owner, and an optional tag/color column; show/hide columns, drag column borders to resize, double-click a border to auto-fit, and drag the header grip to reorder. Widths and order are remembered globally and per folder.
+- Three grid thumbnail sizes (small, medium, large) and three list row densities (compact, standard, spacious).
+- Optional grouping in the list view by type, modified time, or size, with collapsible-style group headings.
 - Folder sizes are not computed while a listing loads; right-click **Calculate Folder Size** measures selected folders recursively on demand.
 - Hidden-file toggle, live name filtering, and recursive search with configurable depth and result limits.
-- Search syntax: glob, `-exclude`, `ext:`, `type:`, `size:`, `modified:`, and `content:`; recent searches, named saved searches, current-folder/full-disk scope switching, and Git status on search results.
+- Search syntax: glob, `-exclude`, `ext:`, `type:`, `size:`, `modified:`, `content:`, `tag:`, and `color:`; recent searches, named saved searches, current-folder/full-disk scope switching, and Git status on search results.
+- Optional local search index (off by default): whitelist or blacklist scopes, exclusion rules, watcher-driven incremental updates, periodic/manual rebuilds, and automatic fallback to the scan-based search for content, tag, color, or remote queries.
 - Bookmarks, recent locations, and session restore (tabs and split panes); the trash entry is pinned to the bottom of the sidebar and always visible.
 - Settings can show or hide each common location in the sidebar's **Places** section, with one-click reset to defaults.
 - On macOS the disk list shows the system disk and user volumes under `/Volumes` by default; Settings can disable disks, show hidden system volumes, or add arbitrary custom paths.
@@ -104,12 +107,14 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Duplicate finder: group files by size, compute quick head/tail fingerprints for candidates, then verify contents with SHA-256; supports a minimum file size, group selection, select-all duplicates, and move-to-trash.
 - Both analyses scan in the background with progress display and cancellation, and can be started from the file area's **Analysis Tools** context menu, the sidebar context menu, or the command palette.
 - File comparison: select two files to view a side-by-side text diff (line-level LCS, with a line-by-line fallback for very large files) or a binary diff (size, SHA-256, and the offset of the first difference).
+- Folder comparison and sync: recursively compare two folders, show left-only/right-only/newer/different/type-mismatch states, optionally compare file contents by SHA-256, filter to differences, preview with dry run, and queue per-row or bulk copies through the transfer engine.
 - Tags and colors: right-click **Tags & Colors** to assign a color and multiple tags to files or folders; list and grid views show color dots and tags on hover. Tag data is stored separately in `tags.json` and works for local, remote, and archive paths.
 - Batch image conversion: select multiple images and choose JPEG/PNG/WebP, quality, maximum dimension, output folder, and filename suffix; the default `-converted` suffix avoids overwriting originals.
 
 ### File operations
 
 - Copy, cut, paste, move, rename, create folders/empty files, and delete permanently.
+- Copy to… / Move to… destination pickers, duplicate in place, and paste clipboard items as symbolic links.
 - Archive browsing: double-click a zip, tar, tar.gz, tgz, 7z, or rar to browse it level by level like a folder; files are extracted to a cache on demand and can be copied locally or previewed with `Space`. 7z/rar requires the system `7z` command-line tool; encrypted archives prompt for a password.
 - Search inside archives: the search box and `content:` syntax also work inside archives, recursively from the current archive path.
 - Extract selection to any folder: inside an archive, right-click **Extract To…** on selected files or folders; in a normal folder, the same command works on selected archives.
@@ -120,18 +125,20 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Local copies preserve extended attributes where possible; permissions and modification times follow the existing handling.
 - Undo scope can be system-following, full (including copies), structural operations only, or disabled; Windows/macOS default to full undo, while Linux defaults to renaming, moving, trash, and creation only.
 - Batch rename: find/replace, regex capture groups (`$1`, `${name}`), numbering, case conversion, extension and date variables; live preview checks illegal names, duplicates, and existing-file conflicts, and works on local and remote filesystems.
+- Batch permissions/ownership: set the octal mode and owner/group for a multi-selection in one dialog; ownership changes are limited to local files and usually require administrator privileges.
 - Before a batch copy/move, if same-named items are detected, Ordoa shows the destination paths and conflict list and can apply replace, skip, or keep-both to all; above 500 items only the first 500 are previewed, and the rest are asked about during execution.
 - Operation queue: progress, speed, ETA, cancel, and error summaries; streaming copies across filesystems.
 - The transfer panel expands automatically only for lengthy operations, so quick moves/deletes of small files do not interrupt browsing; transfers can be paused, resumed, and cancelled.
 - Retries are per-file: failed items stay in the transfer panel, can be expanded, and only the failed files are retried instead of the whole batch.
 - After copying, Ordoa verifies the destination file size by default; Settings can switch to SHA-256 or disable verification. Files that fail verification are marked and can be retried.
 - Settings can limit transfer speed (MB/s) and the number of concurrent transfer jobs (1–4); the speed limit is shared by all transfers.
+- Transfer journal: unfinished copy/move requests are persisted and requeued after a restart. A resumed operation restarts the affected file copy; it does not resume a partially written file at a byte offset.
 - The operation history window records this session's copies, moves, deletes, trash operations, and restores, including success/failure counts and error details.
 - The undo history panel shows undoable and redoable steps with timestamps and can perform undo/redo directly.
 - Conflict handling: replace, skip, keep both (auto-rename), and apply to all.
 - Trash: Linux fully implements the freedesktop.org Trash specification (home trash and `.Trash-$uid` / `.Trash/$uid`) with restore, permanent delete, and empty; macOS uses `~/.Trash` and keeps restore information; Windows uses the system Recycle Bin.
 - Compression: ZIP, tar, tar.gz, and 7z; 7z supports compression level and split size (Settings → Transfer → Compression); extraction validates paths and rejects zip-slip and archive links.
-- SHA-256 checksums with batch calculation and copy support.
+- Checksums: MD5, SHA-1, SHA-256, and SHA-512 with batch calculation and copy support; verify against GNU/BSD checksum files and switch algorithms without closing the dialog.
 - Properties: type, path, size, timestamps, MIME type, Unix permissions (rwx and octal), owner/group (local and remote), symlink target, trash original location, and folder content statistics.
 - Local chmod editing (and SFTP `chmod`).
 - Copy path/name, open in terminal, and open with the system default application.
@@ -406,7 +413,9 @@ XDG paths are used on Linux:
 | Connections | `~/.config/ordoa/connections.json` |
 | Credential fallback file (0600) | `~/.config/ordoa/credentials.json` |
 | Bookmarks / session / recent | `~/.config/ordoa/{bookmarks,session,recent}.json` |
+| Pending transfer journal | `~/.local/share/ordoa/pending-transfers.json` |
 | Thumbnails / temporary downloads | `~/.cache/ordoa` |
+| Search index | `~/.cache/ordoa/search-index` |
 | Logs | `~/.local/state/ordoa/ordoa.log` |
 | Trash | Linux: `~/.local/share/Trash` (see the XDG Trash specification); macOS: `~/.Trash` |
 | Publish/package output | `artifacts/` (gitignored) |
@@ -465,6 +474,9 @@ tests/Ordoa.Core.Tests
 - SFTP known_hosts is read-only and is never written back to `~/.ssh/known_hosts`; unknown hosts have their fingerprints stored in Ordoa's connection profile.
 - WebDAV currently supports Basic authentication only; Digest, OAuth, and chunked uploads are not implemented.
 - Quick Look is not a full media player; normal opening still uses the system default application unless a default was remembered in Open With.
+- The search index covers local files and the configured roots only. Content, tag, color, remote, and disabled/stale-index queries fall back to the scan-based search.
+- Folder sync copies missing or newer files and creates directories; it does not delete extra items, so it is not a destructive mirror mode.
+- Transfer journal recovery requeues unfinished copy/move operations after a restart, but a partially copied file is copied again from the start rather than resumed at a byte offset.
 - Default file-manager registration and `org.freedesktop.FileManager1` are currently Linux-only; other platforms still use the system default application and window behavior.
 - Undo history is kept only for the current session and is cleared when Ordoa exits. Permanent deletion, emptying the trash, overwriting copies/moves, and operations outside the undo scope cannot be undone and clear the history, preventing `Ctrl+Z` from undoing older steps by mistake.
 - System-level mounts are not implemented.
