@@ -57,6 +57,15 @@ public sealed class SearchIndexTests : IDisposable
     }
 
     [Fact]
+    public async Task Whitelist_IgnoresExclusionRules()
+    {
+        await _service.BuildAsync(new SearchIndexConfig(
+            SearchIndexMode.Whitelist, [_root], ["nested"]));
+
+        Assert.Single(await CollectAsync("gamma"));
+    }
+
+    [Fact]
     public async Task Delta_AddsAndRemovesEntries()
     {
         await _service.BuildAsync(Config());
@@ -78,7 +87,8 @@ public sealed class SearchIndexTests : IDisposable
     }
 
     private SearchIndexConfig Config(IReadOnlyList<string>? excludes = null)
-        => new(SearchIndexMode.Whitelist, [_root], [.. excludes ?? []]);
+        => new(excludes is { Count: > 0 } ? SearchIndexMode.Blacklist : SearchIndexMode.Whitelist,
+            [_root], [.. excludes ?? []]);
 
     private async Task<List<FileEntry>> CollectAsync(string query, bool includeHidden = false)
     {

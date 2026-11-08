@@ -706,6 +706,11 @@ public sealed class SearchIndexService : IDisposable
 
     private static List<PreparedExclude> PrepareExcludes(SearchIndexConfig config)
     {
+        // Whitelist mode means exactly the roots listed; exclusion rules are
+        // the blacklist-mode extra that removes sub-paths from those roots.
+        if (config.Mode != SearchIndexMode.Blacklist)
+            return [];
+
         var result = new List<PreparedExclude>(config.NormalizedExcludes.Count);
         foreach (var raw in config.NormalizedExcludes)
         {
