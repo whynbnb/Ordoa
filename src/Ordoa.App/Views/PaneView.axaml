@@ -24,6 +24,7 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="MinHeight" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Left" />
       <Setter Property="CornerRadius" Value="4" />
       <Setter Property="FontSize" Value="11.5" />
@@ -44,7 +45,9 @@
     <Style Selector="ListBox.files ListBoxItem">
       <Setter Property="MinHeight" Value="33" />
       <Setter Property="CornerRadius" Value="5" />
-      <Setter Property="Margin" Value="8,1" />
+      <!-- Match the header's horizontal padding so both grids share the same
+           width and every column starts at the same x position. -->
+      <Setter Property="Margin" Value="16,1,14,1" />
     </Style>
     <Style Selector="ListBox.tiles ListBoxItem">
       <Setter Property="MinHeight" Value="100" />
@@ -356,14 +359,18 @@
               </StackPanel>
             </Button>
             <Button Grid.Column="1" Classes="header" Tag="Size" Click="OnSortHeaderClick"
-                    IsVisible="{Binding ShowSizeColumn}" HorizontalContentAlignment="Right">
-              <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" />
-                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
-                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                    IsVisible="{Binding ShowSizeColumn}" HorizontalContentAlignment="Stretch">
+              <Grid ColumnDefinitions="*,15">
+                <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" HorizontalAlignment="Right" />
+                <!-- Reserve the right margin as the sort-arrow slot so the
+                     right-aligned label never shifts when sorting by size. -->
+                <Path Grid.Column="1" Data="{StaticResource IconArrowDown}" Width="9" Height="9"
+                      Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
+                      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0"
+                      RenderTransformOrigin="50%,50%"
                       RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
                       IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Size}" />
-              </StackPanel>
+              </Grid>
             </Button>
             <Button Grid.Column="2" Classes="header" Tag="Modified" Click="OnSortHeaderClick"
                     IsVisible="{Binding ShowModifiedColumn}">
@@ -417,14 +424,18 @@
               </StackPanel>
             </Button>
             <Button Grid.Column="1" Classes="header" Tag="Size" Click="OnSortHeaderClick"
-                    IsVisible="{Binding ShowSizeColumn}" HorizontalContentAlignment="Right">
-              <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" />
-                <Path Data="{StaticResource IconArrowDown}" Width="9" Height="9" Stretch="Uniform"
-                      Fill="{DynamicResource AccentBrush}" RenderTransformOrigin="50%,50%"
+                    IsVisible="{Binding ShowSizeColumn}" HorizontalContentAlignment="Stretch">
+              <Grid ColumnDefinitions="*,15">
+                <TextBlock Text="{loc:Tr 大小}" Classes="columnvalue" HorizontalAlignment="Right" />
+                <!-- Reserve the right margin as the sort-arrow slot so the
+                     right-aligned label never shifts when sorting by size. -->
+                <Path Grid.Column="1" Data="{StaticResource IconArrowDown}" Width="9" Height="9"
+                      Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
+                      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0"
+                      RenderTransformOrigin="50%,50%"
                       RenderTransform="{Binding SortDescending, Converter={StaticResource SortArrowConverter}}"
                       IsVisible="{Binding SortColumn, Converter={StaticResource EqualsConverter}, ConverterParameter=Size}" />
-              </StackPanel>
+              </Grid>
             </Button>
           </Grid>
           </Grid>
@@ -481,7 +492,7 @@
                   </Grid>
                   <TextBlock Grid.Column="1" Text="{Binding SizeText}" Classes="columnvalue"
                              IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowSizeColumn}"
-                             HorizontalAlignment="Right" Margin="0,0,12,0" />
+                             HorizontalAlignment="Right" Margin="0,0,15,0" />
                   <TextBlock Grid.Column="2" Text="{Binding ModifiedText}" Classes="columnvalue"
                              IsVisible="{Binding $parent[UserControl].((vm:PaneViewModel)DataContext).ShowModifiedColumn}"
                              Margin="0,0,8,0" />
@@ -532,7 +543,7 @@
                     </Border>
                   </Grid>
                   <TextBlock Grid.Column="1" Text="{Binding SizeText}" Classes="columnvalue"
-                             HorizontalAlignment="Right" Margin="0,0,12,0" />
+                             HorizontalAlignment="Right" Margin="0,0,15,0" />
                 </Grid>
               </Panel>
             </DataTemplate>
