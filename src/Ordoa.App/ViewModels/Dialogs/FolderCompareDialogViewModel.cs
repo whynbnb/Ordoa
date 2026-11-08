@@ -214,6 +214,20 @@ public sealed partial class FolderCompareDialogViewModel : ObservableObject, IDi
             return;
         }
 
+        var overwrite = candidates.Count(row => row.Item.State is FolderCompareState.Different
+            or FolderCompareState.LeftNewer or FolderCompareState.RightNewer);
+        if (overwrite > 0)
+        {
+            var confirmed = await _services.Dialogs.ConfirmAsync(
+                L10n.T("开始同步？"),
+                L10n.Format("将覆盖 {0} 个已有文件，并同步 {1} 个项目到{2}。",
+                    overwrite, candidates.Count, toRight ? L10n.T("右侧") : L10n.T("左侧")),
+                L10n.T("同步"),
+                destructive: true).ConfigureAwait(true);
+            if (!confirmed)
+                return;
+        }
+
         var sourceFileSystem = toRight ? _leftFileSystem : _rightFileSystem;
         var destinationFileSystem = toRight ? _rightFileSystem : _leftFileSystem;
         var destinationRoot = toRight ? _rightRoot : _leftRoot;

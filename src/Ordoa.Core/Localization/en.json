@@ -1369,5 +1369,8 @@
  "索引可能已过期，建议重建": "The index may be stale; consider rebuilding it",
  "索引变更过多，建议重建": "Too many index changes; consider rebuilding it",
  "正在搜索索引…": "Searching the index…",
- "索引中找到 {0} 个结果": "Found {0} results in the index"
+ "索引中找到 {0} 个结果": "Found {0} results in the index",
+ "开始同步？": "Start sync?",
+ "将覆盖 {0} 个已有文件，并同步 {1} 个项目到{2}。": "Overwrite {0} existing files and sync {1} items to {2}.",
+ "同步": "Sync"
 }

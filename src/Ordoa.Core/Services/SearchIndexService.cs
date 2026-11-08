@@ -59,8 +59,10 @@ public sealed class SearchIndexService : IDisposable
     private const int BucketCount = 64;
     private const int MaxDeltaEntries = 20000;
     private const int MaxIndexedEntries = 2_000_000;
+    private const int BloomWords = 16;
     private const string MetadataFileName = "meta.json";
     private const string DeltaFileName = "delta.log";
+    private const string BloomFileName = "bloom.bin";
 
     private readonly object _sync = new();
     private readonly Dictionary<string, DeltaEntry> _delta = new(StringComparer.Ordinal);
@@ -69,6 +71,7 @@ public sealed class SearchIndexService : IDisposable
     private SearchIndexConfig? _config;
     private List<PreparedExclude> _preparedExcludes = [];
     private CancellationTokenSource? _buildCts;
+    private StreamWriter? _deltaWriter;
     private bool _disposed;
 
     public SearchIndexService(string? directory = null)
@@ -136,6 +139,9 @@ public sealed class SearchIndexService : IDisposable
         {
             System.IO.Directory.CreateDirectory(temp);
             var writers = new StreamWriter[BucketCount];
+            var blooms = new ulong[BucketCount][];
+            for (var i = 0; i < BucketCount; i++)
+                blooms[i] = new ulong[BloomWords];
             try
             {
                 for (var i = 0; i < BucketCount; i++)
@@ -206,7 +212,9 @@ public sealed class SearchIndexService : IDisposable
                             var isSymlink = (attributes & FileAttributes.ReparsePoint) != 0;
                             var flags = Flags(isDirectory, attributes, name);
                             var fullPath = Path.TrimEndingDirectorySeparator(child.FullName);
-                            WriteRecord(writers[BucketOf(name)], fullPath, size, modified, flags);
+                            var bucket = BucketOf(name);
+                            WriteRecord(writers[bucket], fullPath, size, modified, flags);
+                            BloomAdd(blooms[bucket], name);
 
                             count++;
                             if (isDirectory)
@@ -237,6 +245,7 @@ public sealed class SearchIndexService : IDisposable
                     writers[i].Dispose();
                     writers[i] = null!;
                 }
+                WriteBloom(Path.Combine(temp, BloomFileName), blooms);
 
                 var metadata = new SearchIndexMetadata
                 {
@@ -253,6 +262,7 @@ public sealed class SearchIndexService : IDisposable
                 lock (_sync)
                 {
                     _delta.Clear();
+                    CloseDeltaWriter();
                     try { File.Delete(DeltaPath); } catch { /* ignore */ }
                 }
 
@@ -306,7 +316,14 @@ public sealed class SearchIndexService : IDisposable
         // match (for example ".hidden" contains "hidden"). Buckets still keep
         // individual files small and let us stream the index with bounded memory.
         var prefix = LiteralPrefix(parsed);
-        var buckets = Enumerable.Range(0, BucketCount).ToArray();
+        var blooms = TryLoadBloom();
+        var buckets = new List<int>(BucketCount);
+        for (var bucket = 0; bucket < BucketCount; bucket++)
+        {
+            if (blooms is not null && prefix.Length >= 2 && !BloomMayContain(blooms[bucket], prefix))
+                continue;
+            buckets.Add(bucket);
+        }
 
         var emitted = 0;
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -412,6 +429,8 @@ public sealed class SearchIndexService : IDisposable
         try { _buildCts?.Cancel(); } catch { /* ignore */ }
         IsReady = false;
         StopWatching();
+        lock (_sync)
+            CloseDeltaWriter();
         StatusText = L10n.T("索引未启用");
         Changed?.Invoke();
     }
@@ -436,16 +455,34 @@ public sealed class SearchIndexService : IDisposable
 
             try
             {
-                System.IO.Directory.CreateDirectory(_directory);
-                File.AppendAllText(DeltaPath, entry.Serialize() + "\n", Encoding.UTF8);
+                EnsureDeltaWriter();
+                _deltaWriter!.WriteLine(entry.Serialize());
             }
             catch (Exception ex)
             {
+                CloseDeltaWriter();
                 Log.Warn("写入搜索索引增量失败", ex);
             }
         }
 
         Changed?.Invoke();
+    }
+
+    private void EnsureDeltaWriter()
+    {
+        if (_deltaWriter is not null)
+            return;
+
+        System.IO.Directory.CreateDirectory(_directory);
+        var stream = new FileStream(DeltaPath, FileMode.Append, FileAccess.Write, FileShare.Read,
+            16 * 1024, FileOptions.None);
+        _deltaWriter = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true };
+    }
+
+    private void CloseDeltaWriter()
+    {
+        try { _deltaWriter?.Dispose(); } catch { /* ignore */ }
+        _deltaWriter = null;
     }
 
     private void LoadDelta()
@@ -563,14 +600,96 @@ public sealed class SearchIndexService : IDisposable
 
     private static string LiteralPrefix(SearchQuery query)
     {
+        // The longest literal term gives the bloom filter the most selective
+        // bigrams, reducing the number of buckets read for a query.
+        var best = string.Empty;
         foreach (var term in query.Terms)
         {
             if (term.Length < 2 || term.IndexOfAny(['*', '?']) >= 0)
                 continue;
-            return term;
+            if (term.Length > best.Length)
+                best = term;
         }
 
-        return string.Empty;
+        return best;
+    }
+
+    private static bool BloomMayContain(ulong[] bloom, string term)
+    {
+        var lower = term.ToLowerInvariant();
+        if (lower.Length < 2)
+            return true;
+
+        for (var i = 0; i + 1 < lower.Length; i++)
+        {
+            HashBigram(lower[i], lower[i + 1], out var first, out var second);
+            if ((bloom[first >> 6] & (1UL << (first & 63))) == 0 ||
+                (bloom[second >> 6] & (1UL << (second & 63))) == 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static void BloomAdd(ulong[] bloom, string name)
+    {
+        var lower = name.ToLowerInvariant();
+        if (lower.Length < 2)
+            return;
+
+        for (var i = 0; i + 1 < lower.Length; i++)
+        {
+            HashBigram(lower[i], lower[i + 1], out var first, out var second);
+            bloom[first >> 6] |= 1UL << (first & 63);
+            bloom[second >> 6] |= 1UL << (second & 63);
+        }
+    }
+
+    private static void HashBigram(char first, char second, out int a, out int b)
+    {
+        var value = ((uint)first << 16) | second;
+        var h1 = value * 2654435761u;
+        var h2 = (value ^ (value >> 15)) * 2246822519u;
+        a = (int)(h1 % 1024);
+        b = (int)(h2 % 1024);
+    }
+
+    private static void WriteBloom(string path, ulong[][] blooms)
+    {
+        using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: false);
+        foreach (var bloom in blooms)
+        {
+            foreach (var word in bloom)
+                writer.Write(word);
+        }
+    }
+
+    private ulong[][]? TryLoadBloom()
+    {
+        try
+        {
+            var path = Path.Combine(_directory, BloomFileName);
+            if (!File.Exists(path))
+                return null;
+
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: false);
+            var blooms = new ulong[BucketCount][];
+            for (var bucket = 0; bucket < BucketCount; bucket++)
+            {
+                blooms[bucket] = new ulong[BloomWords];
+                for (var word = 0; word < BloomWords; word++)
+                    blooms[bucket][word] = reader.ReadUInt64();
+            }
+            return blooms;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static int BucketOf(string name)
@@ -607,7 +726,7 @@ public sealed class SearchIndexService : IDisposable
         if (_preparedExcludes.Count == 0)
             return false;
 
-        var normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        var normalized = Path.TrimEndingDirectorySeparator(path);
         foreach (var exclude in _preparedExcludes)
         {
             if (exclude.IsGlob)
@@ -751,6 +870,10 @@ public sealed class SearchIndexService : IDisposable
     {
         _disposed = true;
         StopWatching();
+        lock (_sync)
+            CloseDeltaWriter();
+        try { _buildCts?.Cancel(); } catch { /* ignore */ }
+        try { _buildCts?.Dispose(); } catch { /* ignore */ }
     }
 
     private readonly record struct PreparedExclude(string Raw, string? FullPath, bool IsGlob);
