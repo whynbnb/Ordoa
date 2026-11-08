@@ -185,6 +185,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public bool IsMacOS => OperatingSystem.IsMacOS();
 
+    /// <summary>
+    /// With the immersive title bar macOS already shows the app name and icon
+    /// in the menu bar and Dock. Repeating the product lock-up inside the
+    /// sidebar makes the window look like a Windows app, so the title-bar strip
+    /// stays quiet and the sidebar starts with its first section. The native
+    /// window frame has no traffic lights over the sidebar, so the branding is
+    /// restored there to avoid an empty band above the sidebar.
+    /// </summary>
+    public bool ShowSidebarBranding => !IsMacOS || !IsImmersiveWindow;
+
     public bool ShowWindowCaptionButtons => IsImmersiveWindow && !IsMacOS &&
         (_services.Settings.Current.WindowButtonMode switch
         {
@@ -2219,6 +2229,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         OnPropertyChanged(nameof(UseSystemWindowFrame));
         OnPropertyChanged(nameof(IsImmersiveWindow));
+        OnPropertyChanged(nameof(ShowSidebarBranding));
         OnPropertyChanged(nameof(ShowWindowCaptionButtons));
         OnPropertyChanged(nameof(ReserveMacOSTrafficLights));
         OnPropertyChanged(nameof(ReserveMacOSTrafficLightsInTitleBar));
