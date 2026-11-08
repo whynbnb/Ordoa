@@ -195,6 +195,16 @@ public sealed class FileSystemManager : IAsyncDisposable
                 }
             }
 
+            var previous = Connections.Get(profile.Id);
+            if (previous is not null)
+            {
+                var currentIds = (profile.SshJumps ?? [])
+                    .Select(jump => jump.Id)
+                    .ToHashSet(StringComparer.Ordinal);
+                foreach (var removed in (previous.SshJumps ?? []).Where(jump => !currentIds.Contains(jump.Id)))
+                    await Credentials.DeletePasswordAsync(removed.Id, cancellationToken).ConfigureAwait(false);
+            }
+
             Connections.Save(profile);
         }
         finally
