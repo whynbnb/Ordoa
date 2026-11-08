@@ -87,6 +87,7 @@
             <ScrollViewer MaxHeight="150" HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
               <StackPanel Spacing="6">
+                <views:GitPreviewCard DataContext="{Binding PreviewPanel}" />
                 <TextBlock Text="{loc:Tr 详细信息}" Classes="section" />
                 <ItemsControl ItemsSource="{Binding PreviewPanel.Details}">
                   <ItemsControl.ItemsPanel>

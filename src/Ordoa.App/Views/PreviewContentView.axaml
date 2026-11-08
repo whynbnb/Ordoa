@@ -37,12 +37,20 @@
         <ItemsControl ItemsSource="{Binding Rows}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="services:PreviewRow">
-              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="8,3">
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="8,3"
+                    Opacity="{Binding Opacity}">
                 <Path Data="{Binding Icon}" Width="14" Height="14" Stretch="Uniform"
                       Fill="{Binding IconBrush}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11.5"
                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="tiny"
+                <Border Grid.Column="2" IsVisible="{Binding ShowGitBadge}"
+                        Background="{Binding GitBadgeBrush}" CornerRadius="3"
+                        Padding="4,1" MinWidth="14" VerticalAlignment="Center"
+                        ToolTip.Tip="{Binding GitTooltip}">
+                  <TextBlock Text="{Binding GitBadgeText}" FontSize="8.5" FontWeight="SemiBold"
+                             Foreground="White" HorizontalAlignment="Center" />
+                </Border>
+                <TextBlock Grid.Column="3" Text="{Binding Detail}" Classes="tiny"
                            VerticalAlignment="Center" />
               </Grid>
             </DataTemplate>

@@ -87,6 +87,31 @@ public sealed class GitServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task LastCommitReportsHashAuthorAndSubject()
+    {
+        if (!GitAvailable())
+            return;
+
+        Run("init", "-q");
+        var file = Path.Combine(_root, "tracked.txt");
+        await File.WriteAllTextAsync(file, "one");
+        Run("add", "tracked.txt");
+        Run("-c", "user.name=Ordoa Test", "-c", "user.email=ordoa@example.test",
+            "commit", "-q", "-m", "initial commit");
+
+        var commit = await GitService.GetLastCommitAsync(file);
+        Assert.NotNull(commit);
+        Assert.Equal("initial commit", commit.Subject);
+        Assert.Equal("Ordoa Test", commit.Author);
+        Assert.NotNull(commit.Date);
+        Assert.Equal(7, commit.Hash.Length);
+
+        var untracked = Path.Combine(_root, "untracked.txt");
+        await File.WriteAllTextAsync(untracked, "new");
+        Assert.Null(await GitService.GetLastCommitAsync(untracked));
+    }
+
+    [Fact]
     public async Task NonRepositoryReturnsNull()
     {
         Assert.Null(await GitService.GetStatusAsync(_root));

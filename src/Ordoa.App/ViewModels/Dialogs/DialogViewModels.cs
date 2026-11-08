@@ -800,6 +800,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _undoBehaviorIndex = (int)settings.UndoBehavior;
         _enableGitIntegration = settings.EnableGitIntegration;
         _showGitStatusBar = settings.ShowGitStatusBar;
+        _showGitPreview = settings.ShowGitPreview;
         _showGitFileBadges = settings.ShowGitFileBadges;
         _showGitCleanCheck = settings.ShowGitCleanCheck;
         _showGitRepositoryBadges = settings.ShowGitRepositoryBadges;
@@ -1220,6 +1221,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private bool _showGitStatusBar;
 
     [ObservableProperty]
+    private bool _showGitPreview;
+
+    [ObservableProperty]
     private bool _showGitFileBadges;
 
     [ObservableProperty]
@@ -1538,6 +1542,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.UndoBehavior = (UndoBehavior)Math.Clamp(UndoBehaviorIndex, 0, 3);
         settings.EnableGitIntegration = EnableGitIntegration;
         settings.ShowGitStatusBar = ShowGitStatusBar;
+        settings.ShowGitPreview = ShowGitPreview;
         settings.ShowGitFileBadges = ShowGitFileBadges;
         settings.ShowGitCleanCheck = ShowGitCleanCheck;
         settings.ShowGitRepositoryBadges = ShowGitRepositoryBadges;
@@ -1655,6 +1660,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         UndoBehaviorIndex = (int)defaults.UndoBehavior;
         EnableGitIntegration = defaults.EnableGitIntegration;
         ShowGitStatusBar = defaults.ShowGitStatusBar;
+        ShowGitPreview = defaults.ShowGitPreview;
         ShowGitFileBadges = defaults.ShowGitFileBadges;
         ShowGitCleanCheck = defaults.ShowGitCleanCheck;
         ShowGitRepositoryBadges = defaults.ShowGitRepositoryBadges;

@@ -20,6 +20,9 @@ public sealed partial class FilePreviewViewModel : ObservableObject, IDisposable
     private string? _pdfLocalPath;
     private PaneViewModel? _pane;
     private FileItemViewModel? _item;
+    private static readonly StringComparer PathComparer = OperatingSystem.IsLinux()
+        ? StringComparer.Ordinal
+        : StringComparer.OrdinalIgnoreCase;
 
     public FilePreviewViewModel(AppServices services)
     {
@@ -119,6 +122,36 @@ public sealed partial class FilePreviewViewModel : ObservableObject, IDisposable
     public bool HasDetails => Details.Count > 0;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasGitInfo))]
+    [NotifyPropertyChangedFor(nameof(GitRepositoryName))]
+    [NotifyPropertyChangedFor(nameof(GitBranchText))]
+    [NotifyPropertyChangedFor(nameof(GitStatusSummary))]
+    [NotifyPropertyChangedFor(nameof(GitChangeText))]
+    [NotifyPropertyChangedFor(nameof(GitChangeCode))]
+    [NotifyPropertyChangedFor(nameof(GitChangeBrush))]
+    [NotifyPropertyChangedFor(nameof(GitStatusBrush))]
+    [NotifyPropertyChangedFor(nameof(HasGitChangeText))]
+    [NotifyPropertyChangedFor(nameof(HasGitCommit))]
+    [NotifyPropertyChangedFor(nameof(GitCommitMeta))]
+    [NotifyPropertyChangedFor(nameof(GitCommitSubject))]
+    private GitPreviewInfo? _gitInfo;
+
+    public bool HasGitInfo => GitInfo is not null;
+    public string GitRepositoryName => GitInfo?.RepositoryName ?? string.Empty;
+    public string GitBranchText => GitInfo?.BranchText ?? string.Empty;
+    public string GitStatusSummary => GitInfo?.StatusSummary ?? string.Empty;
+    public string GitChangeText => GitInfo?.ChangeText ?? string.Empty;
+    public string GitChangeCode => GitInfo?.ChangeCode ?? string.Empty;
+    public IBrush? GitChangeBrush => GitInfo?.ChangeBrush;
+    public IBrush? GitStatusBrush => GitInfo is null
+        ? null
+        : GitInfo.IsClean ? GitBrushes.Added : GitBrushes.Modified;
+    public bool HasGitChangeText => !string.IsNullOrEmpty(GitInfo?.ChangeText);
+    public bool HasGitCommit => !string.IsNullOrWhiteSpace(GitInfo?.CommitMeta);
+    public string GitCommitMeta => GitInfo?.CommitMeta ?? string.Empty;
+    public string GitCommitSubject => GitInfo?.CommitSubject ?? string.Empty;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNotice))]
     private string? _notice;
 
@@ -216,6 +249,7 @@ public sealed partial class FilePreviewViewModel : ObservableObject, IDisposable
         PdfZoom = 100;
         IsPdfLoading = false;
         Details = [];
+        GitInfo = null;
         Notice = null;
         Error = null;
         IsLoading = false;
@@ -253,6 +287,7 @@ public sealed partial class FilePreviewViewModel : ObservableObject, IDisposable
         _pdfCts = null;
         IsPdfLoading = false;
         Details = [];
+        GitInfo = null;
         Title = item.Name;
         PathText = pane.FileSystem.GetDisplayPath(item.Path);
         Icon = item.Icon;
@@ -284,6 +319,7 @@ public sealed partial class FilePreviewViewModel : ObservableObject, IDisposable
             Details = content.Details ?? [];
             Notice = content.Notice;
             Subtitle = BuildSubtitle(item);
+            _ = LoadGitInfoAsync(pane, item, version, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -377,6 +413,217 @@ public sealed partial class FilePreviewViewModel : ObservableObject, IDisposable
         }
     }
 
+    private async Task LoadGitInfoAsync(PaneViewModel pane, FileItemViewModel item, int version,
+        CancellationToken cancellationToken)
+    {
+        var settings = _services.Settings.Current;
+        if (!settings.EnableGitIntegration || !settings.ShowGitPreview || !pane.CanShowGitStatus)
+            return;
+
+        try
+        {
+            var root = GitService.FindRepository(item.Path);
+            if (root is null)
+                return;
+
+            var status = pane.GitStatus;
+            if (item.IsDirectory || status is null || !PathComparer.Equals(
+                    Path.TrimEndingDirectorySeparator(status.Root), root))
+            {
+                status = await GitService.GetStatusAsync(item.Path, cancellationToken)
+                    .ConfigureAwait(true);
+            }
+            if (status is null)
+                return;
+            if (cancellationToken.IsCancellationRequested || version != _loadVersion)
+                return;
+
+            if (item.IsDirectory && Kind == PreviewKind.Folder)
+                ApplyGitRows(status);
+
+            var commit = await GitService.GetLastCommitAsync(item.Path, cancellationToken)
+                .ConfigureAwait(true);
+            if (cancellationToken.IsCancellationRequested || version != _loadVersion)
+                return;
+
+            GitFileChange? change = null;
+            var itemPath = Path.TrimEndingDirectorySeparator(item.Path);
+            status.FilesByPath.TryGetValue(itemPath, out change);
+            GitInfo = BuildGitInfo(status, change, commit, item);
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer selection or a closed preview superseded this request.
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("读取预览 Git 信息失败", ex);
+        }
+    }
+
+    private void ApplyGitRows(GitRepositoryStatus status)
+    {
+        if (Rows.Count == 0)
+            return;
+
+        var settings = _services.Settings.Current;
+        var updated = new List<PreviewRow>(Rows.Count);
+        foreach (var row in Rows)
+            updated.Add(ApplyGitRow(row, status, settings));
+        Rows = updated;
+    }
+
+    private static PreviewRow ApplyGitRow(PreviewRow row, GitRepositoryStatus status, AppSettings settings)
+    {
+        if (string.IsNullOrEmpty(row.FullPath))
+            return row;
+
+        var path = Path.TrimEndingDirectorySeparator(row.FullPath);
+        status.FilesByPath.TryGetValue(path, out var change);
+        var ignored = status.IgnoredPaths.Contains(path) ||
+                      status.IgnoredDirectories.Any(directory => IsUnder(path, directory));
+        var submodule = status.SubmodulePaths.Contains(path) || change?.IsSubmodule == true;
+        var repository = row.IsDirectory && HasGitMarker(path);
+        var dirtyDirectory = row.IsDirectory && status.ChangedDirectories.Contains(path);
+        var trackedClean = change is null && !ignored && !submodule &&
+                           (row.IsDirectory
+                               ? status.TrackedDirectories.Contains(path) && !dirtyDirectory
+                               : status.TrackedPaths.Contains(path));
+
+        var tooltip = new List<string>();
+        if (submodule && settings.ShowGitSubmoduleBadges)
+            tooltip.Add(L10n.T("Git 子模块"));
+        if (repository && settings.ShowGitRepositoryBadges)
+            tooltip.Add(L10n.T("Git 仓库"));
+        if (change is not null)
+            tooltip.Add(change.Description);
+        if (ignored)
+            tooltip.Add(L10n.T("已被 Git 忽略"));
+        if (trackedClean && settings.ShowGitCleanCheck)
+            tooltip.Add(L10n.T("已跟踪，无变更"));
+        if (dirtyDirectory)
+            tooltip.Add(L10n.T("目录内含未提交变更"));
+
+        string? text = null;
+        IBrush? brush = null;
+        if (settings.ShowGitFileBadges)
+        {
+            if (submodule && settings.ShowGitSubmoduleBadges)
+            {
+                text = "S";
+                brush = change is not null ? ChangeBrush(change) : GitBrushes.Submodule;
+            }
+            else if (repository && settings.ShowGitRepositoryBadges)
+            {
+                text = "GIT";
+                brush = change is not null ? ChangeBrush(change) : GitBrushes.Repository;
+            }
+            else if (change is not null)
+            {
+                text = change.Code;
+                brush = ChangeBrush(change);
+            }
+            else if (ignored)
+            {
+                text = "I";
+                brush = GitBrushes.Ignored;
+            }
+            else if (trackedClean && settings.ShowGitCleanCheck)
+            {
+                text = "✓";
+                brush = GitBrushes.Added;
+            }
+            else if (dirtyDirectory)
+            {
+                text = "●";
+                brush = GitBrushes.Modified;
+            }
+        }
+
+        return row with
+        {
+            GitBadgeText = string.IsNullOrEmpty(text) ? null : text,
+            GitBadgeBrush = brush,
+            GitTooltip = tooltip.Count == 0 ? null : string.Join(Environment.NewLine, tooltip),
+            Opacity = ignored && settings.DimGitIgnored ? 0.55 : 1d,
+        };
+    }
+
+    private static bool HasGitMarker(string path)
+        => Directory.Exists(Path.Combine(path, ".git")) ||
+           File.Exists(Path.Combine(path, ".git"));
+
+    private static GitPreviewInfo BuildGitInfo(GitRepositoryStatus status, GitFileChange? change,
+        GitCommitInfo? commit, FileItemViewModel item)
+    {
+        var itemPath = Path.TrimEndingDirectorySeparator(item.Path);
+        var ignored = status.IgnoredPaths.Contains(itemPath) ||
+                      status.IgnoredDirectories.Any(directory => IsUnder(itemPath, directory));
+        var dirtyDirectory = item.IsDirectory && status.ChangedDirectories.Contains(itemPath);
+
+        var changeText = change is not null
+            ? L10n.Format("当前项：{0}", change.Description)
+            : ignored
+                ? L10n.T("当前项：已被 Git 忽略")
+                : dirtyDirectory
+                    ? L10n.T("当前项：目录内含未提交变更")
+                    : L10n.T("当前项：无变更");
+
+        var code = change?.Code;
+        if (string.IsNullOrEmpty(code))
+            code = ignored ? "I" : dirtyDirectory ? "●" : "✓";
+
+        var changeBrush = change is not null
+            ? ChangeBrush(change)
+            : ignored
+                ? GitBrushes.Ignored
+                : dirtyDirectory ? GitBrushes.Modified : GitBrushes.Added;
+
+        var branch = status.BranchLabel;
+        if (status.Ahead > 0)
+            branch += $" ↑{status.Ahead}";
+        if (status.Behind > 0)
+            branch += $" ↓{status.Behind}";
+
+        var summary = status.IsClean
+            ? L10n.T("工作区干净")
+            : L10n.Format("{0} 个变更 · 已暂存 {1} · 未暂存 {2} · 未跟踪 {3}",
+                status.ChangedCount, status.StagedCount, status.UnstagedCount,
+                status.UntrackedCount);
+        if (status.ConflictedCount > 0)
+            summary += " · " + L10n.Format("冲突 {0}", status.ConflictedCount);
+
+        var repository = Path.GetFileName(Path.TrimEndingDirectorySeparator(status.Root));
+        if (string.IsNullOrEmpty(repository))
+            repository = status.Root;
+
+        return new GitPreviewInfo(
+            RepositoryName: repository,
+            BranchText: branch,
+            StatusSummary: summary,
+            ChangeText: changeText,
+            ChangeCode: code,
+            IsClean: status.IsClean,
+            ChangeBrush: changeBrush,
+            CommitMeta: commit is null
+                ? null
+                : $"{commit.Hash} · {commit.Author} · {Humanize.RelativeTime(commit.Date)}",
+            CommitSubject: commit?.Subject);
+    }
+
+    private static IBrush ChangeBrush(GitFileChange change) => change.Kind switch
+    {
+        GitChangeKind.Untracked or GitChangeKind.Added => GitBrushes.Added,
+        GitChangeKind.Deleted or GitChangeKind.Conflicted => GitBrushes.Deleted,
+        GitChangeKind.Renamed or GitChangeKind.Copied => GitBrushes.Renamed,
+        GitChangeKind.TypeChanged => GitBrushes.Renamed,
+        _ => GitBrushes.Modified,
+    };
+
+    private static bool IsUnder(string path, string directory)
+        => path.StartsWith(directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar,
+            OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
+
     private string BuildSubtitle(FileItemViewModel item)
     {
         var kind = Kind switch
@@ -410,4 +657,16 @@ public sealed partial class FilePreviewViewModel : ObservableObject, IDisposable
     {
         Close();
     }
+
+/// <summary>Resolved Git details shown by the preview Git card.</summary>
+public sealed record GitPreviewInfo(
+    string RepositoryName,
+    string BranchText,
+    string StatusSummary,
+    string ChangeText,
+    string ChangeCode,
+    bool IsClean,
+    IBrush ChangeBrush,
+    string? CommitMeta,
+    string? CommitSubject);
 }

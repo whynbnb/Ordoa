@@ -277,6 +277,8 @@ public sealed class AppSettings
     /// <summary>Enable read-only git status probing and badges.</summary>
     public bool EnableGitIntegration { get; set; } = true;
     public bool ShowGitStatusBar { get; set; } = true;
+    /// <summary>Show repository, branch, change and commit details in previews.</summary>
+    public bool ShowGitPreview { get; set; } = true;
     public bool ShowGitFileBadges { get; set; } = true;
     public bool ShowGitCleanCheck { get; set; } = true;
     public bool ShowGitRepositoryBadges { get; set; } = true;

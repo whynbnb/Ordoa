@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ordoa.App.ViewModels"
+             x:DataType="vm:FilePreviewViewModel"
+             x:CompileBindings="True"
+             x:Class="Ordoa.App.Views.GitPreviewCard"
+             IsVisible="{Binding HasGitInfo}">
+  <Border Background="{DynamicResource SurfaceBrush}"
+          BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+          CornerRadius="8" Padding="10,8">
+    <StackPanel Spacing="5">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Border Width="7" Height="7" CornerRadius="4" VerticalAlignment="Center"
+                  Background="{Binding GitStatusBrush}" />
+          <TextBlock Text="Git" Classes="section" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding GitRepositoryName}" FontSize="11.5" FontWeight="SemiBold"
+                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        </StackPanel>
+        <Border Grid.Column="1" Background="{DynamicResource AccentSoftBrush}"
+                CornerRadius="4" Padding="5,1" VerticalAlignment="Center">
+          <TextBlock Text="{Binding GitChangeCode}" FontSize="10" FontWeight="SemiBold"
+                     FontFamily="{DynamicResource MonoFontFamily}"
+                     Foreground="{Binding GitChangeBrush}" />
+        </Border>
+      </Grid>
+
+      <TextBlock Text="{Binding GitBranchText}" FontSize="11.5" FontWeight="SemiBold"
+                 Foreground="{Binding GitStatusBrush}" TextTrimming="CharacterEllipsis" />
+
+      <TextBlock Text="{Binding GitStatusSummary}" Classes="tiny" TextWrapping="Wrap" />
+
+      <TextBlock Text="{Binding GitChangeText}" Classes="tiny" TextWrapping="Wrap"
+                 IsVisible="{Binding HasGitChangeText}" />
+
+      <Border IsVisible="{Binding HasGitCommit}" BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="0,1,0,0" Margin="0,1,0,0" Padding="0,5,0,0">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{Binding GitCommitMeta}" Classes="tiny"
+                     TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding GitCommitSubject}" FontSize="11.5" TextWrapping="Wrap"
+                     MaxLines="2" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Border>
+</UserControl>

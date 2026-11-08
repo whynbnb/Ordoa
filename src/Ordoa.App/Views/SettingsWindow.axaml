@@ -1173,6 +1173,8 @@
               <StackPanel Spacing="7" IsEnabled="{Binding EnableGitIntegration}">
                 <CheckBox Content="{loc:Tr 在状态栏显示分支与变更数量}"
                           IsChecked="{Binding ShowGitStatusBar, Mode=TwoWay}" />
+                <CheckBox Content="{loc:Tr 在预览界面显示分支、变更与最近提交}"
+                          IsChecked="{Binding ShowGitPreview, Mode=TwoWay}" />
                 <CheckBox Content="{loc:Tr 在文件和文件夹上显示 Git 标记}"
                           IsChecked="{Binding ShowGitFileBadges, Mode=TwoWay}" />
                 <CheckBox Content="{loc:Tr 已跟踪且无变更的文件/文件夹显示绿色勾}"

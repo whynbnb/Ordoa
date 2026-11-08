@@ -102,7 +102,8 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - List and grid views show Git markers next to files and folders: modified, staged, untracked, conflicted, and others; committed files and folders with no changes show a green check; Git-ignored files use a separate dimmed style and a gray `I`, so they are not confused with dimmed hidden files.
 - While browsing a parent folder outside the repository, the repository folder itself shows a `GIT` marker, and submodules show a special `S` marker.
 - The **Git Status** window lists every uncommitted item, staging state, branch, and upstream information; double-click an item to jump to it.
-- The **Git** category in Settings can disable Git integration or control the status bar, file markers, green check, repository markers, submodule markers, and ignored-file dimming independently.
+- Quick Look and the preview panel show the repository, branch, ahead/behind state, staging counts, the selected item's status and the latest commit touching it. Folder listings inside previews use the same Git badges, clean checks, repository markers and ignored-file dimming as the main file list.
+- The **Git** category in Settings can disable Git integration or control the status bar, preview details, file markers, green check, repository markers, submodule markers, and ignored-file dimming independently.
 - Ordoa only reads `git status` and `git ls-files`; it never stages, commits, or modifies a repository. A `git` executable must be available on `PATH`.
 
 ### Disk analysis

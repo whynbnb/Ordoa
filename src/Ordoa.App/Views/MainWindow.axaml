@@ -400,6 +400,7 @@
                     Padding="16,2,2,0">
               <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="10">
+                  <views:GitPreviewCard DataContext="{Binding Preview}" />
                   <TextBlock Text="{loc:Tr 详细信息}" Classes="section" />
                   <ItemsControl ItemsSource="{Binding Preview.Details}">
                     <ItemsControl.ItemTemplate>

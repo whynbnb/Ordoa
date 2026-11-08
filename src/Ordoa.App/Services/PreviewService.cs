@@ -42,7 +42,15 @@ public sealed record PreviewRow(
     string Detail,
     bool IsDirectory,
     Geometry? Icon,
-    IBrush? IconBrush);
+    IBrush? IconBrush,
+    string? FullPath = null,
+    string? GitBadgeText = null,
+    IBrush? GitBadgeBrush = null,
+    string? GitTooltip = null,
+    double Opacity = 1d)
+{
+    public bool ShowGitBadge => !string.IsNullOrEmpty(GitBadgeText);
+}
 
 public sealed record PreviewContent(
     PreviewKind Kind,
@@ -589,7 +597,8 @@ public sealed class PreviewService
             isApplication ? L10n.T("应用程序") : entry.IsDirectory ? L10n.T("文件夹") : Humanize.Size(entry.Size),
             entry.IsDirectory,
             visual.Geometry,
-            visual.Brush);
+            visual.Brush,
+            entry.Path);
     }
 
     private static List<PreviewDetail> BuildBaseDetails(IFileSystem fileSystem, FileEntry entry)

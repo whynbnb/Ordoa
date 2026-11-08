@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using Ordoa.Core.Localization;
 using Ordoa.Core.Util;
@@ -100,6 +101,13 @@ public sealed record GitFileChange(
     }
 }
 
+/// <summary>Last commit touching a path, used by the preview panel.</summary>
+public sealed record GitCommitInfo(
+    string Hash,
+    string Author,
+    DateTimeOffset? Date,
+    string Subject);
+
 public sealed class GitRepositoryStatus
 {
     public required string Root { get; init; }
@@ -175,6 +183,34 @@ public static class GitService
             ? "."
             : Path.GetRelativePath(root, fullPath).Replace('\\', '/');
         return await GetStatusForRootAsync(root, cancellationToken, scope).ConfigureAwait(false);
+    }
+
+    /// <summary>Returns the most recent commit that touched <paramref name="path"/>.</summary>
+    public static async Task<GitCommitInfo?> GetLastCommitAsync(string path,
+        CancellationToken cancellationToken = default)
+    {
+        var root = FindRepository(path);
+        if (root is null)
+            return null;
+
+        var fullPath = Path.GetFullPath(path);
+        var scope = string.Equals(Path.TrimEndingDirectorySeparator(fullPath),
+            Path.TrimEndingDirectorySeparator(root), StringComparison.Ordinal)
+            ? "."
+            : Path.GetRelativePath(root, fullPath).Replace('\\', '/');
+        var output = await RunGitAsync(root,
+            ["log", "-1", "--format=%h%x1f%an%x1f%aI%x1f%s", "--", scope], cancellationToken)
+            .ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(output))
+            return null;
+
+        var parts = output.Trim().Split('\x1f', 4);
+        if (parts.Length < 4)
+            return null;
+
+        DateTimeOffset.TryParse(parts[2], CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind, out var date);
+        return new GitCommitInfo(parts[0], parts[1], date == default ? null : date, parts[3]);
     }
 
     public static async Task<GitRepositoryStatus?> GetStatusForRootAsync(string root,
