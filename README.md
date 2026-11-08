@@ -303,8 +303,8 @@ On macOS, `aot-static` also requires `StaticLink.Avalonia.Native` (the scripts/p
 Pushing a `v*` tag triggers `.github/workflows/release.yml`:
 
 ```bash
-git tag v0.2
-git push origin v0.2
+git tag v0.3
+git push origin v0.3
 ```
 
 The release produces:

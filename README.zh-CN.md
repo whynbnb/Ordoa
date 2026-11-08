@@ -303,8 +303,8 @@ macOS 使用 `aot-static` 时还需要 `StaticLink.Avalonia.Native`（脚本/项
 推送 `v*` 标签会自动触发 `.github/workflows/release.yml`：
 
 ```bash
-git tag v0.2
-git push origin v0.2
+git tag v0.3
+git push origin v0.3
 ```
 
 发布会生成：
