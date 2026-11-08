@@ -85,6 +85,54 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         _secure = _source.Secure;
         _allowInvalidCertificate = _source.AllowInvalidCertificate;
         _saveProfile = true;
+        ReloadSshProfiles();
+    }
+
+    public System.Collections.ObjectModel.ObservableCollection<SshConfigEntry> SshProfiles { get; } = [];
+    public string SshConfigPath => SshConfigParser.DefaultPath;
+    public bool HasSshProfiles => SshProfiles.Count > 0;
+
+    [ObservableProperty]
+    private SshConfigEntry? _selectedSshProfile;
+
+    public void ReloadSshProfiles()
+    {
+        var selected = SelectedSshProfile?.Alias;
+        SshProfiles.Clear();
+        foreach (var entry in SshConfigParser.Load())
+            SshProfiles.Add(entry);
+        SelectedSshProfile = selected is null
+            ? null
+            : SshProfiles.FirstOrDefault(item => string.Equals(item.Alias, selected,
+                StringComparison.OrdinalIgnoreCase));
+        OnPropertyChanged(nameof(HasSshProfiles));
+    }
+
+    partial void OnSelectedSshProfileChanged(SshConfigEntry? value)
+    {
+        if (value is null)
+            return;
+
+        Protocol = RemoteProtocol.Sftp;
+        Host = value.HostName;
+        PortText = value.Port == 22 ? string.Empty : value.Port.ToString();
+        Username = value.User;
+        if (string.IsNullOrWhiteSpace(Name) || Name.StartsWith("sftp://", StringComparison.OrdinalIgnoreCase))
+            Name = value.Alias;
+        InitialPath = "/";
+        Anonymous = false;
+        Secure = true;
+        if (!string.IsNullOrWhiteSpace(value.IdentityFile) && File.Exists(value.IdentityFile))
+        {
+            SshAuth = SshAuthMethod.PrivateKey;
+            PrivateKeyPath = value.IdentityFile;
+        }
+        else
+        {
+            SshAuth = SshAuthMethod.Agent;
+            PrivateKeyPath = string.Empty;
+        }
+        ValidationMessage = null;
     }
 
     public bool IsEditing { get; }

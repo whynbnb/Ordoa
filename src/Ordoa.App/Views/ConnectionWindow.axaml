@@ -2,6 +2,7 @@
              xmlns:loc="using:Ordoa.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        xmlns:core="using:Ordoa.Core.Services"
         x:DataType="vm:ConnectionDialogViewModel"
         x:CompileBindings="True"
         x:Class="Ordoa.App.Views.ConnectionWindow"
@@ -53,6 +54,30 @@
 
     <ScrollViewer Grid.Row="1" Padding="22,14,22,8" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="12">
+        <StackPanel Spacing="6" IsVisible="{Binding HasSshProfiles}">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{loc:Tr 从 SSH 配置导入}" Classes="section" />
+              <ComboBox ItemsSource="{Binding SshProfiles}" SelectedItem="{Binding SelectedSshProfile, Mode=TwoWay}"
+                        PlaceholderText="{loc:Tr 选择 ~/.ssh/config 中的主机别名}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="core:SshConfigEntry">
+                    <Grid ColumnDefinitions="140,*" ColumnSpacing="8">
+                      <TextBlock Text="{Binding Alias}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Text="{Binding DisplayTarget}" Classes="tiny"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+            <Button Grid.Column="1" Content="{loc:Tr 重新读取}" Classes="subtle"
+                    VerticalAlignment="Bottom" Click="OnReloadSshProfilesClick" />
+          </Grid>
+          <TextBlock Text="{loc:Tr 导入 Host、HostName、User、Port 和 IdentityFile；通配符与 Match 块会被忽略。}"
+                     Classes="tiny" TextWrapping="Wrap" />
+        </StackPanel>
+
         <StackPanel Spacing="6">
           <TextBlock Text="{loc:Tr 协议}" Classes="section" />
           <WrapPanel ItemWidth="104" ItemHeight="34">

@@ -1404,5 +1404,9 @@
  "已移除 Finder 快速操作。": "Removed the Finder Quick Action.",
  "已添加 Finder 快速操作。": "Added the Finder Quick Action.",
  "系统集成失败：{0}": "System integration failed: {0}",
- "在 Finder 或资源管理器中选中当前项目": "Select the current item in Finder or Explorer"
+ "在 Finder 或资源管理器中选中当前项目": "Select the current item in Finder or Explorer",
+ "从 SSH 配置导入": "Import from SSH config",
+ "选择 ~/.ssh/config 中的主机别名": "Choose a host alias from ~/.ssh/config",
+ "重新读取": "Reload",
+ "导入 Host、HostName、User、Port 和 IdentityFile；通配符与 Match 块会被忽略。": "Imports Host, HostName, User, Port and IdentityFile; wildcard and Match blocks are ignored."
 }

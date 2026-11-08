@@ -29,6 +29,12 @@ public partial class ConnectionWindow : Window
         };
     }
 
+    private void OnReloadSshProfilesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is ConnectionDialogViewModel vm)
+            vm.ReloadSshProfiles();
+    }
+
     private void OnProtocolClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is ConnectionDialogViewModel vm && sender is Button { Tag: string protocol })
