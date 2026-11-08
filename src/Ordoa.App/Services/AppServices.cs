@@ -32,7 +32,7 @@ public sealed class AppServices : IAsyncDisposable
         Tags = new TagService();
         RemoteEdits = new RemoteEditService();
         TabDrags = new TabDragService();
-        Thumbnails = new ThumbnailService();
+        Thumbnails = new ThumbnailService(() => Settings.Current.FfmpegPath);
         Previews = new PreviewService();
         Shell = new ShellLauncher();
         OpenWith = new OpenWithService(this);

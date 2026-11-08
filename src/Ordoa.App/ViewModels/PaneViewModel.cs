@@ -3715,13 +3715,20 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
     private async Task LoadThumbnailsAsync(CancellationToken cancellationToken)
     {
+        var mediaThumbnails = 0;
         foreach (var item in _entries)
         {
             if (cancellationToken.IsCancellationRequested)
                 return;
             if (item.IsDirectory || item.Thumbnail is not null)
                 continue;
-            if (!MimeTypes.IsImage(item.Extension))
+            if (!ThumbnailService.CanThumbnail(item.Entry, FileSystem.IsLocal))
+                continue;
+
+            // PDF and video frames are much more expensive than image decoding;
+            // keep the grid responsive by capping them per listing.
+            var isImage = MimeTypes.IsImage(item.Extension);
+            if (!isImage && ++mediaThumbnails > 80)
                 continue;
 
             var bitmap = await _services.Thumbnails.GetAsync(FileSystem, item.Entry, GridThumbnailDecodeWidth, cancellationToken)

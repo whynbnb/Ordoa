@@ -1372,5 +1372,18 @@
  "索引中找到 {0} 个结果": "Found {0} results in the index",
  "开始同步？": "Start sync?",
  "将覆盖 {0} 个已有文件，并同步 {1} 个项目到{2}。": "Overwrite {0} existing files and sync {1} items to {2}.",
- "同步": "Sync"
+ "同步": "Sync",
+ "Markdown": "Markdown",
+ "代码": "Code",
+ "表格": "Table",
+ "页数": "Pages",
+ "PDF 由 pdftoppm 渲染，可在预览中翻页和缩放。": "PDF rendered by pdftoppm; use the preview controls to change page and zoom.",
+ "无法渲染此页；安装 poppler-utils（pdftoppm）后可预览。": "Could not render this page; install poppler-utils (pdftoppm) to preview it.",
+ "文件较大，代码高亮仅处理前面部分。": "The file is large; syntax highlighting covers only the beginning.",
+ "正在渲染 PDF 页面…": "Rendering PDF page…",
+ "上一页": "Previous page",
+ "下一页": "Next page",
+ "可与页面缩放配合查看": "Use with page zoom",
+ "缩小": "Zoom out",
+ "放大": "Zoom in"
 }

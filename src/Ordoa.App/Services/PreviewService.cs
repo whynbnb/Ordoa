@@ -24,6 +24,9 @@ public enum PreviewKind
     Loading,
     Image,
     Text,
+    Markdown,
+    Code,
+    Table,
     Video,
     Audio,
     Archive,
@@ -47,7 +50,13 @@ public sealed record PreviewContent(
     string? Text = null,
     string? Notice = null,
     IReadOnlyList<PreviewDetail>? Details = null,
-    IReadOnlyList<PreviewRow>? Rows = null);
+    IReadOnlyList<PreviewRow>? Rows = null,
+    IReadOnlyList<MarkdownBlock>? Markdown = null,
+    CodePreview? Code = null,
+    CsvTable? Table = null,
+    int PdfPageCount = 0,
+    int PdfPage = 0,
+    string? PdfLocalPath = null);
 
 /// <summary>
 /// Lightweight Quick Look style file inspection. Content is decoded only up to a
@@ -298,16 +307,23 @@ public sealed class PreviewService
     {
         if (localPath is not null)
         {
-            var page = await PdfPreviewTool.ExtractFirstPageAsync(localPath, cancellationToken).ConfigureAwait(true);
+            var pageCount = await PdfPreviewTool.GetPageCountAsync(localPath, cancellationToken)
+                .ConfigureAwait(true);
+            var page = await PdfPreviewTool.RenderPageAsync(localPath, 1, 1600, cancellationToken)
+                .ConfigureAwait(true);
             if (page is { Length: > 0 })
             {
                 var bitmap = await DecodeBytesAsync(page, _ => { }, cancellationToken).ConfigureAwait(true);
                 if (bitmap is not null)
                 {
+                    details.Add(new PreviewDetail(L10n.T("页数"), pageCount.ToString()));
                     return new PreviewContent(PreviewKind.Document, Image: bitmap,
-                        Notice: L10n.T("PDF 首页由 pdftoppm 渲染。"), Details: details);
+                        Notice: L10n.T("PDF 由 pdftoppm 渲染，可在预览中翻页和缩放。"), Details: details,
+                        PdfPageCount: pageCount, PdfPage: 1, PdfLocalPath: localPath);
                 }
             }
+
+            details.Add(new PreviewDetail(L10n.T("页数"), pageCount.ToString()));
         }
 
         return new PreviewContent(PreviewKind.Document,
@@ -315,6 +331,19 @@ public sealed class PreviewService
                 ? L10n.T("远程 PDF 暂不支持首页预览。")
                 : L10n.T("未能渲染 PDF 首页；安装 poppler-utils（pdftoppm）后可预览。"),
             Details: details);
+    }
+
+    /// <summary>Renders a single PDF page for the preview pager.</summary>
+    public async Task<Bitmap?> RenderPdfPageAsync(string localPath, int pageNumber, int zoomPercent,
+        CancellationToken cancellationToken)
+    {
+        var width = Math.Clamp(1600 * Math.Clamp(zoomPercent, 50, 300) / 100, 800, 4096);
+        var bytes = await PdfPreviewTool.RenderPageAsync(localPath, pageNumber, width, cancellationToken)
+            .ConfigureAwait(true);
+        if (bytes is not { Length: > 0 })
+            return null;
+
+        return await DecodeBytesAsync(bytes, _ => { }, cancellationToken).ConfigureAwait(true);
     }
 
     private async Task<PreviewContent> PreviewDocumentAsync(FileEntry entry, List<PreviewDetail> details,
@@ -396,6 +425,26 @@ public sealed class PreviewService
         var notice = truncated
             ? L10n.Format("文件较大，仅显示前 {0}。", Humanize.Size(bytes.Length))
             : null;
+
+        if (MimeTypes.IsMarkdown(entry.Extension))
+        {
+            var markdown = MarkdownPreviewParser.Parse(read.Text);
+            return new PreviewContent(PreviewKind.Markdown, Markdown: markdown, Notice: notice, Details: details);
+        }
+
+        if (MimeTypes.IsCsv(entry.Extension))
+        {
+            var table = CsvPreviewParser.Parse(read.Text, entry.Extension);
+            return new PreviewContent(PreviewKind.Table, Table: table, Notice: notice, Details: details);
+        }
+
+        if (MimeTypes.IsCode(entry.Extension))
+        {
+            var code = SyntaxHighlighter.Highlight(read.Text, entry.Extension);
+            if (code.Truncated)
+                notice = JoinNotice(notice, L10n.T("文件较大，代码高亮仅处理前面部分。"));
+            return new PreviewContent(PreviewKind.Code, Code: code, Notice: notice, Details: details);
+        }
 
         return new PreviewContent(PreviewKind.Text, Text: read.Text, Notice: notice, Details: details);
     }

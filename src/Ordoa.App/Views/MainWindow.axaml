@@ -393,61 +393,7 @@
           <Grid Grid.Row="1" ColumnDefinitions="*,272" Margin="14">
             <Border Grid.Column="0" Background="{DynamicResource SurfaceAltBrush}" CornerRadius="9"
                     ClipToBounds="True">
-              <Panel>
-                <Image Source="{Binding Preview.Image}" Stretch="Uniform" Margin="14"
-                       IsVisible="{Binding Preview.HasImage}" />
-
-                <ScrollViewer IsVisible="{Binding Preview.HasText}" Padding="12"
-                              HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                  <SelectableTextBlock Text="{Binding Preview.Text}" FontFamily="{DynamicResource MonoFontFamily}"
-                                       FontSize="12" TextWrapping="NoWrap" />
-                </ScrollViewer>
-
-                <ScrollViewer IsVisible="{Binding Preview.HasRows}"
-                              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                              Padding="2,5">
-                  <ItemsControl ItemsSource="{Binding Preview.Rows}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="services:PreviewRow">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="10,3">
-                          <Path Data="{Binding Icon}" Width="15" Height="15" Stretch="Uniform"
-                                Fill="{Binding IconBrush}" VerticalAlignment="Center" />
-                          <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12"
-                                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                          <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="tiny"
-                                     VerticalAlignment="Center" />
-                        </Grid>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </ScrollViewer>
-
-                <StackPanel IsVisible="{Binding Preview.HasError}" HorizontalAlignment="Center"
-                            VerticalAlignment="Center" Spacing="9" MaxWidth="360">
-                  <Path Data="{StaticResource IconWarning}" Width="34" Height="34" Stretch="Uniform"
-                        Fill="{DynamicResource WarningBrush}" HorizontalAlignment="Center" />
-                  <TextBlock Text="{loc:Tr 无法生成预览}" Classes="h2" HorizontalAlignment="Center" />
-                  <TextBlock Text="{Binding Preview.Error}" Classes="caption" TextAlignment="Center"
-                             TextWrapping="Wrap" />
-                </StackPanel>
-
-                <StackPanel IsVisible="{Binding Preview.ShowPlaceholder}" HorizontalAlignment="Center"
-                            VerticalAlignment="Center" Spacing="10" MaxWidth="380">
-                  <Path Data="{Binding Preview.Icon}" Width="54" Height="54" Stretch="Uniform"
-                        Fill="{Binding Preview.IconBrush}" HorizontalAlignment="Center" />
-                  <TextBlock Text="{Binding Preview.KindLabel}" Classes="h2" HorizontalAlignment="Center" />
-                  <TextBlock Text="{Binding Preview.Notice}" Classes="caption" TextAlignment="Center"
-                             TextWrapping="Wrap" />
-                </StackPanel>
-
-                <Border Background="{DynamicResource SurfaceAltBrush}" Opacity="0.9"
-                        IsVisible="{Binding Preview.IsLoading}">
-                  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="9">
-                    <ProgressBar IsIndeterminate="True" Width="120" Height="3" />
-                    <TextBlock Text="{loc:Tr 正在读取…}" Classes="caption" HorizontalAlignment="Center" />
-                  </StackPanel>
-                </Border>
-              </Panel>
+              <views:PreviewContentView DataContext="{Binding Preview}" />
             </Border>
 
             <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"

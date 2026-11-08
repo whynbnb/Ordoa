@@ -103,4 +103,17 @@ public static class MimeTypes
 
     public static bool IsArchive(string extension) => extension.ToLowerInvariant() is
         "zip" or "tar" or "gz" or "tgz" or "bz2" or "xz" or "zst" or "7z" or "rar" or "jar";
+
+    public static bool IsMarkdown(string extension) => extension.ToLowerInvariant() is
+        "md" or "markdown" or "mdown" or "mkd" or "mdx";
+
+    public static bool IsCsv(string extension) => extension.ToLowerInvariant() is "csv" or "tsv";
+
+    public static bool IsCode(string extension) => extension.ToLowerInvariant() is
+        "json" or "jsonc" or "yaml" or "yml" or "toml" or "xml" or "xaml" or "axaml" or
+        "html" or "htm" or "css" or "scss" or "less" or "js" or "mjs" or "cjs" or "ts" or
+        "tsx" or "jsx" or "vue" or "py" or "pyw" or "rb" or "go" or "rs" or "java" or "kt" or
+        "kts" or "c" or "h" or "cc" or "cxx" or "cpp" or "hpp" or "hxx" or "cs" or "fs" or
+        "vb" or "php" or "sh" or "bash" or "zsh" or "fish" or "ps1" or "bat" or "cmd" or
+        "lua" or "swift" or "sql" or "dart" or "scala" or "groovy" or "m" or "mm";
 }

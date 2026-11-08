@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:loc="using:Ordoa.App.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ordoa.App.ViewModels"
+             xmlns:services="using:Ordoa.App.Services"
+             x:DataType="vm:FilePreviewViewModel"
+             x:CompileBindings="True"
+             x:Class="Ordoa.App.Views.PreviewContentView">
+  <Grid RowDefinitions="*,Auto">
+    <Panel Grid.Row="0">
+      <Image Source="{Binding Image}" Stretch="Uniform" Margin="12"
+             IsVisible="{Binding ShowPlainImage}" />
+
+      <ScrollViewer IsVisible="{Binding HasPdf}" Padding="8"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Image Source="{Binding Image}" Width="{Binding PdfImageWidth}" Stretch="Uniform"
+               HorizontalAlignment="Center" VerticalAlignment="Top" />
+      </ScrollViewer>
+
+      <ScrollViewer IsVisible="{Binding HasText}" Padding="12"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <SelectableTextBlock Text="{Binding Text}" FontFamily="{DynamicResource MonoFontFamily}"
+                             FontSize="11.5" TextWrapping="NoWrap" />
+      </ScrollViewer>
+
+      <services:MarkdownView Blocks="{Binding MarkdownBlocks}" IsVisible="{Binding HasMarkdown}" />
+
+      <services:CodeView Code="{Binding Code}" IsVisible="{Binding HasCode}" />
+
+      <services:CsvView Table="{Binding Csv}" IsVisible="{Binding HasCsv}" />
+
+      <ScrollViewer IsVisible="{Binding HasRows}" HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto" Padding="2,4">
+        <ItemsControl ItemsSource="{Binding Rows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="services:PreviewRow">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="8,3">
+                <Path Data="{Binding Icon}" Width="14" Height="14" Stretch="Uniform"
+                      Fill="{Binding IconBrush}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11.5"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="tiny"
+                           VerticalAlignment="Center" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center"
+                  VerticalAlignment="Center" Spacing="8" MaxWidth="320">
+        <Path Data="{StaticResource IconWarning}" Width="28" Height="28" Stretch="Uniform"
+              Fill="{DynamicResource WarningBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="{loc:Tr 无法生成预览}" Classes="h2" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding Error}" Classes="caption" TextAlignment="Center"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+
+      <StackPanel IsVisible="{Binding ShowPlaceholder}" HorizontalAlignment="Center"
+                  VerticalAlignment="Center" Spacing="8" MaxWidth="320">
+        <Path Data="{Binding Icon}" Width="42" Height="42" Stretch="Uniform"
+              Fill="{Binding IconBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding KindLabel}" Classes="h2" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding Notice}" Classes="caption" TextAlignment="Center"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+
+      <Border Background="{DynamicResource SurfaceAltBrush}" Opacity="0.9"
+              IsVisible="{Binding IsLoading}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+          <ProgressBar IsIndeterminate="True" Width="100" Height="3" />
+          <TextBlock Text="{loc:Tr 正在读取…}" Classes="caption" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Border>
+
+      <Border Background="{DynamicResource SurfaceAltBrush}" Opacity="0.9"
+              IsVisible="{Binding IsPdfLoading}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+          <ProgressBar IsIndeterminate="True" Width="90" Height="3" />
+          <TextBlock Text="{loc:Tr 正在渲染 PDF 页面…}" Classes="caption" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Border>
+    </Panel>
+
+    <Border Grid.Row="1" IsVisible="{Binding HasPdf}" Padding="10,7"
+            Background="{DynamicResource SurfaceAltBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="7">
+        <Button Classes="tool" Width="26" Height="26" Click="OnPreviousPageClick"
+                IsEnabled="{Binding CanPreviousPdfPage}" ToolTip.Tip="{loc:Tr 上一页}">
+          <TextBlock Text="‹" FontSize="17" />
+        </Button>
+        <TextBlock Grid.Column="1" Text="{Binding PdfPageText}" Classes="caption"
+                   VerticalAlignment="Center" MinWidth="54" TextAlignment="Center" />
+        <Button Grid.Column="2" Classes="tool" Width="26" Height="26" Click="OnNextPageClick"
+                IsEnabled="{Binding CanNextPdfPage}" ToolTip.Tip="{loc:Tr 下一页}">
+          <TextBlock Text="›" FontSize="17" />
+        </Button>
+        <TextBlock Grid.Column="3" Text="{loc:Tr 可与页面缩放配合查看}" Classes="tiny"
+                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <Button Grid.Column="4" Classes="tool" Width="26" Height="26" Click="OnZoomOutClick"
+                ToolTip.Tip="{loc:Tr 缩小}">
+          <TextBlock Text="−" FontSize="16" />
+        </Button>
+        <TextBlock Grid.Column="5" Text="{Binding PdfZoom}" Classes="caption"
+                   VerticalAlignment="Center" MinWidth="34" TextAlignment="Center" />
+        <Button Grid.Column="6" Classes="tool" Width="26" Height="26" Click="OnZoomInClick"
+                ToolTip.Tip="{loc:Tr 放大}">
+          <TextBlock Text="+" FontSize="16" />
+        </Button>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,15 +1,20 @@
 using System.Diagnostics;
+using System.Globalization;
 using Ordoa.Core.Services;
 
 namespace Ordoa.App.Services;
 
 /// <summary>
-/// Optional first-page PDF rendering through poppler's pdftoppm. Nothing is
-/// bundled; when the tool is absent Ordoa falls back to a metadata-only view.
+/// Optional PDF rendering through poppler's pdftoppm/pdfinfo. Nothing is
+/// bundled; when the tools are absent Ordoa falls back to a metadata-only view.
 /// </summary>
 public static class PdfPreviewTool
 {
-    public static async Task<byte[]?> ExtractFirstPageAsync(string path, CancellationToken cancellationToken)
+    public static Task<byte[]?> ExtractFirstPageAsync(string path, CancellationToken cancellationToken)
+        => RenderPageAsync(path, 1, 1600, cancellationToken);
+
+    public static async Task<byte[]?> RenderPageAsync(string path, int pageNumber, int maxWidth,
+        CancellationToken cancellationToken)
     {
         var configured = FirstNonEmpty(
             Environment.GetEnvironmentVariable("ORDOA_PDFTOPPM"),
@@ -19,19 +24,21 @@ public static class PdfPreviewTool
         if (tool is null)
             return null;
 
+        pageNumber = Math.Max(1, pageNumber);
+        maxWidth = Math.Clamp(maxWidth, 320, 4096);
         var prefix = Path.Combine(Path.GetTempPath(), "ordoa-pdf-" + Guid.NewGuid().ToString("N"));
         var output = prefix + ".png";
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(15));
+            timeout.CancelAfter(TimeSpan.FromSeconds(30));
             using var process = StartProcess(tool,
             [
-                "-f", "1",
-                "-l", "1",
+                "-f", pageNumber.ToString(CultureInfo.InvariantCulture),
+                "-l", pageNumber.ToString(CultureInfo.InvariantCulture),
                 "-singlefile",
                 "-png",
-                "-scale-to", "1600",
+                "-scale-to", maxWidth.ToString(CultureInfo.InvariantCulture),
                 path,
                 prefix,
             ]);
@@ -59,6 +66,54 @@ public static class PdfPreviewTool
         {
             try { if (File.Exists(output)) File.Delete(output); } catch { /* ignore */ }
         }
+    }
+
+    /// <summary>Reads the page count with pdfinfo; returns 1 when poppler is unavailable.</summary>
+    public static async Task<int> GetPageCountAsync(string path, CancellationToken cancellationToken)
+    {
+        var configured = FirstNonEmpty(
+            Environment.GetEnvironmentVariable("ORDOA_PDFINFO"),
+            Environment.GetEnvironmentVariable("PDFINFO_PATH"),
+            "pdfinfo");
+        var tool = configured is null ? null : FindExecutable(configured);
+        if (tool is null)
+            return 1;
+
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            using var process = StartProcess(tool, [path]);
+            var stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
+            var stderr = process.StandardError.ReadToEndAsync(timeout.Token);
+            await WaitForExitOrKillAsync(process, timeout.Token).ConfigureAwait(true);
+            var text = await stdout.ConfigureAwait(true);
+            _ = await stderr.ConfigureAwait(true);
+            if (process.ExitCode != 0)
+                return 1;
+
+            foreach (var line in text.Split('\n', StringSplitOptions.TrimEntries))
+            {
+                if (!line.StartsWith("Pages:", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var value = line["Pages:".Length..].Trim();
+                if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pages) &&
+                    pages > 0)
+                {
+                    return pages;
+                }
+            }
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Return the safe default below.
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Warn($"pdfinfo 读取页数失败: {path}", ex);
+        }
+
+        return 1;
     }
 
     private static string? FirstNonEmpty(params string?[] values)
