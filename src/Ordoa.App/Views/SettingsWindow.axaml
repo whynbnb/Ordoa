@@ -150,12 +150,12 @@
           <StackPanel IsVisible="{Binding ShowAppearance}" Spacing="12">
             <StackPanel Spacing="2">
               <TextBlock Text="{loc:Tr 外观}" Classes="h2" />
-              <TextBlock Text="{loc:Tr 主题、背景配色、强调色、密度与窗口外观}" Classes="caption" />
+              <TextBlock Text="{loc:Tr 语言、主题、强调色、背景配色、密度与窗口外观}" Classes="caption" />
             </StackPanel>
 
             <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
-              <TextBlock Text="{loc:Tr 主题}" Classes="fieldlabel" />
-              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+              <TextBlock Grid.Row="1" Text="{loc:Tr 主题}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6">
                 <Button Classes="chip" Tag="System" Click="OnThemeClick"
                         Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
                   <TextBlock Text="{loc:Tr 跟随系统}" />
@@ -174,8 +174,8 @@
                 </Button>
               </StackPanel>
 
-              <TextBlock Grid.Row="1" Text="{loc:Tr 强调色}" Classes="fieldlabel" />
-              <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="9">
+              <TextBlock Grid.Row="2" Text="{loc:Tr 强调色}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="9">
                 <Border Background="#17937F" Tag="Jade" PointerPressed="OnAccentClick" ToolTip.Tip="{loc:Tr 翡翠}"
                         Classes="accentdot"
                         Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Jade}" />
@@ -193,9 +193,9 @@
                         Classes.active="{Binding Accent, Converter={StaticResource EqualsConverter}, ConverterParameter=Violet}" />
               </StackPanel>
 
-              <TextBlock Grid.Row="2" Text="{loc:Tr 背景配色}" Classes="fieldlabel"
+              <TextBlock Grid.Row="3" Text="{loc:Tr 背景配色}" Classes="fieldlabel"
                          VerticalAlignment="Top" Margin="0,6,0,0" />
-              <StackPanel Grid.Row="2" Grid.Column="1" Spacing="6">
+              <StackPanel Grid.Row="3" Grid.Column="1" Spacing="6">
                 <WrapPanel>
                   <Button Classes="palette" Tag="Graphite" Click="OnDarkBackgroundClick"
                           Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Graphite}">
@@ -342,12 +342,12 @@
                            Classes="fieldhint" TextWrapping="Wrap" />
               </StackPanel>
 
-              <TextBlock Grid.Row="3" Text="{loc:Tr 密度}" Classes="fieldlabel" />
-              <CheckBox Grid.Row="3" Grid.Column="1" Content="{loc:Tr 紧凑模式（更小的行高与间距）}"
+              <TextBlock Grid.Row="4" Text="{loc:Tr 密度}" Classes="fieldlabel" />
+              <CheckBox Grid.Row="4" Grid.Column="1" Content="{loc:Tr 紧凑模式（更小的行高与间距）}"
                         IsChecked="{Binding CompactMode, Mode=TwoWay}" />
 
-              <TextBlock Grid.Row="4" Text="{loc:Tr 默认视图}" Classes="fieldlabel" />
-              <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+              <TextBlock Grid.Row="5" Text="{loc:Tr 默认视图}" Classes="fieldlabel" />
+              <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="6">
                 <Button Classes="chip" Tag="List" Click="OnViewClick"
                         Classes.active="{Binding View, Converter={StaticResource EqualsConverter}, ConverterParameter=List}">
                   <TextBlock Text="{loc:Tr 列表}" />
@@ -358,8 +358,8 @@
                 </Button>
               </StackPanel>
 
-              <TextBlock Grid.Row="5" Text="{loc:Tr 窗口}" Classes="fieldlabel" />
-              <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+              <TextBlock Grid.Row="6" Text="{loc:Tr 窗口}" Classes="fieldlabel" />
+              <Grid Grid.Row="6" Grid.Column="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                 <CheckBox Content="{loc:Tr 使用系统标题栏（非沉浸式）}"
                           IsChecked="{Binding UseSystemWindowFrame, Mode=TwoWay}" />
                 <views:HintBlock Classes="inlineHint" Classes.collapsed="{Binding CollapseHints}"
@@ -367,8 +367,8 @@
                                  IsCollapsed="{Binding CollapseHints}" />
               </Grid>
 
-              <TextBlock Grid.Row="6" Text="{loc:Tr 窗口按钮}" Classes="fieldlabel" />
-              <Grid Grid.Row="6" Grid.Column="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+              <TextBlock Grid.Row="7" Text="{loc:Tr 窗口按钮}" Classes="fieldlabel" />
+              <Grid Grid.Row="7" Grid.Column="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <Button Classes="chip" Tag="Auto" Click="OnWindowButtonModeClick"
                           Classes.active="{Binding WindowButtonMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Auto}">
@@ -389,8 +389,8 @@
                                  IsCollapsed="{Binding CollapseHints}" />
               </Grid>
 
-              <TextBlock Grid.Row="7" Text="{loc:Tr 语言}" Classes="fieldlabel" />
-              <WrapPanel Grid.Row="7" Grid.Column="1" Classes="languages">
+              <TextBlock Grid.Row="0" Text="{loc:Tr 语言}" Classes="fieldlabel" />
+              <WrapPanel Grid.Row="0" Grid.Column="1" Classes="languages">
                 <Button Classes="chip" Tag="System" Click="OnLanguageClick"
                         Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
                   <TextBlock Text="{loc:Tr 跟随系统}" />
