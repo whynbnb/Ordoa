@@ -417,7 +417,7 @@
             <Border Classes="divider" />
 
             <TextBlock Text="{loc:Tr 压缩}" Classes="section" />
-            <Grid ColumnDefinitions="120,140,*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
+            <Grid ColumnDefinitions="120,140,*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
               <TextBlock Text="{loc:Tr 7z 压缩级别}" Classes="fieldlabel" />
               <NumericUpDown Grid.Column="1" Minimum="0" Maximum="9" Increment="1" FormatString="0"
                              Value="{Binding ArchiveCompressionLevel, Mode=TwoWay}" />
@@ -431,7 +431,15 @@
               <views:HintBlock Grid.Row="1" Grid.Column="2" Text="{loc:Tr 单位 MB；0 表示不分卷}"
                                VerticalAlignment="Center" Margin="10,0,0,0"
                                IsCollapsed="{Binding CollapseHints}" />
+
+              <TextBlock Grid.Row="2" Text="{loc:Tr 旧 ZIP 文件名编码}" Classes="fieldlabel" />
+              <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                        ItemsSource="{Binding ArchiveEncodingModes}"
+                        SelectedIndex="{Binding ArchiveEncodingIndex, Mode=TwoWay}"
+                        HorizontalAlignment="Left" MinWidth="190" />
             </Grid>
+            <TextBlock Text="{loc:Tr 自动检测会尝试 UTF-8、GBK、Shift-JIS 和 CP437；解压包含中文或日文文件名的旧 ZIP 时可手动指定。}"
+                       Classes="fieldhint" TextWrapping="Wrap" />
           </StackPanel>
 
           <!-- Sidebar -->

@@ -88,6 +88,16 @@ public enum GroupByMode
     Size,
 }
 
+/// <summary>Fallback encoding for ZIP names written before the UTF-8 flag.</summary>
+public enum ZipLegacyEncoding
+{
+    Auto,
+    Utf8,
+    Gbk,
+    ShiftJis,
+    Cp437,
+}
+
 /// <summary>Per-folder view and ordering overrides.</summary>
 public sealed class FolderViewState
 {
@@ -170,6 +180,7 @@ public sealed class AppSettings
     public GridThumbnailSize GridThumbnailSize { get; set; } = GridThumbnailSize.Medium;
     public ListDensity ListDensity { get; set; } = ListDensity.Normal;
     public GroupByMode GroupBy { get; set; } = GroupByMode.None;
+    public ZipLegacyEncoding ArchiveLegacyEncoding { get; set; } = ZipLegacyEncoding.Auto;
     /// <summary>Register Explorer context-menu verbs for Ordoa on Windows. Intrusive and off by default.</summary>
     public bool WindowsShellIntegrationEnabled { get; set; }
     /// <summary>Install a Finder Quick Action for Ordoa on macOS. Intrusive and off by default.</summary>
@@ -373,6 +384,8 @@ public sealed class SettingsService
             Current.ListDensity = ListDensity.Normal;
         if (!Enum.IsDefined(Current.GroupBy))
             Current.GroupBy = GroupByMode.None;
+        if (!Enum.IsDefined(Current.ArchiveLegacyEncoding))
+            Current.ArchiveLegacyEncoding = ZipLegacyEncoding.Auto;
         if (!Enum.IsDefined(Current.SearchIndexMode))
             Current.SearchIndexMode = SearchIndexMode.Whitelist;
         Current.SearchIndexRoots = (Current.SearchIndexRoots ?? [])

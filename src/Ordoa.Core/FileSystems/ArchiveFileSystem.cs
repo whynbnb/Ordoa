@@ -236,7 +236,7 @@ public sealed class ArchiveFileSystem : FileSystemBase
 
     private void BuildZipIndex(CancellationToken cancellationToken)
     {
-        using var archive = ZipFile.OpenRead(ArchivePath);
+        using var archive = ZipEncodingHelper.OpenRead(ArchivePath);
         foreach (var entry in archive.Entries)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -338,7 +338,7 @@ public sealed class ArchiveFileSystem : FileSystemBase
 
         if (Format == ArchiveFormat.Zip)
         {
-            using var archive = ZipFile.OpenRead(ArchivePath);
+            using var archive = ZipEncodingHelper.OpenRead(ArchivePath);
             var entry = archive.GetEntry(entryName)
                 ?? archive.Entries.FirstOrDefault(candidate =>
                     string.Equals(candidate.FullName, entryName, StringComparison.Ordinal));

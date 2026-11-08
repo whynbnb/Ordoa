@@ -89,7 +89,7 @@ public static class SevenZipTool
     }
 
     public static void Create(string archivePath, IReadOnlyList<string> paths, int level, int splitMb,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, string? password = null)
     {
         var arguments = new List<string>
         {
@@ -100,6 +100,11 @@ public static class SevenZipTool
         };
         if (splitMb > 0)
             arguments.Add("-v" + splitMb.ToString(CultureInfo.InvariantCulture) + "m");
+        if (!string.IsNullOrEmpty(password))
+        {
+            arguments.Add("-p" + password);
+            arguments.Add("-mhe=on");
+        }
         arguments.Add("--");
         arguments.Add(archivePath);
         arguments.AddRange(paths);

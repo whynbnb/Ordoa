@@ -69,13 +69,13 @@ public static class ArchiveService
     }
 
     public static Task Create7zAsync(IReadOnlyList<string> paths, string destinationArchive, int level = 5,
-        int splitMb = 0, CancellationToken cancellationToken = default)
+        int splitMb = 0, string? password = null, CancellationToken cancellationToken = default)
     {
         return Task.Run(() =>
         {
             if (!SevenZipTool.IsAvailable)
                 throw new NotSupportedException(L10n.T("需要安装 7z 命令行工具才能创建 7z 压缩包"));
-            SevenZipTool.Create(destinationArchive, paths, level, splitMb, cancellationToken);
+            SevenZipTool.Create(destinationArchive, paths, level, splitMb, cancellationToken, password);
         }, cancellationToken);
     }
 
@@ -275,8 +275,7 @@ public static class ArchiveService
         IReadOnlyList<string>? selection, IProgress<ArchiveProgress>? progress,
         CancellationToken cancellationToken)
     {
-        using var file = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        using var archive = new ZipArchive(file, ZipArchiveMode.Read);
+        using var archive = ZipEncodingHelper.OpenRead(archivePath);
         var destinationFull = Path.GetFullPath(destination);
         var total = archive.Entries.Count;
         var processed = 0;

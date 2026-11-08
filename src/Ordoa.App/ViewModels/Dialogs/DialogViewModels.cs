@@ -562,6 +562,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _showTransferPreview = settings.ShowTransferPreview;
         _uploadRemoteEdits = settings.UploadRemoteEdits;
         _archiveCompressionLevel = settings.ArchiveCompressionLevel;
+        _archiveEncodingIndex = (int)settings.ArchiveLegacyEncoding;
         _archiveSplitMb = settings.ArchiveSplitMb;
         _ffmpegPath = settings.FfmpegPath;
         _useSystemWindowFrame = settings.UseSystemWindowFrame;
@@ -947,6 +948,18 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private decimal _archiveCompressionLevel = 5;
 
     [ObservableProperty]
+    private int _archiveEncodingIndex;
+
+    public IReadOnlyList<string> ArchiveEncodingModes { get; } =
+    [
+        "Auto",
+        "UTF-8",
+        "GBK / GB18030",
+        "Shift-JIS",
+        "CP437",
+    ];
+
+    [ObservableProperty]
     private decimal _archiveSplitMb;
 
     [ObservableProperty]
@@ -1274,6 +1287,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.ShowTransferPreview = ShowTransferPreview;
         settings.UploadRemoteEdits = UploadRemoteEdits;
         settings.ArchiveCompressionLevel = Math.Clamp((int)ArchiveCompressionLevel, 0, 9);
+        settings.ArchiveLegacyEncoding = Enum.IsDefined((ZipLegacyEncoding)ArchiveEncodingIndex)
+            ? (ZipLegacyEncoding)ArchiveEncodingIndex
+            : ZipLegacyEncoding.Auto;
         settings.ArchiveSplitMb = Math.Clamp((int)ArchiveSplitMb, 0, 100_000);
         settings.FfmpegPath = (FfmpegPath ?? string.Empty).Trim();
         settings.UseSystemWindowFrame = UseSystemWindowFrame;
@@ -1390,6 +1406,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         ShowTransferPreview = defaults.ShowTransferPreview;
         UploadRemoteEdits = defaults.UploadRemoteEdits;
         ArchiveCompressionLevel = defaults.ArchiveCompressionLevel;
+        ArchiveEncodingIndex = (int)defaults.ArchiveLegacyEncoding;
         ArchiveSplitMb = defaults.ArchiveSplitMb;
         FfmpegPath = defaults.FfmpegPath;
         UseSystemWindowFrame = defaults.UseSystemWindowFrame;

@@ -16,6 +16,8 @@ public sealed class AppServices : IAsyncDisposable
         ArchiveFileSystem.CleanupStaleCache();
         PreviewService.CleanupStaleCache();
         Settings = new SettingsService();
+        ZipEncodingHelper.Preferred = Settings.Current.ArchiveLegacyEncoding;
+        Settings.Changed += (_, _) => ZipEncodingHelper.Preferred = Settings.Current.ArchiveLegacyEncoding;
         Shortcuts = new ShortcutService(Settings);
         SearchIndex = new SearchIndexService();
         PlatformIntegration = new PlatformIntegrationService();

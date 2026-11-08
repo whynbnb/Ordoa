@@ -1408,5 +1408,9 @@
  "从 SSH 配置导入": "Import from SSH config",
  "选择 ~/.ssh/config 中的主机别名": "Choose a host alias from ~/.ssh/config",
  "重新读取": "Reload",
- "导入 Host、HostName、User、Port 和 IdentityFile；通配符与 Match 块会被忽略。": "Imports Host, HostName, User, Port and IdentityFile; wildcard and Match blocks are ignored."
+ "导入 Host、HostName、User、Port 和 IdentityFile；通配符与 Match 块会被忽略。": "Imports Host, HostName, User, Port and IdentityFile; wildcard and Match blocks are ignored.",
+ "旧 ZIP 文件名编码": "Legacy ZIP filename encoding",
+ "自动检测会尝试 UTF-8、GBK、Shift-JIS 和 CP437；解压包含中文或日文文件名的旧 ZIP 时可手动指定。": "Auto detection tries UTF-8, GBK, Shift-JIS and CP437; choose a value manually for old ZIPs with Chinese or Japanese names.",
+ "7z 密码": "7z password",
+ "留空则不加密；密码只用于本次压缩，不会保存": "Leave empty for no encryption; the password is used only for this archive and is not saved"
 }

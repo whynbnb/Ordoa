@@ -106,7 +106,7 @@ public static class ArchiveEditService
 
     private static void DeleteZipEntries(string archivePath, IReadOnlyList<string> entryPaths)
     {
-        using var archive = ZipFile.Open(archivePath, ZipArchiveMode.Update);
+        using var archive = ZipEncodingHelper.OpenUpdate(archivePath);
         foreach (var entry in archive.Entries.ToList())
         {
             if (!MatchesSelection(entry.FullName, entryPaths))
@@ -117,7 +117,7 @@ public static class ArchiveEditService
 
     private static void RenameZipEntry(string archivePath, string oldPath, string newPath)
     {
-        using var archive = ZipFile.Open(archivePath, ZipArchiveMode.Update);
+        using var archive = ZipEncodingHelper.OpenUpdate(archivePath);
         var oldName = oldPath.Replace('\\', '/').Trim('/');
         var newName = newPath.Replace('\\', '/').Trim('/');
         var matches = archive.Entries
@@ -148,7 +148,7 @@ public static class ArchiveEditService
     private static void AddZipEntries(string archivePath, string archiveDirectory,
         IReadOnlyList<(string LocalPath, string Name)> files)
     {
-        using var archive = ZipFile.Open(archivePath, ZipArchiveMode.Update);
+        using var archive = ZipEncodingHelper.OpenUpdate(archivePath);
         foreach (var (localPath, name) in files)
         {
             var entryName = CombineArchivePath(archiveDirectory, name);

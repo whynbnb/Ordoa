@@ -2567,6 +2567,12 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (!IsNameFree(candidateName))
             candidateName = GlobMatcher.SuggestFileName(candidateName, IsNameTaken);
         var destination = Path.Combine(CurrentPath, candidateName);
+        var password = await _services.Dialogs.PromptAsync(
+            L10n.T("7z 密码"), L10n.T("留空则不加密；密码只用于本次压缩，不会保存"),
+            string.Empty).ConfigureAwait(true);
+        if (password is null)
+            return;
+
         var settings = _services.Settings.Current;
         var displayName = settings.ArchiveSplitMb > 0 ? candidateName + ".001" : candidateName;
 
@@ -2574,7 +2580,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         try
         {
             await ArchiveService.Create7zAsync(paths, destination, settings.ArchiveCompressionLevel,
-                settings.ArchiveSplitMb).ConfigureAwait(true);
+                settings.ArchiveSplitMb, password).ConfigureAwait(true);
             await RefreshAsync().ConfigureAwait(true);
             Toast(L10n.T("压缩完成"), displayName, false);
         }
