@@ -326,7 +326,7 @@ git push origin v0.3
 - Linux x64 AOT AppImage
 - Linux x64 AOT 静态单文件 tar.gz
 
-macOS DMG 未做代码签名；首次打开可能需要在 Finder 中右键选择“打开”。
+macOS DMG **未做代码签名，也未做公证**：项目没有 Apple Developer ID 证书，CI 无法提交 Apple 公证服务，因此 Gatekeeper 可能阻止首次启动。确认下载来源后，可在 Finder 中右键应用选择“打开”，或执行 `xattr -dr com.apple.quarantine /Applications/Ordoa.app` 移除隔离属性。
 
 AOT 发布现在只会出现 `SMBLibrary` 的 `IL2104` 提示。Avalonia 已启用编译绑定（所有 Window/UserControl 与 DataTemplate 都声明了 `x:DataType`），本地化 `{loc:Tr}` 扩展也已改为编译绑定路径；同时通过 `TrimmerRootAssembly` 保留应用程序集，release 输出会自动移除 `*.pdb`。
 
@@ -448,7 +448,8 @@ src/Ordoa.Core
 
 src/Ordoa.App
 ├── Views/             MainWindow、PaneView、对话框
-├── ViewModels/        MainViewModel、Tab/Pane、对话框 VM
+├── ViewModels/        MainViewModel（含 Palette 部分类）、PaneViewModel
+│                      （含 Layout 部分类）、Tab/Pane、对话框 VM
 ├── Services/          主题、剪贴板、缩略图、Shell、对话框、图标
 ├── Styles/            颜色、图标、控件样式
 └── Assets/            应用图标

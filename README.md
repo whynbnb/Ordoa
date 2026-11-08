@@ -326,7 +326,7 @@ The release produces:
 - Linux x64 AOT AppImage
 - Linux x64 AOT static single-file tar.gz
 
-The macOS DMG is not code-signed; on first launch you may need to right-click it in Finder and choose **Open**.
+The macOS DMG is **not code-signed and not notarized**: the project does not own an Apple Developer ID certificate, so CI cannot submit it to Apple's notary service. Gatekeeper may block the first launch. After verifying the download, right-click the app in Finder and choose **Open**, or remove the quarantine attribute with `xattr -dr com.apple.quarantine /Applications/Ordoa.app`.
 
 AOT publishing currently produces only the `SMBLibrary` `IL2104` warning. Avalonia compiled bindings are enabled (all Window/UserControl and DataTemplate declarations specify `x:DataType`), and the localization `{loc:Tr}` extension now uses compiled binding paths as well. `TrimmerRootAssembly` keeps the application assemblies, and release output removes `*.pdb` automatically.
 
@@ -448,7 +448,8 @@ src/Ordoa.Core
 
 src/Ordoa.App
 ├── Views/             MainWindow, PaneView, dialogs
-├── ViewModels/        MainViewModel, Tab/Pane, dialog view models
+├── ViewModels/        MainViewModel (with Palette partial), PaneViewModel
+│                      (with Layout partial), tab/pane and dialog view models
 ├── Services/          themes, clipboard, thumbnails, shell, dialogs, icons
 ├── Styles/            colors, icons, control styles
 └── Assets/            application icons
