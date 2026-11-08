@@ -21,11 +21,15 @@ public sealed class ElevatedFileService
 
     public Task<ElevatedResult> DeleteAsync(IReadOnlyList<string> paths,
         CancellationToken cancellationToken = default)
-        => RunScriptAsync(ElevatedScriptBuilder.Delete(paths), cancellationToken);
+        => RunScriptAsync(OperatingSystem.IsWindows()
+            ? ElevatedScriptBuilder.WindowsDelete(paths)
+            : ElevatedScriptBuilder.Delete(paths), cancellationToken);
 
     public Task<ElevatedResult> CopyAsync(IReadOnlyList<string> sources, string destination, bool move,
         CancellationToken cancellationToken = default)
-        => RunScriptAsync(ElevatedScriptBuilder.Copy(sources, destination, move), cancellationToken);
+        => RunScriptAsync(OperatingSystem.IsWindows()
+            ? ElevatedScriptBuilder.WindowsCopy(sources, destination, move)
+            : ElevatedScriptBuilder.Copy(sources, destination, move), cancellationToken);
 
     public Task<ElevatedResult> ChmodAsync(IReadOnlyList<string> paths, string mode,
         CancellationToken cancellationToken = default)

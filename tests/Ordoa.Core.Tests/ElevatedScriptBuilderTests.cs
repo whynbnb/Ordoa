@@ -31,6 +31,18 @@ public sealed class ElevatedScriptBuilderTests
     }
 
     [Fact]
+    public void WindowsScripts_UseLiteralPaths()
+    {
+        var delete = ElevatedScriptBuilder.WindowsDelete([@"C:\a b\file.txt"]);
+        Assert.Contains(@"Remove-Item -LiteralPath 'C:\a b\file.txt'", delete);
+
+        var copy = ElevatedScriptBuilder.WindowsCopy([@"C:\a b"], @"C:\dest", move: false);
+        Assert.Contains(@"New-Item -ItemType Directory", copy);
+        Assert.Contains("Copy-Item -LiteralPath 'C:\\a b' -Destination '" +
+                        Path.Combine(@"C:\dest", "a b") + "' -Recurse", copy);
+    }
+
+    [Fact]
     public void AppleScriptString_EscapesQuotesAndBackslashes()
     {
         Assert.Equal("a\\\\b\\\"c", ElevatedScriptBuilder.AppleScriptString("a\\b\"c"));

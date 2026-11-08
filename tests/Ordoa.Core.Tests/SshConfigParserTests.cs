@@ -132,6 +132,19 @@ public sealed class SshConfigParserTests
     }
 
     [Fact]
+    public void Parse_DoesNotTreatHostPatternAsSubstring()
+    {
+        var entries = SshConfigParser.Parse(
+        [
+            "Host production",
+            "  User alice",
+            "Match host prod",
+            "  Port 2222",
+        ]);
+        Assert.Equal(22, Assert.Single(entries).Port);
+    }
+
+    [Fact]
     public void Parse_AppliesUserMatchConditions()
     {
         var entries = SshConfigParser.Parse(

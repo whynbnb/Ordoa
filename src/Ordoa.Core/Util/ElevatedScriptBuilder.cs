@@ -17,7 +17,7 @@ public static class ElevatedScriptBuilder
         builder.Append("mkdir -p -- ").Append(Quote(destination)).AppendLine();
         foreach (var source in sources.Where(path => !string.IsNullOrWhiteSpace(path)))
         {
-            var name = Path.GetFileName(source.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var name = FileNameOf(source);
             if (string.IsNullOrEmpty(name))
                 continue;
             var target = Path.Combine(destination, name);
@@ -53,7 +53,40 @@ public static class ElevatedScriptBuilder
         => value.Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("\"", "\\\"", StringComparison.Ordinal);
 
-    /// <summary>Build a PowerShell script for Windows elevation.</summary>
-    public static string WindowsScript(IEnumerable<string> lines)
-        => string.Join(Environment.NewLine, lines);
+    public static string WindowsDelete(IEnumerable<string> paths)
+        => string.Join(Environment.NewLine,
+            paths.Where(path => !string.IsNullOrWhiteSpace(path))
+                .Select(path => "Remove-Item -LiteralPath " + PsQuote(path) +
+                                " -Recurse -Force -ErrorAction Stop"));
+
+    public static string WindowsCopy(IEnumerable<string> sources, string destination, bool move)
+    {
+        var builder = new StringBuilder();
+        builder.Append("New-Item -ItemType Directory -Force -Path ")
+            .Append(PsQuote(destination)).AppendLine(" | Out-Null");
+        var command = move ? "Move-Item" : "Copy-Item";
+        foreach (var source in sources.Where(path => !string.IsNullOrWhiteSpace(path)))
+        {
+            var name = FileNameOf(source);
+            if (string.IsNullOrEmpty(name))
+                continue;
+            var target = Path.Combine(destination, name);
+            builder.Append(command).Append(" -LiteralPath ").Append(PsQuote(source))
+                .Append(" -Destination ").Append(PsQuote(target));
+            if (!move)
+                builder.Append(" -Recurse");
+            builder.AppendLine(" -Force -ErrorAction Stop");
+        }
+        return builder.ToString();
+    }
+
+    public static string PsQuote(string value)
+        => "'" + value.Replace("'", "''", StringComparison.Ordinal) + "'";
+
+    public static string FileNameOf(string path)
+    {
+        var trimmed = path.TrimEnd('/', '\\');
+        var separator = trimmed.LastIndexOfAny(['/', '\\']);
+        return separator < 0 ? trimmed : trimmed[(separator + 1)..];
+    }
 }

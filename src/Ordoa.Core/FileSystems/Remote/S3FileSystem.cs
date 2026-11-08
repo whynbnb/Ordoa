@@ -358,6 +358,8 @@ public sealed class S3FileSystem : FileSystemBase
         if (response.IsSuccessStatusCode)
             return;
 
+        var status = (int)response.StatusCode;
+        var reason = response.ReasonPhrase;
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var message = body;
         try
@@ -373,7 +375,7 @@ public sealed class S3FileSystem : FileSystemBase
             // Keep the raw response body for non-XML gateways.
         }
         response.Dispose();
-        throw new IOException($"S3 {(int)response.StatusCode} {response.ReasonPhrase}: {message}".Trim());
+        throw new IOException($"S3 {status} {reason}: {message}".Trim());
     }
 
     private static async Task<XDocument> ReadXmlAsync(HttpResponseMessage response,

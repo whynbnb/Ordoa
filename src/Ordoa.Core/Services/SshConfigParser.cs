@@ -180,15 +180,20 @@ public static class SshConfigParser
         {
             if (raw.StartsWith('!'))
             {
-                if (GlobMatcher.IsMatch(value, raw[1..]))
+                if (Matches(value, raw[1..]))
                     return false;
                 continue;
             }
-            if (GlobMatcher.IsMatch(value, raw))
+            if (Matches(value, raw))
                 matched = true;
         }
         return matched;
     }
+
+    private static bool Matches(string value, string pattern)
+        => pattern.IndexOfAny(['*', '?']) < 0
+            ? string.Equals(value, pattern, StringComparison.OrdinalIgnoreCase)
+            : GlobMatcher.IsMatch(value, pattern);
 
     private static List<string> Tokenize(string value)
     {
