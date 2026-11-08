@@ -285,6 +285,29 @@ public sealed class AppSettings
     public bool ShowGitSubmoduleBadges { get; set; } = true;
     public bool DimGitIgnored { get; set; } = true;
 
+    /// <summary>Windows 11 style icon row at the top of the file context menu.</summary>
+    public bool UseWindows11ContextMenu { get; set; } = OperatingSystem.IsWindows();
+
+    /// <summary>Maximum context menu height as a percentage of the screen height.</summary>
+    public int ContextMenuHeightPercent { get; set; } = 60;
+
+    public bool ContextMenuShowOpenWith { get; set; } = true;
+    public bool ContextMenuShowQuickPreview { get; set; } = true;
+    public bool ContextMenuShowReveal { get; set; } = true;
+    public bool ContextMenuShowOpenIn { get; set; } = true;
+    public bool ContextMenuShowCopyTo { get; set; } = true;
+    public bool ContextMenuShowPasteLink { get; set; } = true;
+    public bool ContextMenuShowBatchRename { get; set; } = true;
+    public bool ContextMenuShowTags { get; set; } = true;
+    public bool ContextMenuShowLinks { get; set; } = true;
+    public bool ContextMenuShowCompress { get; set; } = true;
+    public bool ContextMenuShowTools { get; set; } = true;
+    public bool ContextMenuShowCompare { get; set; } = true;
+    public bool ContextMenuShowImageConvert { get; set; } = true;
+    public bool ContextMenuShowTerminal { get; set; } = true;
+    public bool ContextMenuShowAdmin { get; set; } = true;
+    public bool ContextMenuShowProperties { get; set; } = true;
+
     /// <summary>Whether terminals are discovered from PATH or supplied manually.</summary>
     public TerminalDetectionMode TerminalMode { get; set; } = TerminalDetectionMode.Auto;
 
@@ -387,6 +410,8 @@ public sealed class SettingsService
             Current.Language = UiLanguage.System;
         if (!Enum.IsDefined(Current.DarkBackground))
             Current.DarkBackground = DarkBackground.Graphite;
+        if (Current.ContextMenuHeightPercent is not (40 or 60 or 80))
+            Current.ContextMenuHeightPercent = 60;
         if (!Enum.IsDefined(Current.WindowButtonMode))
             Current.WindowButtonMode = WindowButtonMode.Auto;
         if (!Enum.IsDefined(Current.FolderOpenMode))

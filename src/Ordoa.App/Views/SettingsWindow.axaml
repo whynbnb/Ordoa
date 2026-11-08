@@ -1195,6 +1195,93 @@
             <TextBlock Classes="fieldhint" Text="{loc:Tr 需要安装 Git 命令行工具；未安装时这些开关不会影响文件浏览。}"
                        TextWrapping="Wrap" />
           </StackPanel>
+
+          <!-- Context menu -->
+          <StackPanel IsVisible="{Binding ShowContextMenu}" Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 右键菜单}" Classes="h2" />
+              <TextBlock Text="{loc:Tr 选择文件右键菜单中显示的功能}" Classes="caption" />
+            </StackPanel>
+
+            <CheckBox Content="{loc:Tr Windows 11 风格快捷操作行}"
+                      IsChecked="{Binding UseWindows11ContextMenu, Mode=TwoWay}" />
+            <TextBlock Classes="fieldhint"
+                       Text="{loc:Tr 在右键菜单顶部显示剪切、复制、粘贴、重命名、删除和属性图标；Windows 默认开启，其他平台默认关闭。}"
+                       TextWrapping="Wrap" />
+
+            <TextBlock Text="{loc:Tr 弹出高度}" Classes="section" />
+            <TextBlock Classes="fieldhint"
+                       Text="{loc:Tr 右键菜单最大高度占屏幕高度的比例；内容较少时仍按内容高度显示。}"
+                       TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Classes="chip" Tag="40" Click="OnContextMenuHeightClick"
+                      Classes.active="{Binding ContextMenuHeightPercent, Converter={StaticResource EqualsConverter}, ConverterParameter=40}">
+                <TextBlock Text="40%" />
+              </Button>
+              <Button Classes="chip" Tag="60" Click="OnContextMenuHeightClick"
+                      Classes.active="{Binding ContextMenuHeightPercent, Converter={StaticResource EqualsConverter}, ConverterParameter=60}">
+                <TextBlock Text="60%" />
+              </Button>
+              <Button Classes="chip" Tag="80" Click="OnContextMenuHeightClick"
+                      Classes.active="{Binding ContextMenuHeightPercent, Converter={StaticResource EqualsConverter}, ConverterParameter=80}">
+                <TextBlock Text="80%" />
+              </Button>
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 打开与导航}" Classes="section" />
+            <StackPanel Spacing="7">
+              <CheckBox Content="{loc:Tr 显示「打开方式」}"
+                        IsChecked="{Binding ContextMenuShowOpenWith, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「快速预览」}"
+                        IsChecked="{Binding ContextMenuShowQuickPreview, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「在 Finder / 资源管理器中显示」}"
+                        IsChecked="{Binding ContextMenuShowReveal, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「在新标签页 / 窗口中打开」}"
+                        IsChecked="{Binding ContextMenuShowOpenIn, Mode=TwoWay}" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 文件操作}" Classes="section" />
+            <StackPanel Spacing="7">
+              <CheckBox Content="{loc:Tr 显示「复制到… / 移动到…」}"
+                        IsChecked="{Binding ContextMenuShowCopyTo, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「粘贴为符号链接」}"
+                        IsChecked="{Binding ContextMenuShowPasteLink, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「批量重命名」}"
+                        IsChecked="{Binding ContextMenuShowBatchRename, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「标签与颜色」}"
+                        IsChecked="{Binding ContextMenuShowTags, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「创建链接」}"
+                        IsChecked="{Binding ContextMenuShowLinks, Mode=TwoWay}" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 工具}" Classes="section" />
+            <StackPanel Spacing="7">
+              <CheckBox Content="{loc:Tr 显示「压缩与解压」子菜单}"
+                        IsChecked="{Binding ContextMenuShowCompress, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「工具」子菜单（校验和、文件夹大小、分析、Git 状态）}"
+                        IsChecked="{Binding ContextMenuShowTools, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「比较」子菜单}"
+                        IsChecked="{Binding ContextMenuShowCompare, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「批量转换图片」}"
+                        IsChecked="{Binding ContextMenuShowImageConvert, Mode=TwoWay}" />
+            </StackPanel>
+
+            <TextBlock Text="{loc:Tr 终端与系统}" Classes="section" />
+            <StackPanel Spacing="7">
+              <CheckBox Content="{loc:Tr 显示「终端」与自定义命令}"
+                        IsChecked="{Binding ContextMenuShowTerminal, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「管理员操作」}"
+                        IsChecked="{Binding ContextMenuShowAdmin, Mode=TwoWay}" />
+              <CheckBox Content="{loc:Tr 显示「批量权限」与「属性」}"
+                        IsChecked="{Binding ContextMenuShowProperties, Mode=TwoWay}" />
+            </StackPanel>
+
+            <Border Classes="divider" />
+
+            <TextBlock Classes="fieldhint"
+                       Text="{loc:Tr 关闭后对应项目会从右键菜单中隐藏；快捷键与命令面板不受影响。}"
+                       TextWrapping="Wrap" />
+          </StackPanel>
         </StackPanel>
       </ScrollViewer>
     </Grid>

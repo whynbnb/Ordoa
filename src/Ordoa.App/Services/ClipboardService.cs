@@ -19,6 +19,7 @@ public sealed class ClipboardService
 
     private readonly Func<TopLevel?> _topLevel;
     private ClipboardPayload? _payload;
+    private bool _hasExternal;
 
     public ClipboardService(Func<TopLevel?> topLevel)
     {
@@ -26,10 +27,46 @@ public sealed class ClipboardService
     }
 
     public bool HasInternal => _payload is { Sources.Count: > 0 };
+    public bool HasContent => HasInternal || _hasExternal;
     public bool IsCut => _payload?.IsCut == true;
     public IReadOnlyList<OperationSource> InternalSources => _payload?.Sources ?? [];
 
     public event EventHandler? Changed;
+
+    /// <summary>Refreshes whether the clipboard contains files or file paths.</summary>
+    public async Task RefreshHasContentAsync(CancellationToken cancellationToken = default)
+    {
+        if (HasInternal)
+        {
+            if (!_hasExternal)
+            {
+                _hasExternal = true;
+                Changed?.Invoke(this, EventArgs.Empty);
+            }
+            return;
+        }
+
+        IReadOnlyList<OperationSource> external;
+        try
+        {
+            external = await TryReadExternalAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            external = [];
+        }
+
+        var available = external.Count > 0;
+        if (_hasExternal != available)
+        {
+            _hasExternal = available;
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     public async Task SetInternalAsync(IReadOnlyList<OperationSource> sources, bool cut)
     {
@@ -150,6 +187,7 @@ public sealed class ClipboardService
     public void Clear()
     {
         _payload = null;
+        _hasExternal = false;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 

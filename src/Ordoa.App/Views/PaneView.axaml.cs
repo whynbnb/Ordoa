@@ -2,8 +2,11 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Controls.Selection;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
@@ -1226,40 +1229,297 @@ public partial class PaneView : UserControl
         if (_pane is null || sender is not Control host)
             return;
 
+        var hasPointer = e.TryGetPosition(host, out var pointer);
         var pane = _pane;
-        var menu = new ContextMenu();
+        _ = PrepareClipboardAndOpenAsync(pane, host, hasPointer ? pointer : null);
+        e.Handled = true;
+    }
 
-        menu.Items.Add(MenuItem(L10n.T("打开"), () => pane.OpenAsync(), pane.HasSelection));
-        if (pane.PrimarySelection is { IsApplicationBundle: true })
-            menu.Items.Add(MenuItem(L10n.T("显示包内容"), pane.OpenPackageContentsAsync, true));
-        menu.Items.Add(MenuItem(L10n.T("以压缩包浏览"), () => pane.OpenArchiveAsync(), pane.CanOpenArchive));
-        menu.Items.Add(MenuItem(L10n.T("打开方式"), pane.OpenWithAsync, pane.CanOpenWith));
-        menu.Items.Add(MenuItem(L10n.T("快速预览"), () =>
+    private async Task PrepareClipboardAndOpenAsync(PaneViewModel pane, Control host, Point? pointer)
+    {
+        try
         {
-            pane.RequestPreview();
-            return Task.CompletedTask;
-        }, pane.HasSelection));
-        menu.Items.Add(MenuItem(pane.RevealLabel, pane.RevealSelectionAsync, pane.CanReveal));
-        menu.Items.Add(MenuItem(L10n.T("在新标签页中打开"), () => pane.OpenSelectionInNewTabAsync(), pane.HasSelection));
-        menu.Items.Add(MenuItem(L10n.T("在新窗口打开"), pane.OpenInNewWindowAsync, pane.CanOpenInNewWindow));
+            await pane.Services.Clipboard.RefreshHasContentAsync().ConfigureAwait(true);
+        }
+        catch
+        {
+            // Clipboard probing is best effort; the menu still opens.
+        }
+
+        if (ReferenceEquals(_pane, pane))
+            OpenFileContextMenu(pane, host, pointer);
+    }
+
+    private ContextMenu OpenFileContextMenu(PaneViewModel pane, Control host, Point? pointer = null)
+    {
+        var settings = pane.Services.Settings.Current;
+        // Workaround for the Avalonia 12.1.4 popup resize regression:
+        // https://github.com/AvaloniaUI/Avalonia/issues/22573
+        // PlacementMode.Pointer no longer resizes when the menu content grows,
+        // which clips ContextMenu items on first open. AnchorAndGravity with a
+        // 1x1 rect at the pointer keeps the same position but lets the popup
+        // resize until the fix in https://github.com/AvaloniaUI/Avalonia/pull/22624 ships.
+        var menu = new ContextMenu
+        {
+            Placement = pointer is null ? PlacementMode.Bottom : PlacementMode.AnchorAndGravity,
+            PlacementTarget = host,
+            PlacementAnchor = PopupAnchor.TopLeft,
+            PlacementGravity = PopupGravity.BottomRight,
+            PlacementConstraintAdjustment =
+                PopupPositionerConstraintAdjustment.SlideX |
+                PopupPositionerConstraintAdjustment.SlideY |
+                PopupPositionerConstraintAdjustment.FlipX |
+                PopupPositionerConstraintAdjustment.FlipY,
+        };
+        if (pointer is { } anchorPoint)
+            menu.PlacementRect = new Rect(anchorPoint, new Size(1, 1));
+        ConstrainMenu(menu, host, settings.ContextMenuHeightPercent);
+
+        if (settings.UseWindows11ContextMenu)
+        {
+            AddQuickActionRow(menu, pane);
+            menu.Items.Add(new Separator());
+        }
+
+        // Open and navigate. Secondary open actions live in one submenu to
+        // keep more of the frequently used commands visible.
+        menu.Items.Add(MenuItem(L10n.T("打开"), () => pane.OpenAsync(), pane.HasSelection));
+        var openOptions = new MenuItem { Header = L10n.T("打开选项") };
+        if (pane.PrimarySelection is { IsApplicationBundle: true })
+            openOptions.Items.Add(MenuItem(L10n.T("显示包内容"), pane.OpenPackageContentsAsync, true));
+        if (settings.ContextMenuShowOpenWith)
+            openOptions.Items.Add(MenuItem(L10n.T("打开方式"), pane.OpenWithAsync, pane.CanOpenWith));
+        if (settings.ContextMenuShowQuickPreview)
+        {
+            openOptions.Items.Add(MenuItem(L10n.T("快速预览"), () =>
+            {
+                pane.RequestPreview();
+                return Task.CompletedTask;
+            }, pane.HasSelection));
+        }
+        if (settings.ContextMenuShowReveal)
+            openOptions.Items.Add(MenuItem(pane.RevealLabel, pane.RevealSelectionAsync, pane.CanReveal));
+        if (settings.ContextMenuShowOpenIn)
+        {
+            openOptions.Items.Add(MenuItem(L10n.T("在新标签页中打开"),
+                () => pane.OpenSelectionInNewTabAsync(), pane.HasSelection));
+            openOptions.Items.Add(MenuItem(L10n.T("在新窗口打开"), pane.OpenInNewWindowAsync,
+                pane.CanOpenInNewWindow));
+        }
+        if (openOptions.Items.Count > 0)
+            menu.Items.Add(openOptions);
         menu.Items.Add(new Separator());
+
+        // Clipboard.
         menu.Items.Add(MenuItem(L10n.T("剪切"), () => pane.CopySelectionAsync(true), pane.CanCopy));
         menu.Items.Add(MenuItem(L10n.T("复制"), () => pane.CopySelectionAsync(false), pane.CanCopy));
-        menu.Items.Add(MenuItem(L10n.T("粘贴"), pane.PasteAsync, pane.CanPaste));
-        menu.Items.Add(MenuItem(L10n.T("复制到…"), () => pane.CopySelectionToAsync(false),
-            pane.HasSelection && !pane.IsTrash && !pane.IsArchive));
-        menu.Items.Add(MenuItem(L10n.T("移动到…"), () => pane.CopySelectionToAsync(true),
-            pane.HasSelection && !pane.IsTrash && !pane.IsArchive));
-        menu.Items.Add(MenuItem(L10n.T("粘贴为符号链接"), pane.PasteAsLinkAsync,
-            pane.IsLocal && !pane.IsTrash && !pane.IsArchive));
+        menu.Items.Add(MenuItem(L10n.T("粘贴"), pane.PasteAsync, pane.CanPasteNow));
+        if (settings.ContextMenuShowCopyTo)
+        {
+            menu.Items.Add(MenuItem(L10n.T("复制到…"), () => pane.CopySelectionToAsync(false),
+                pane.HasSelection && !pane.IsTrash && !pane.IsArchive));
+            menu.Items.Add(MenuItem(L10n.T("移动到…"), () => pane.CopySelectionToAsync(true),
+                pane.HasSelection && !pane.IsTrash && !pane.IsArchive));
+        }
+        if (settings.ContextMenuShowPasteLink)
+        {
+            menu.Items.Add(MenuItem(L10n.T("粘贴为符号链接"), pane.PasteAsLinkAsync,
+                pane.IsLocal && !pane.IsTrash && !pane.IsArchive));
+        }
         menu.Items.Add(new Separator());
+
+        // Edit.
         menu.Items.Add(MenuItem(L10n.T("重命名"), pane.RenameAsync, pane.CanRename));
         menu.Items.Add(MenuItem(L10n.T("创建副本"), () =>
         {
             pane.DuplicateSelection();
             return Task.CompletedTask;
         }, pane.HasSelection && !pane.IsTrash && !pane.IsArchive));
-        menu.Items.Add(MenuItem(L10n.T("批量重命名"), pane.BatchRenameAsync, pane.CanBatchRename));
+        if (settings.ContextMenuShowBatchRename)
+            menu.Items.Add(MenuItem(L10n.T("批量重命名"), pane.BatchRenameAsync, pane.CanBatchRename));
+        if (settings.ContextMenuShowTags)
+            AddTagMenu(menu, pane);
+        if (settings.ContextMenuShowLinks)
+            AddLinkMenu(menu, pane);
+
+        if (pane.IsTrash)
+        {
+            menu.Items.Add(MenuItem(L10n.T("恢复"), pane.RestoreSelectionAsync, pane.CanRestore));
+            menu.Items.Add(MenuItem(L10n.T("永久删除"), () => pane.DeleteSelectionAsync(true),
+                pane.CanDelete));
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuItem(L10n.T("清空回收站"), pane.EmptyTrashAsync, pane.CanEmptyTrash));
+        }
+        else if (!pane.IsArchive)
+        {
+            var label = pane.FileSystem.IsLocal ? L10n.T("移到回收站") : L10n.T("永久删除");
+            menu.Items.Add(MenuItem(label, () => pane.DeleteSelectionAsync(!pane.FileSystem.IsLocal),
+                pane.CanDelete));
+        }
+
+        if (settings.ContextMenuShowAdmin && pane.CanElevate)
+            AddAdminMenu(menu, pane);
+        if (pane.IsArchive)
+            AddArchiveMenu(menu, pane);
+
+        // Grouped tools.
+        var addedTools = false;
+        if (settings.ContextMenuShowCompress)
+        {
+            AddCompressMenu(menu, pane);
+            addedTools = true;
+        }
+        if (settings.ContextMenuShowTools)
+        {
+            AddToolsMenu(menu, pane);
+            addedTools = true;
+        }
+        if (settings.ContextMenuShowCompare)
+        {
+            AddCompareMenu(menu, pane);
+            addedTools = true;
+        }
+        if (settings.ContextMenuShowImageConvert)
+        {
+            menu.Items.Add(MenuItem(L10n.T("批量转换图片…"), pane.ConvertImagesAsync,
+                pane.CanConvertImages));
+            addedTools = true;
+        }
+        if (addedTools)
+            menu.Items.Add(new Separator());
+
+        // Terminals and custom commands.
+        var addedTerminal = false;
+        if (settings.ContextMenuShowTerminal)
+        {
+            addedTerminal |= AddTerminalMenuItems(menu, pane);
+            addedTerminal |= AddCustomCommandMenuItems(menu, pane);
+        }
+        if (addedTerminal)
+            menu.Items.Add(new Separator());
+
+        // Paths and properties.
+        menu.Items.Add(MenuItem(L10n.T("复制路径"), pane.CopyPathAsync, true));
+        menu.Items.Add(MenuItem(L10n.T("复制名称"), pane.CopyNameAsync, pane.HasSelection));
+        if (settings.ContextMenuShowProperties)
+        {
+            menu.Items.Add(MenuItem(L10n.T("批量权限…"), pane.BatchPermissionsAsync,
+                pane.CanBatchPermissions));
+            menu.Items.Add(MenuItem(L10n.T("属性"), pane.PropertiesAsync, true));
+        }
+        menu.Items.Add(new Separator());
+
+        // Create and view.
+        menu.Items.Add(MenuItem(L10n.T("新建文件夹"), pane.NewFolderAsync, pane.CanCreateFolder));
+        menu.Items.Add(MenuItem(L10n.T("新建空文件"), pane.NewFileAsync, pane.CanCreateFile));
+        menu.Items.Add(MenuItem(L10n.T("全选"), () =>
+        {
+            pane.RequestSelectAll();
+            return Task.CompletedTask;
+        }, pane.CanSelectAll));
+        menu.Items.Add(MenuItem(L10n.T("刷新"), pane.RefreshAsync, true));
+
+        host.ContextMenu = menu;
+        menu.Open(host);
+        return menu;
+    }
+
+    private void AddQuickActionRow(ContextMenu menu, PaneViewModel pane)
+    {
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*,*"),
+            MinWidth = 210,
+        };
+        var actions = new (string Icon, string Label, Func<Task> Action, bool Enabled)[]
+        {
+            ("IconCut", L10n.T("剪切"), () => pane.CopySelectionAsync(true), pane.CanCopy),
+            ("IconCopy", L10n.T("复制"), () => pane.CopySelectionAsync(false), pane.CanCopy),
+            ("IconPaste", L10n.T("粘贴"), pane.PasteAsync, pane.CanPasteNow),
+            ("IconRename", L10n.T("重命名"), pane.RenameAsync, pane.CanRename),
+            ("IconDelete", QuickDeleteLabel(pane), QuickDeleteAction(pane), pane.CanDelete),
+            ("IconSettings", L10n.T("属性"), pane.PropertiesAsync, true),
+        };
+
+        for (var index = 0; index < actions.Length; index++)
+        {
+            var action = actions[index].Action;
+            var enabled = actions[index].Enabled;
+            var button = new Button
+            {
+                Height = 34,
+                Padding = new Thickness(0),
+                IsEnabled = enabled,
+                Opacity = enabled ? 1 : 0.4,
+                Content = IconPath(actions[index].Icon, enabled),
+            };
+            button.Classes.Add("quickaction");
+            ToolTip.SetTip(button, actions[index].Label);
+            button.Click += (_, _) =>
+            {
+                menu.Close();
+                Run(_ => action());
+            };
+            Grid.SetColumn(button, index);
+            grid.Children.Add(button);
+        }
+
+        var row = new MenuItem
+        {
+            Header = grid,
+            Padding = new Thickness(4),
+            Focusable = false,
+        };
+        row.Classes.Add("quickactions");
+        menu.Items.Add(row);
+    }
+
+    private static Control? IconPath(string key, bool enabled)
+    {
+        if (Application.Current is not { } app || !app.TryFindResource(key, out var value) ||
+            value is not Geometry geometry)
+            return null;
+
+        return new Avalonia.Controls.Shapes.Path
+        {
+            Data = geometry,
+            Width = 15,
+            Height = 15,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Fill = ThemeService.Brush(enabled ? "TextPrimaryBrush" : "TextTertiaryBrush",
+                enabled ? "#D0D0D0" : "#808080"),
+        };
+    }
+
+    private static string QuickDeleteLabel(PaneViewModel pane)
+        => pane.IsTrash || !pane.FileSystem.IsLocal ? L10n.T("永久删除") : L10n.T("移到回收站");
+
+    private static Func<Task> QuickDeleteAction(PaneViewModel pane)
+        => pane.IsArchive
+            ? pane.DeleteArchiveSelectionAsync
+            : () => pane.DeleteSelectionAsync(pane.IsTrash || !pane.FileSystem.IsLocal);
+
+    private static void ConstrainMenu(ContextMenu menu, Control host, int heightPercent)
+    {
+        if (TopLevel.GetTopLevel(host) is not WindowBase window)
+            return;
+
+        var screens = window.Screens;
+        var screen = screens is null ? null : screens.ScreenFromWindow(window) ?? screens.Primary;
+        if (screen is null)
+            return;
+
+        // Screen.Bounds is already in the coordinate space used by layout, so
+        // do not divide by RenderScaling again. The user chooses how much of the
+        // screen height the menu may use.
+        var ratio = Math.Clamp(heightPercent, 20, 100) / 100d;
+        menu.MaxHeight = Math.Max(320, screen.Bounds.Height * ratio);
+    }
+
+    private void AddTagMenu(ContextMenu menu, PaneViewModel pane)
+    {
         var tagMenu = new MenuItem { Header = L10n.T("标签与颜色") };
         tagMenu.Items.Add(MenuItem(L10n.T("无颜色"), () =>
         {
@@ -1281,7 +1541,10 @@ public partial class PaneView : UserControl
             return Task.CompletedTask;
         }, pane.CanTag));
         menu.Items.Add(tagMenu);
+    }
 
+    private void AddLinkMenu(ContextMenu menu, PaneViewModel pane)
+    {
         var linkMenu = new MenuItem { Header = L10n.T("创建链接") };
         linkMenu.Items.Add(MenuItem(L10n.T("符号链接"), () => pane.CreateSymbolicLinkAsync(false),
             pane.CanCreateLink));
@@ -1290,91 +1553,86 @@ public partial class PaneView : UserControl
         linkMenu.Items.Add(MenuItem(L10n.T("硬链接"), pane.CreateHardLinkAsync,
             pane.CanCreateLink && pane.PrimarySelection is { IsDirectory: false }));
         menu.Items.Add(linkMenu);
-
-        if (pane.IsTrash)
-        {
-            menu.Items.Add(MenuItem(L10n.T("恢复"), pane.RestoreSelectionAsync, pane.CanRestore));
-            menu.Items.Add(MenuItem(L10n.T("永久删除"), () => pane.DeleteSelectionAsync(true), pane.CanDelete));
-            menu.Items.Add(new Separator());
-            menu.Items.Add(MenuItem(L10n.T("清空回收站"), pane.EmptyTrashAsync, pane.CanEmptyTrash));
-        }
-        else if (!pane.IsArchive)
-        {
-            var label = pane.FileSystem.IsLocal ? L10n.T("移到回收站") : L10n.T("永久删除");
-            menu.Items.Add(MenuItem(label, () => pane.DeleteSelectionAsync(!pane.FileSystem.IsLocal), pane.CanDelete));
-        }
-
-        if (pane.CanElevate)
-        {
-            var adminMenu = new MenuItem { Header = L10n.T("管理员操作") };
-            adminMenu.Items.Add(MenuItem(L10n.T("以管理员身份删除"), pane.DeleteElevatedAsync, true));
-            adminMenu.Items.Add(MenuItem(L10n.T("以管理员身份复制到…"),
-                () => pane.CopyElevatedAsync(false), true));
-            adminMenu.Items.Add(MenuItem(L10n.T("以管理员身份移动到…"),
-                () => pane.CopyElevatedAsync(true), true));
-            menu.Items.Add(adminMenu);
-        }
-
-        if (pane.IsArchive)
-        {
-            menu.Items.Add(new Separator());
-            menu.Items.Add(MenuItem(L10n.T("添加文件到压缩包…"), pane.AddFilesToArchiveAsync,
-                pane.CanAddToArchive));
-            menu.Items.Add(MenuItem(L10n.T("重命名压缩包内项目"), pane.RenameArchiveSelectionAsync,
-                pane.CanEditArchive && pane.SelectedCount == 1));
-            menu.Items.Add(MenuItem(L10n.T("从压缩包删除"), pane.DeleteArchiveSelectionAsync,
-                pane.CanEditArchive));
-        }
-
-        menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem(L10n.T("压缩为 ZIP"), () => pane.CompressAsync(false), pane.CanCompress));
-        menu.Items.Add(MenuItem(L10n.T("压缩为 tar.gz"), () => pane.CompressAsync(true), pane.CanCompress));
-        menu.Items.Add(MenuItem(L10n.T("压缩为 tar.zst"), pane.CompressZstdAsync, pane.CanCompress));
-        menu.Items.Add(MenuItem(L10n.T("压缩为 tar.xz"), pane.CompressXzAsync, pane.CanCompress));
-        menu.Items.Add(MenuItem(L10n.T("解压到此处"), pane.ExtractAsync, pane.CanExtract));
-        menu.Items.Add(MenuItem(L10n.T("解压到…"), pane.ExtractSelectionToAsync, pane.CanExtractTo));
-        menu.Items.Add(MenuItem(L10n.T("计算校验和"), pane.ChecksumAsync, pane.CanChecksum));
-        menu.Items.Add(MenuItem(L10n.T("计算文件夹大小"), pane.CalculateFolderSizesAsync,
-            pane.CanCalculateFolderSize));
-        var analysisMenu = new MenuItem { Header = L10n.T("分析工具") };
-        analysisMenu.Items.Add(MenuItem(L10n.T("磁盘占用分析"), pane.AnalyzeDiskUsageAsync, pane.CanAnalyze));
-        analysisMenu.Items.Add(MenuItem(L10n.T("查找重复文件"), pane.FindDuplicateFilesAsync, pane.CanAnalyze));
-        menu.Items.Add(analysisMenu);
-        menu.Items.Add(MenuItem(L10n.T("Git 状态"), pane.ShowGitStatusAsync, pane.CanShowGitStatus));
-        menu.Items.Add(MenuItem(L10n.T("比较选中文件"), pane.CompareSelectionAsync, pane.CanCompare));
-        menu.Items.Add(MenuItem(L10n.T("比较文件夹…"), pane.CompareFoldersAsync,
-            !pane.IsTrash && !pane.IsArchive));
-        menu.Items.Add(MenuItem(L10n.T("批量转换图片…"), pane.ConvertImagesAsync, pane.CanConvertImages));
-        menu.Items.Add(new Separator());
-        AddTerminalMenuItems(menu, pane);
-        AddCustomCommandMenuItems(menu, pane);
-        menu.Items.Add(MenuItem(L10n.T("复制路径"), pane.CopyPathAsync, true));
-        menu.Items.Add(MenuItem(L10n.T("复制名称"), pane.CopyNameAsync, pane.HasSelection));
-        menu.Items.Add(MenuItem(L10n.T("批量权限…"), pane.BatchPermissionsAsync, pane.CanBatchPermissions));
-        menu.Items.Add(MenuItem(L10n.T("属性"), pane.PropertiesAsync, true));
-        menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem(L10n.T("新建文件夹"), pane.NewFolderAsync, pane.CanCreateFolder));
-        menu.Items.Add(MenuItem(L10n.T("新建空文件"), pane.NewFileAsync, pane.CanCreateFile));
-        menu.Items.Add(MenuItem(L10n.T("全选"), () =>
-        {
-            pane.RequestSelectAll();
-            return Task.CompletedTask;
-        }, pane.CanSelectAll));
-        menu.Items.Add(MenuItem(L10n.T("刷新"), pane.RefreshAsync, true));
-
-        host.ContextMenu = menu;
-        menu.Open(host);
-        e.Handled = true;
     }
 
-    private void AddTerminalMenuItems(ContextMenu menu, PaneViewModel pane)
+    private void AddAdminMenu(ContextMenu menu, PaneViewModel pane)
     {
+        var adminMenu = new MenuItem { Header = L10n.T("管理员操作") };
+        adminMenu.Items.Add(MenuItem(L10n.T("以管理员身份删除"), pane.DeleteElevatedAsync, true));
+        adminMenu.Items.Add(MenuItem(L10n.T("以管理员身份复制到…"),
+            () => pane.CopyElevatedAsync(false), true));
+        adminMenu.Items.Add(MenuItem(L10n.T("以管理员身份移动到…"),
+            () => pane.CopyElevatedAsync(true), true));
+        menu.Items.Add(adminMenu);
+    }
+
+    private void AddArchiveMenu(ContextMenu menu, PaneViewModel pane)
+    {
+        var archiveMenu = new MenuItem { Header = L10n.T("压缩包操作") };
+        archiveMenu.Items.Add(MenuItem(L10n.T("添加文件到压缩包…"), pane.AddFilesToArchiveAsync,
+            pane.CanAddToArchive));
+        archiveMenu.Items.Add(MenuItem(L10n.T("重命名压缩包内项目"), pane.RenameArchiveSelectionAsync,
+            pane.CanEditArchive && pane.SelectedCount == 1));
+        archiveMenu.Items.Add(MenuItem(L10n.T("从压缩包删除"), pane.DeleteArchiveSelectionAsync,
+            pane.CanEditArchive));
+        menu.Items.Add(archiveMenu);
+    }
+
+    private void AddCompressMenu(ContextMenu menu, PaneViewModel pane)
+    {
+        var compressMenu = new MenuItem { Header = L10n.T("压缩与解压") };
+        compressMenu.Items.Add(MenuItem(L10n.T("压缩为 ZIP"), () => pane.CompressAsync(false),
+            pane.CanCompress));
+        compressMenu.Items.Add(MenuItem(L10n.T("压缩为 tar.gz"), () => pane.CompressAsync(true),
+            pane.CanCompress));
+        compressMenu.Items.Add(MenuItem(L10n.T("压缩为 tar.zst"), pane.CompressZstdAsync,
+            pane.CanCompress));
+        compressMenu.Items.Add(MenuItem(L10n.T("压缩为 tar.xz"), pane.CompressXzAsync,
+            pane.CanCompress));
+        compressMenu.Items.Add(MenuItem(L10n.T("压缩为 7z"), pane.Compress7zAsync,
+            pane.CanCompress));
+        compressMenu.Items.Add(new Separator());
+        compressMenu.Items.Add(MenuItem(L10n.T("解压到此处"), pane.ExtractAsync, pane.CanExtract));
+        compressMenu.Items.Add(MenuItem(L10n.T("解压到…"), pane.ExtractSelectionToAsync,
+            pane.CanExtractTo));
+        menu.Items.Add(compressMenu);
+    }
+
+    private void AddToolsMenu(ContextMenu menu, PaneViewModel pane)
+    {
+        var toolsMenu = new MenuItem { Header = L10n.T("工具") };
+        toolsMenu.Items.Add(MenuItem(L10n.T("计算校验和"), pane.ChecksumAsync, pane.CanChecksum));
+        toolsMenu.Items.Add(MenuItem(L10n.T("计算文件夹大小"), pane.CalculateFolderSizesAsync,
+            pane.CanCalculateFolderSize));
+        toolsMenu.Items.Add(MenuItem(L10n.T("磁盘占用分析"), pane.AnalyzeDiskUsageAsync,
+            pane.CanAnalyze));
+        toolsMenu.Items.Add(MenuItem(L10n.T("查找重复文件"), pane.FindDuplicateFilesAsync,
+            pane.CanAnalyze));
+        toolsMenu.Items.Add(MenuItem(L10n.T("Git 状态"), pane.ShowGitStatusAsync,
+            pane.CanShowGitStatus));
+        menu.Items.Add(toolsMenu);
+    }
+
+    private void AddCompareMenu(ContextMenu menu, PaneViewModel pane)
+    {
+        var compareMenu = new MenuItem { Header = L10n.T("比较") };
+        compareMenu.Items.Add(MenuItem(L10n.T("比较选中文件"), pane.CompareSelectionAsync,
+            pane.CanCompare));
+        compareMenu.Items.Add(MenuItem(L10n.T("比较文件夹…"), pane.CompareFoldersAsync,
+            !pane.IsTrash && !pane.IsArchive));
+        menu.Items.Add(compareMenu);
+    }
+
+    private bool AddTerminalMenuItems(ContextMenu menu, PaneViewModel pane)
+    {
+        var added = false;
         var contextTerminals = pane.ContextTerminals;
         var defaultTerminal = pane.DefaultContextTerminal;
         if (defaultTerminal is not null)
         {
             menu.Items.Add(MenuItem(L10n.Format("在 {0} 中打开", defaultTerminal.Name),
                 () => pane.OpenTerminalAsync(defaultTerminal.Id), pane.CanOpenTerminal));
+            added = true;
         }
 
         var alternates = contextTerminals
@@ -1396,20 +1654,24 @@ public partial class PaneView : UserControl
             }
 
             menu.Items.Add(submenu);
+            added = true;
         }
 
         if (pane.EnabledHerdr is not null)
         {
             menu.Items.Add(MenuItem(L10n.T("在 Herdr 中打开"),
                 pane.OpenInHerdrAsync, pane.CanOpenTerminal));
+            added = true;
         }
+
+        return added;
     }
 
-    private void AddCustomCommandMenuItems(ContextMenu menu, PaneViewModel pane)
+    private bool AddCustomCommandMenuItems(ContextMenu menu, PaneViewModel pane)
     {
         var commands = pane.ContextCustomCommands;
         if (commands.Count == 0)
-            return;
+            return false;
 
         var submenu = new MenuItem { Header = L10n.T("自定义命令") };
         foreach (var command in commands)
@@ -1425,6 +1687,7 @@ public partial class PaneView : UserControl
         }
 
         menu.Items.Add(submenu);
+        return true;
     }
 
     private static void AddColorItem(MenuItem menu, PaneViewModel pane, string label,

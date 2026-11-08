@@ -57,6 +57,12 @@ public partial class SettingsWindow : Window
             vm.SetDarkBackground(background);
     }
 
+    private void OnContextMenuHeightClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string percent })
+            vm.SetContextMenuHeightPercent(percent);
+    }
+
     private void OnThemeClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string theme })

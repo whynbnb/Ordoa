@@ -228,7 +228,8 @@
     <Setter Property="VerticalAlignment" Value="Stretch"/>
   </Style>
   <Style Selector="ContextMenu ScrollViewer">
-    <Setter Property="VerticalScrollBarVisibility" Value="Hidden"/>
+    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+    <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
   </Style>
   <Style Selector="MenuFlyoutPresenter">
     <Setter Property="Margin" Value="0,0,2,0"/>
@@ -244,8 +245,54 @@
     <Setter Property="CornerRadius" Value="6"/>
     <Setter Property="FontSize" Value="12.5"/>
   </Style>
+  <Style Selector="MenuItem.quickactions">
+    <Setter Property="Padding" Value="4"/>
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="MenuItem.quickactions /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="MenuItem.quickactions /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="Button.quickaction">
+    <Setter Property="Height" Value="34"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+  </Style>
+  <Style Selector="Button.quickaction:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+  </Style>
+  <Style Selector="Button.quickaction:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource PressedBrush}"/>
+  </Style>
+  <Style Selector="Button.quickaction:disabled">
+    <Setter Property="Opacity" Value="0.4"/>
+  </Style>
+  <Style Selector="Button.quickaction:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
   <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot">
     <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+  </Style>
+  <!-- The quick action row must not highlight as a whole; only the hovered
+       icon button should get a background. -->
+  <Style Selector="MenuItem.quickactions:pointerover /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="MenuItem.quickactions:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="MenuItem.quickactions:focus /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="MenuItem.quickactions:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="MenuItem.quickactions:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent"/>
   </Style>
   <Style Selector="MenuItem /template/ TextBlock#PART_Header">
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>

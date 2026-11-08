@@ -329,7 +329,7 @@
               <MenuItem Header="{loc:Tr 显示/隐藏标签列}" Click="OnToggleTagsColumnClick" />
               <MenuItem Header="{loc:Tr 新建文件夹}" Click="OnNewFolderClick" />
               <MenuItem Header="{loc:Tr 新建空文件}" Click="OnNewFileClick" />
-              <MenuItem Header="{loc:Tr 粘贴}" Click="OnPasteClick" />
+              <MenuItem Header="{loc:Tr 粘贴}" Click="OnPasteClick" IsEnabled="{Binding CanPasteNow}" />
               <MenuItem Header="{loc:Tr 复制到…}" Click="OnCopyToClick" />
               <MenuItem Header="{loc:Tr 移动到…}" Click="OnMoveToClick" />
               <MenuItem Header="{loc:Tr 粘贴为符号链接}" Click="OnPasteAsLinkClick" />

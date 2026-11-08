@@ -481,6 +481,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     public bool CanCreateFolder => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.CreateDirectory);
     public bool CanCreateFile => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Write);
     public bool CanPaste => !IsTrash && FileSystem.Capabilities.Has(FileSystemCapabilities.Write);
+    public bool CanPasteNow => CanPaste && _services.Clipboard.HasContent;
     public bool CanEditArchive => IsArchive && FileSystem is ArchiveFileSystem writable &&
                                   ArchiveEditService.CanWrite(writable.Format) && HasSelection;
     public bool CanAddToArchive => IsArchive && FileSystem is ArchiveFileSystem writable &&
@@ -1016,6 +1017,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCreateFolder));
         OnPropertyChanged(nameof(CanCreateFile));
         OnPropertyChanged(nameof(CanPaste));
+        OnPropertyChanged(nameof(CanPasteNow));
         OnPropertyChanged(nameof(CanDelete));
         OnPropertyChanged(nameof(CanRename));
         OnPropertyChanged(nameof(CanBatchRename));
@@ -3280,6 +3282,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanCreateFolder));
         OnPropertyChanged(nameof(CanCreateFile));
         OnPropertyChanged(nameof(CanPaste));
+        OnPropertyChanged(nameof(CanPasteNow));
         OnPropertyChanged(nameof(CanDelete));
         OnPropertyChanged(nameof(CanRename));
         OnPropertyChanged(nameof(CanBatchRename));
@@ -3573,6 +3576,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     private void OnClipboardChanged(object? sender, EventArgs e)
     {
         OnPropertyChanged(nameof(CanPaste));
+        OnPropertyChanged(nameof(CanPasteNow));
     }
 
     private string? ValidateNewName(string value)

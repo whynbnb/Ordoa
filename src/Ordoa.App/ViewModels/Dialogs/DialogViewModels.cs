@@ -806,6 +806,24 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _showGitRepositoryBadges = settings.ShowGitRepositoryBadges;
         _showGitSubmoduleBadges = settings.ShowGitSubmoduleBadges;
         _dimGitIgnored = settings.DimGitIgnored;
+        _useWindows11ContextMenu = settings.UseWindows11ContextMenu;
+        _contextMenuHeightPercent = settings.ContextMenuHeightPercent;
+        _contextMenuShowOpenWith = settings.ContextMenuShowOpenWith;
+        _contextMenuShowQuickPreview = settings.ContextMenuShowQuickPreview;
+        _contextMenuShowReveal = settings.ContextMenuShowReveal;
+        _contextMenuShowOpenIn = settings.ContextMenuShowOpenIn;
+        _contextMenuShowCopyTo = settings.ContextMenuShowCopyTo;
+        _contextMenuShowPasteLink = settings.ContextMenuShowPasteLink;
+        _contextMenuShowBatchRename = settings.ContextMenuShowBatchRename;
+        _contextMenuShowTags = settings.ContextMenuShowTags;
+        _contextMenuShowLinks = settings.ContextMenuShowLinks;
+        _contextMenuShowCompress = settings.ContextMenuShowCompress;
+        _contextMenuShowTools = settings.ContextMenuShowTools;
+        _contextMenuShowCompare = settings.ContextMenuShowCompare;
+        _contextMenuShowImageConvert = settings.ContextMenuShowImageConvert;
+        _contextMenuShowTerminal = settings.ContextMenuShowTerminal;
+        _contextMenuShowAdmin = settings.ContextMenuShowAdmin;
+        _contextMenuShowProperties = settings.ContextMenuShowProperties;
         _terminalMode = settings.TerminalMode;
         _manualTerminalName = settings.ManualTerminalName;
         _manualTerminalPath = settings.ManualTerminalPath;
@@ -848,6 +866,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             new SettingsCategoryViewModel { Title = L10n.T("系统与集成"), Icon = FileIconCatalog.Resource("IconSettings") },
             new SettingsCategoryViewModel { Title = L10n.T("快捷键"), Icon = FileIconCatalog.Resource("IconKeyboard") },
             new SettingsCategoryViewModel { Title = L10n.T("Git"), Icon = FileIconCatalog.Resource("IconCode") },
+            new SettingsCategoryViewModel { Title = L10n.T("右键菜单"), Icon = FileIconCatalog.Resource("IconDots") },
         ];
 
         foreach (var definition in ShortcutService.Definitions)
@@ -1024,6 +1043,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public bool ShowSystem => SelectedCategoryIndex == 8;
     public bool ShowShortcuts => SelectedCategoryIndex == 9;
     public bool ShowGit => SelectedCategoryIndex == 10;
+    public bool ShowContextMenu => SelectedCategoryIndex == 11;
 
     partial void OnSelectedCategoryIndexChanged(int value)
     {
@@ -1044,6 +1064,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowSystem));
         OnPropertyChanged(nameof(ShowShortcuts));
         OnPropertyChanged(nameof(ShowGit));
+        OnPropertyChanged(nameof(ShowContextMenu));
     }
 
     [ObservableProperty]
@@ -1225,6 +1246,60 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _showGitFileBadges;
+
+    [ObservableProperty]
+    private bool _useWindows11ContextMenu;
+
+    [ObservableProperty]
+    private int _contextMenuHeightPercent;
+
+    [ObservableProperty]
+    private bool _contextMenuShowOpenWith;
+
+    [ObservableProperty]
+    private bool _contextMenuShowQuickPreview;
+
+    [ObservableProperty]
+    private bool _contextMenuShowReveal;
+
+    [ObservableProperty]
+    private bool _contextMenuShowOpenIn;
+
+    [ObservableProperty]
+    private bool _contextMenuShowCopyTo;
+
+    [ObservableProperty]
+    private bool _contextMenuShowPasteLink;
+
+    [ObservableProperty]
+    private bool _contextMenuShowBatchRename;
+
+    [ObservableProperty]
+    private bool _contextMenuShowTags;
+
+    [ObservableProperty]
+    private bool _contextMenuShowLinks;
+
+    [ObservableProperty]
+    private bool _contextMenuShowCompress;
+
+    [ObservableProperty]
+    private bool _contextMenuShowTools;
+
+    [ObservableProperty]
+    private bool _contextMenuShowCompare;
+
+    [ObservableProperty]
+    private bool _contextMenuShowImageConvert;
+
+    [ObservableProperty]
+    private bool _contextMenuShowTerminal;
+
+    [ObservableProperty]
+    private bool _contextMenuShowAdmin;
+
+    [ObservableProperty]
+    private bool _contextMenuShowProperties;
 
     [ObservableProperty]
     private bool _showGitCleanCheck;
@@ -1548,6 +1623,24 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.ShowGitRepositoryBadges = ShowGitRepositoryBadges;
         settings.ShowGitSubmoduleBadges = ShowGitSubmoduleBadges;
         settings.DimGitIgnored = DimGitIgnored;
+        settings.UseWindows11ContextMenu = UseWindows11ContextMenu;
+        settings.ContextMenuHeightPercent = ContextMenuHeightPercent;
+        settings.ContextMenuShowOpenWith = ContextMenuShowOpenWith;
+        settings.ContextMenuShowQuickPreview = ContextMenuShowQuickPreview;
+        settings.ContextMenuShowReveal = ContextMenuShowReveal;
+        settings.ContextMenuShowOpenIn = ContextMenuShowOpenIn;
+        settings.ContextMenuShowCopyTo = ContextMenuShowCopyTo;
+        settings.ContextMenuShowPasteLink = ContextMenuShowPasteLink;
+        settings.ContextMenuShowBatchRename = ContextMenuShowBatchRename;
+        settings.ContextMenuShowTags = ContextMenuShowTags;
+        settings.ContextMenuShowLinks = ContextMenuShowLinks;
+        settings.ContextMenuShowCompress = ContextMenuShowCompress;
+        settings.ContextMenuShowTools = ContextMenuShowTools;
+        settings.ContextMenuShowCompare = ContextMenuShowCompare;
+        settings.ContextMenuShowImageConvert = ContextMenuShowImageConvert;
+        settings.ContextMenuShowTerminal = ContextMenuShowTerminal;
+        settings.ContextMenuShowAdmin = ContextMenuShowAdmin;
+        settings.ContextMenuShowProperties = ContextMenuShowProperties;
         settings.TerminalMode = TerminalMode;
         settings.ManualTerminalName = (ManualTerminalName ?? string.Empty).Trim();
         settings.ManualTerminalPath = (ManualTerminalPath ?? string.Empty).Trim();
@@ -1666,6 +1759,24 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         ShowGitRepositoryBadges = defaults.ShowGitRepositoryBadges;
         ShowGitSubmoduleBadges = defaults.ShowGitSubmoduleBadges;
         DimGitIgnored = defaults.DimGitIgnored;
+        UseWindows11ContextMenu = defaults.UseWindows11ContextMenu;
+        ContextMenuHeightPercent = defaults.ContextMenuHeightPercent;
+        ContextMenuShowOpenWith = defaults.ContextMenuShowOpenWith;
+        ContextMenuShowQuickPreview = defaults.ContextMenuShowQuickPreview;
+        ContextMenuShowReveal = defaults.ContextMenuShowReveal;
+        ContextMenuShowOpenIn = defaults.ContextMenuShowOpenIn;
+        ContextMenuShowCopyTo = defaults.ContextMenuShowCopyTo;
+        ContextMenuShowPasteLink = defaults.ContextMenuShowPasteLink;
+        ContextMenuShowBatchRename = defaults.ContextMenuShowBatchRename;
+        ContextMenuShowTags = defaults.ContextMenuShowTags;
+        ContextMenuShowLinks = defaults.ContextMenuShowLinks;
+        ContextMenuShowCompress = defaults.ContextMenuShowCompress;
+        ContextMenuShowTools = defaults.ContextMenuShowTools;
+        ContextMenuShowCompare = defaults.ContextMenuShowCompare;
+        ContextMenuShowImageConvert = defaults.ContextMenuShowImageConvert;
+        ContextMenuShowTerminal = defaults.ContextMenuShowTerminal;
+        ContextMenuShowAdmin = defaults.ContextMenuShowAdmin;
+        ContextMenuShowProperties = defaults.ContextMenuShowProperties;
         TerminalMode = defaults.TerminalMode;
         ManualTerminalName = defaults.ManualTerminalName;
         ManualTerminalPath = defaults.ManualTerminalPath;
@@ -1856,6 +1967,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     {
         if (Enum.TryParse<DarkBackground>(value, true, out var background))
             DarkBackground = background;
+    }
+
+    public void SetContextMenuHeightPercent(string value)
+    {
+        if (int.TryParse(value, out var percent) && percent is 40 or 60 or 80)
+            ContextMenuHeightPercent = percent;
     }
 
     public void SetWindowButtonMode(string value)

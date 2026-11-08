@@ -191,6 +191,7 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 
 - Light, dark, follow-system and high-contrast themes; five accent colors (jade, indigo, amber, rose, and violet).
 - Seven neutral palettes with dark and pale light variants: Graphite, Midnight, Slate, Ocean, Forest, Warm and Black.
+- Context menu customization: open-with, quick look, reveal, copy/move, tags, links, archive, tools, compare, terminal and other groups can be hidden from Settings → Context menu. Compression/extraction, checksum/analysis and comparison actions are grouped into submenus, popup height is configurable at 40%, 60% (default) or 80% of the screen, and an optional Windows 11 style quick action row is on by default on Windows and can be enabled on other platforms.
 - Compact mode; adjustable sidebar width; window size, sidebar state, sorting, and view preferences are persisted.
 - Command palette (`Ctrl+Shift+P`) covering all major actions.
 - Transfer panel, lightweight toasts, and an immersive custom title bar by default; tiling compositors such as niri, Sway, and Hyprland hide the custom window buttons automatically, and Settings can force them visible or restore the system title bar.
