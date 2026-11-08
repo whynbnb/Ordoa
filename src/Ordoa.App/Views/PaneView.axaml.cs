@@ -1304,6 +1304,17 @@ public partial class PaneView : UserControl
             menu.Items.Add(MenuItem(label, () => pane.DeleteSelectionAsync(!pane.FileSystem.IsLocal), pane.CanDelete));
         }
 
+        if (pane.CanElevate)
+        {
+            var adminMenu = new MenuItem { Header = L10n.T("管理员操作") };
+            adminMenu.Items.Add(MenuItem(L10n.T("以管理员身份删除"), pane.DeleteElevatedAsync, true));
+            adminMenu.Items.Add(MenuItem(L10n.T("以管理员身份复制到…"),
+                () => pane.CopyElevatedAsync(false), true));
+            adminMenu.Items.Add(MenuItem(L10n.T("以管理员身份移动到…"),
+                () => pane.CopyElevatedAsync(true), true));
+            menu.Items.Add(adminMenu);
+        }
+
         if (pane.IsArchive)
         {
             menu.Items.Add(new Separator());

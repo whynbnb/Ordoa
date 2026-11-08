@@ -197,6 +197,8 @@ public sealed class AppSettings
     public bool WindowsShellIntegrationEnabled { get; set; }
     /// <summary>Install a Finder Quick Action for Ordoa on macOS. Intrusive and off by default.</summary>
     public bool MacFinderServiceEnabled { get; set; }
+    /// <summary>Show administrator file operations in the context menu. Off by default.</summary>
+    public bool EnableElevatedOperations { get; set; }
     /// <summary>Enable the optional local search index. Disabled by default.</summary>
     public bool SearchIndexEnabled { get; set; }
     public SearchIndexMode SearchIndexMode { get; set; } = SearchIndexMode.Whitelist;

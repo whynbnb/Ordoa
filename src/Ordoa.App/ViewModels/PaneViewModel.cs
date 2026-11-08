@@ -1457,6 +1457,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanConvertImages));
         OnPropertyChanged(nameof(CanBatchPermissions));
         OnPropertyChanged(nameof(CanReveal));
+        OnPropertyChanged(nameof(CanElevate));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -1884,7 +1885,63 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
     }
 
     public bool CanReveal => FileSystem.IsLocal && HasSelection && _services.Shell.RevealSupported;
+    public bool CanElevate => FileSystem.IsLocal && !IsTrash && !IsArchive && HasSelection &&
+                              _services.Settings.Current.EnableElevatedOperations &&
+                              _services.Elevated.IsAvailable;
     public string RevealLabel => L10n.T(_services.Shell.RevealLabel);
+
+    public async Task DeleteElevatedAsync()
+    {
+        if (!CanElevate)
+            return;
+
+        var paths = _selected.Where(item => item.Entry.Path.Length > 0)
+            .Select(item => item.Entry.Path).ToList();
+        if (paths.Count == 0)
+            return;
+
+        var confirmed = await _services.Dialogs.ConfirmAsync(
+            L10n.T("以管理员身份删除？"),
+            L10n.Format("将使用管理员权限永久删除 {0} 个项目，此操作无法撤销。", paths.Count),
+            L10n.T("删除"), destructive: true).ConfigureAwait(true);
+        if (!confirmed)
+            return;
+
+        var result = await _services.Elevated.DeleteAsync(paths).ConfigureAwait(true);
+        await RefreshAsync().ConfigureAwait(true);
+        Toast(result.Success ? L10n.T("管理员操作完成") : L10n.T("管理员操作失败"),
+            result.Message, !result.Success);
+    }
+
+    public async Task CopyElevatedAsync(bool move)
+    {
+        if (!CanElevate)
+            return;
+
+        var destination = await _services.Dialogs.PickFolderAsync(
+            L10n.T(move ? "以管理员身份移动到文件夹" : "以管理员身份复制到文件夹"),
+            CurrentPath).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(destination))
+            return;
+
+        var paths = _selected.Where(item => item.Entry.Path.Length > 0)
+            .Select(item => item.Entry.Path).ToList();
+        if (paths.Count == 0)
+            return;
+
+        var confirmed = await _services.Dialogs.ConfirmAsync(
+            L10n.T("以管理员身份继续？"),
+            L10n.Format("将使用管理员权限{0} {1} 个项目到 {2}。",
+                move ? L10n.T("移动") : L10n.T("复制"), paths.Count, destination),
+            move ? L10n.T("移动") : L10n.T("复制"), destructive: move).ConfigureAwait(true);
+        if (!confirmed)
+            return;
+
+        var result = await _services.Elevated.CopyAsync(paths, destination, move).ConfigureAwait(true);
+        await RefreshAsync().ConfigureAwait(true);
+        Toast(result.Success ? L10n.T("管理员操作完成") : L10n.T("管理员操作失败"),
+            result.Message, !result.Success);
+    }
 
     public async Task RevealSelectionAsync()
     {
@@ -3449,6 +3506,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         }
 
         RefreshColumnLayout();
+        OnPropertyChanged(nameof(CanElevate));
 
         if (settings.GridThumbnailSize != _gridThumbnailSize)
         {

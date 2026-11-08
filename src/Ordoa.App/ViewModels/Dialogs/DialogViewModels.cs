@@ -631,6 +631,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _searchIndexExcludesText = string.Join(Environment.NewLine, settings.SearchIndexExcludes);
         _windowsShellIntegrationEnabled = settings.WindowsShellIntegrationEnabled;
         _macFinderServiceEnabled = settings.MacFinderServiceEnabled;
+        _enableElevatedOperations = settings.EnableElevatedOperations;
         _transferConcurrency = settings.TransferConcurrency;
         _transferSpeedLimit = settings.TransferSpeedLimitMb;
         _copyVerificationIndex = (int)settings.CopyVerification;
@@ -1160,6 +1161,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private string _platformIntegrationStatus = string.Empty;
 
     [ObservableProperty]
+    private bool _enableElevatedOperations;
+
+    [ObservableProperty]
     private bool _isApplyingPlatformIntegration;
 
     public IReadOnlyList<string> FolderOpenModes { get; }
@@ -1174,6 +1178,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public bool IsWindows => OperatingSystem.IsWindows();
 
     public bool IsPlatformIntegrationSupported => IsMacOS || IsWindows;
+    public bool IsElevatedOperationsSupported => IsMacOS || IsWindows || IsLinux;
 
     public bool IsLinux => OperatingSystem.IsLinux();
 
@@ -1360,6 +1365,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.SearchIndexExcludes = SplitIndexLines(SearchIndexExcludesText);
         settings.WindowsShellIntegrationEnabled = WindowsShellIntegrationEnabled;
         settings.MacFinderServiceEnabled = MacFinderServiceEnabled;
+        settings.EnableElevatedOperations = EnableElevatedOperations;
         settings.TransferConcurrency = Math.Clamp((int)TransferConcurrency, 1, 4);
         settings.TransferSpeedLimitMb = Math.Clamp((int)TransferSpeedLimit, 0, 100_000);
         settings.CopyVerification = (CopyVerificationMode)Math.Clamp(CopyVerificationIndex, 0, 2);
@@ -1480,6 +1486,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         SearchIndexExcludesText = string.Join(Environment.NewLine, defaults.SearchIndexExcludes);
         WindowsShellIntegrationEnabled = defaults.WindowsShellIntegrationEnabled;
         MacFinderServiceEnabled = defaults.MacFinderServiceEnabled;
+        EnableElevatedOperations = defaults.EnableElevatedOperations;
         TransferConcurrency = defaults.TransferConcurrency;
         TransferSpeedLimit = defaults.TransferSpeedLimitMb;
         CopyVerificationIndex = (int)defaults.CopyVerification;

@@ -21,6 +21,7 @@ public sealed class AppServices : IAsyncDisposable
         Shortcuts = new ShortcutService(Settings);
         SearchIndex = new SearchIndexService();
         PlatformIntegration = new PlatformIntegrationService();
+        Elevated = new ElevatedFileService();
         ThemeService.Apply(Settings.Current);
 
         Trash = new TrashService();
@@ -66,6 +67,7 @@ public sealed class AppServices : IAsyncDisposable
     public SearchService Search { get; }
     public SearchIndexService SearchIndex { get; }
     public PlatformIntegrationService PlatformIntegration { get; }
+    public ElevatedFileService Elevated { get; }
     public RecentService Recent { get; }
     public BookmarkService Bookmarks { get; }
     public SessionService Session { get; }

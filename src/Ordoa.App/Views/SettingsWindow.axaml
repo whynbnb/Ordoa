@@ -949,6 +949,18 @@
               </Grid>
             </StackPanel>
 
+            <Border Classes="divider" IsVisible="{Binding IsElevatedOperationsSupported}" />
+
+            <TextBlock Text="{loc:Tr 管理员操作}" Classes="section"
+                       IsVisible="{Binding IsElevatedOperationsSupported}" />
+            <StackPanel Spacing="7" IsVisible="{Binding IsElevatedOperationsSupported}">
+              <CheckBox Content="{loc:Tr 在右键菜单中显示管理员操作（默认关闭）}"
+                        IsChecked="{Binding EnableElevatedOperations, Mode=TwoWay}" />
+              <TextBlock Classes="fieldhint"
+                         Text="{loc:Tr 操作会通过 pkexec、osascript 或 Windows UAC 提权执行；每次都会要求系统确认。}"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+
             <Border Classes="divider" IsVisible="{Binding IsLinux}" />
 
             <TextBlock Text="{loc:Tr 打开方式}" Classes="section" IsVisible="{Binding IsLinux}" />

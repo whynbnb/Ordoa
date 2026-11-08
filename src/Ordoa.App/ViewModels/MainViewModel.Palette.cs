@@ -94,6 +94,12 @@ public sealed partial class MainViewModel
         Add(L10n.T("重命名"), L10n.T("重命名选中的项目"), _services.Shortcuts.GetGesture("rename"), "IconRename", () => PaneAction(p => p.RenameAsync()));
         Add(L10n.T("批量重命名"), L10n.T("使用查找替换、序号和日期变量批量修改名称"), _services.Shortcuts.GetGesture("batchRename"), "IconRename", () => PaneAction(p => p.BatchRenameAsync()));
         Add(L10n.T("移到回收站"), L10n.T("删除选中的项目到回收站"), _services.Shortcuts.GetGesture("delete"), "IconTrash", () => PaneAction(p => p.DeleteSelectionAsync(false)));
+        Add(L10n.T("以管理员身份删除"), L10n.T("使用管理员权限永久删除选中项目"), null, "IconDelete",
+            () => PaneAction(p => p.DeleteElevatedAsync()));
+        Add(L10n.T("以管理员身份复制到…"), L10n.T("选择目标文件夹并以管理员权限复制"), null, "IconCopy",
+            () => PaneAction(p => p.CopyElevatedAsync(false)));
+        Add(L10n.T("以管理员身份移动到…"), L10n.T("选择目标文件夹并以管理员权限移动"), null, "IconCut",
+            () => PaneAction(p => p.CopyElevatedAsync(true)));
         Add(L10n.T("永久删除"), L10n.T("永久删除选中的项目"), _services.Shortcuts.GetGesture("permanentDelete"), "IconDelete", () => PaneAction(p => p.DeleteSelectionAsync(true)));
         Add(L10n.T("复制"), L10n.T("复制选中的项目"), _services.Shortcuts.GetGesture("copy"), "IconCopy", () => PaneAction(p => p.CopySelectionAsync(false)));
         Add(L10n.T("剪切"), L10n.T("剪切选中的项目"), _services.Shortcuts.GetGesture("cut"), "IconCut", () => PaneAction(p => p.CopySelectionAsync(true)));
