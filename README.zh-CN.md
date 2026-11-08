@@ -126,6 +126,7 @@
 - 撤销 / 重做：会话级历史，覆盖重命名、移动、移到回收站、新建和复制；一次批量操作合并为一条记录。撤销前检查目标是否被占用或修改，冲突时提示而不会强行覆盖。
 - 链接：右键可创建符号链接、相对符号链接或硬链接；硬链接仅适用于文件。
 - 属性窗口可查看扩展属性和 POSIX ACL，并使用 `chown` 修改所有者和用户组；Linux 下可直接编辑扩展属性和 ACL 文本，macOS 通过 `xattr` 读取；后者通常需要管理员权限。
+- 可选管理员操作：Linux 使用 pkexec、macOS 使用 osascript、Windows 使用 UAC 执行删除、复制和移动；默认关闭，每次都会要求系统确认。
 - 本地复制会尽力保留扩展属性；权限和修改时间沿用原有处理。
 - 撤销范围可设置为跟随系统、完整（包括复制）、仅结构操作或关闭；Windows / macOS 默认完整撤销，Linux 默认只撤销重命名、移动、回收站和新建。
 - 批量重命名：查找替换、正则捕获组（`$1`、`${name}`）、序号、大小写、扩展名与日期变量；实时预览并检测非法名称、重名和已有文件冲突，支持本地与远程文件系统。
@@ -141,9 +142,9 @@
 - 撤销历史面板显示可撤销与可重做的步骤及时间，并可直接执行撤销或重做。
 - 冲突处理：替换、跳过、保留两者（自动改名）、对全部应用。
 - 回收站：Linux 完整实现 freedesktop.org Trash 规范（home trash 与 `.Trash-$uid` / `.Trash/$uid`），支持恢复、永久删除、清空；macOS 使用 `~/.Trash` 并保留恢复信息；Windows 使用系统回收站。
-- 压缩：ZIP、tar、tar.gz、7z；7z 支持压缩级别、分卷大小和可选密码/头部加密（设置 → 传输 → 压缩），解压时校验路径，拒绝 zip-slip 与压缩包内链接。
+- 压缩：ZIP、tar、tar.gz、tar.zst、tar.xz、7z；7z 支持压缩级别、分卷大小和可选密码/头部加密；zstd/xz 使用可选的系统命令行工具。解压时校验路径，拒绝 zip-slip 与压缩包内链接。
 - 旧 ZIP 文件名编码会自动尝试 UTF-8、GBK、Shift-JIS、CP437，并可在设置中手动覆盖。
-- 支持从 `~/.ssh/config` 导入具体 Host 别名、HostName、User、Port、IdentityFile 和 ProxyJump 元数据到 SFTP 连接对话框；通配符和 Match 块会被忽略。ProxyJump 目前只展示，SFTP 连接器尚未使用。
+- 支持从 `~/.ssh/config` 导入具体 Host 别名、HostName、User、Port、IdentityFile 和 ProxyJump；支持 Include glob 和简单 Match 块。复杂的 exec/localnetwork 条件会被有意忽略。
 - 密码优先保存到系统密钥环：Linux libsecret、macOS Keychain、Windows Credential Manager；0600 JSON 文件仅作为回退。
 - 校验和：MD5、SHA-1、SHA-256、SHA-512，支持多文件批量计算与复制；可对照 GNU/BSD 校验文件，并可在不关闭对话框的情况下切换算法。
 - 属性：类型、路径、大小、时间、MIME、Unix 权限（rwx 与八进制）、所有者/组（本地与远程）、符号链接目标、回收站原始位置、文件夹内容统计。
@@ -175,19 +176,25 @@
 | SFTP | SSH.NET | 密码、私钥（含口令）、SSH Agent 认证；known_hosts 校验与 TOFU |
 | SMB 2/3 | SMBLibrary | 列出共享、浏览、读写、重命名、删除；固定 TCP 445 |
 | WebDAV | HttpClient | PROPFIND / GET / PUT / MKCOL / DELETE / MOVE / COPY，Basic 认证 |
+| S3 / 兼容对象存储 | 内置 SigV4 客户端 | AWS S3、MinIO、Cloudflare R2、B2 兼容端点；路径风格或虚拟主机 URL；列出、读取、上传、复制、移动、删除 |
 
 - 连接管理器：保存连接、初始路径、密码/私钥口令保存策略；支持密码、私钥和 SSH Agent 认证。连接失败会保留为可编辑的失败项；设置中可隐藏、复制或删除已保存的连接。
-- 远程会话复用；地址栏支持 `sftp://`、`ftp://`、`ftps://`、`smb://`、`webdav://`、`https://` 等 URL。
+- 远程会话复用；地址栏支持 `sftp://`、`ftp://`、`ftps://`、`smb://`、`webdav://`、`https://`、`s3://` 等 URL。
+- 导入 `~/.ssh/config` 时展开 `Include` glob，应用 host/originalhost/user `Match` 块，并读取 HostName、User、Port、IdentityFile 和 ProxyJump。
+- SFTP ProxyJump 支持单级和多级 SSH 端口转发；跳板机同样会校验 known_hosts。
+- 局域网发现使用原生 mDNS 查询和 WS-Discovery，可直接填入 SFTP、SMB、FTP 和 WebDAV 主机。
 - 远程↔本地、远程↔远程复制/移动通过统一的流式引擎完成。
 - 连接测试（对话框内）与友好的错误提示。
 
 ### 界面与主题
 
-- 浅色 / 深色 / 跟随系统；5 种强调色（翡翠、靛蓝、琥珀、玫瑰、紫罗兰）。
+- 浅色 / 深色 / 跟随系统 / 高对比度；5 种强调色（翡翠、靛蓝、琥珀、玫瑰、紫罗兰）。
+- 7 套深色中性背景：石墨、午夜蓝、冷灰、深海、森林、暖棕、纯黑。
 - 紧凑模式；侧栏宽度可调；窗口尺寸、侧栏状态、排序与视图持久化。
 - 命令面板（`Ctrl+Shift+P`）覆盖所有主要操作。
 - 传输面板、轻量 Toast、默认沉浸式自绘标题栏；niri、Sway、Hyprland 等平铺合成器会自动隐藏自绘窗口按钮，可在设置中强制显示或恢复系统标题栏。
-- 中文 / English 界面；设置中可切换语言或跟随系统（中文系统默认中文，其余默认英文）。
+- 中文 / English / 日本語 / 한국어 / Deutsch / Français / Español 界面；设置中可切换或跟随系统，未翻译条目回退到英文。
+- 键盘焦点环，文件列表、搜索、路径、预览和连接字段提供无障碍名称与屏幕阅读器元数据。
 - 说明性提示默认折叠为信息图标，悬停查看完整内容；可在设置 → 外观中关闭折叠，恢复为完整文字。
 - 关于窗口显示与 git tag 对齐的两位版本号、6 位提交号，以及 AOT / 运行时信息。
 - 图标使用内嵌矢量路径，无图标字体依赖。
@@ -488,6 +495,11 @@ tests/Ordoa.Core.Tests
 - 文件夹同步会复制缺失或较新的文件并创建目录，但不会删除目标中多出的项目，因此不是破坏性的镜像模式。
 - 传输日志会在重启后恢复未完成的复制/移动队列，但已部分写入的文件会从头重新复制，而不是按字节偏移续传。
 - 默认文件管理器注册和 `org.freedesktop.FileManager1` 目前仅支持 Linux。Windows/macOS 提供可选的资源管理器/Finder 右键操作，但不会修改系统默认文件管理器。
+- S3 使用单次 PUT，尚未实现分片上传、Bucket 策略、版本控制、对象 ACL 或服务端加密配置。
+- 局域网发现是尽力而为：mDNS/WS-Discovery 可能被防火墙、容器网络或 5353 端口占用阻断。
+- ProxyJump 每一跳复用目标连接的密码/私钥/Agent 凭据；暂不支持逐跳凭据和高级 Match exec 规则。
+- 管理员操作是同步外部命令，不显示传输进度，适合偶尔修复权限，不适合批量传输。
+- 新增语言文件覆盖常用界面；较少使用的字符串在翻译前回退到英文。
 - 撤销历史仅在当前会话中保留，退出 Ordoa 后清空。永久删除、清空回收站、覆盖已有目标的复制/移动，以及未纳入撤销范围的操作不可撤销，并会清空历史，避免 `Ctrl+Z` 误撤销更早的步骤。
 - 未实现系统级挂载。
 - Linux 优先使用原生 Wayland 后端（Avalonia 12.1，实验性）；没有可用合成器时自动回退 X11/XWayland。可设置 `ORDOA_NO_WAYLAND=1` 强制使用 X11。Wayland 下 KDE 全局菜单、窗口图标、背景模糊等能力暂不可用。

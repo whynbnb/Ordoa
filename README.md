@@ -126,6 +126,7 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Undo/redo: session-level history covering rename, move, move-to-trash, create, and copy; a batch operation is merged into one entry. Before undoing, Ordoa checks whether targets are occupied or modified and reports conflicts instead of overwriting.
 - Links: create symbolic links, relative symbolic links, or hard links from the context menu; hard links apply to files only.
 - The Properties window can show extended attributes and POSIX ACLs and change owner/group with `chown`; on Linux, extended attributes and ACL text are editable directly, while macOS attributes are read through `xattr`. The latter usually requires administrator privileges.
+- Optional administrator operations: delete, copy and move using pkexec on Linux, osascript on macOS, or Windows UAC. They are off by default and always require a system confirmation prompt.
 - Local copies preserve extended attributes where possible; permissions and modification times follow the existing handling.
 - Undo scope can be system-following, full (including copies), structural operations only, or disabled; Windows/macOS default to full undo, while Linux defaults to renaming, moving, trash, and creation only.
 - Batch rename: find/replace, regex capture groups (`$1`, `${name}`), numbering, case conversion, extension and date variables; live preview checks illegal names, duplicates, and existing-file conflicts, and works on local and remote filesystems.
@@ -141,9 +142,9 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - The undo history panel shows undoable and redoable steps with timestamps and can perform undo/redo directly.
 - Conflict handling: replace, skip, keep both (auto-rename), and apply to all.
 - Trash: Linux fully implements the freedesktop.org Trash specification (home trash and `.Trash-$uid` / `.Trash/$uid`) with restore, permanent delete, and empty; macOS uses `~/.Trash` and keeps restore information; Windows uses the system Recycle Bin.
-- Compression: ZIP, tar, tar.gz, and 7z; 7z supports compression level, split size, and optional password/header encryption (Settings → Transfer → Compression); extraction validates paths and rejects zip-slip and archive links.
+- Compression: ZIP, tar, tar.gz, tar.zst, tar.xz, and 7z; 7z supports compression level, split size, and optional password/header encryption; zstd/xz use the optional system command-line tools. Extraction validates paths and rejects zip-slip and archive links.
 - Legacy ZIP filename encodings are detected automatically (UTF-8, GBK, Shift-JIS, CP437) and can be overridden in Settings for archives written without the UTF-8 flag.
-- `~/.ssh/config` import reads concrete Host aliases, HostName, User, Port, IdentityFile and ProxyJump metadata into the SFTP connection dialog; wildcard and Match blocks are ignored. ProxyJump is surfaced for reference but is not yet used by the SFTP connector.
+- SSH config import reads concrete Host aliases, HostName, User, Port, IdentityFile and ProxyJump; Include globs and simple Match blocks are supported. Complex exec/localnetwork conditions are intentionally ignored.
 - Passwords prefer the desktop keyring: libsecret on Linux, Keychain on macOS, and Windows Credential Manager on Windows; the 0600 JSON file remains only a fallback.
 - Checksums: MD5, SHA-1, SHA-256, and SHA-512 with batch calculation and copy support; verify against GNU/BSD checksum files and switch algorithms without closing the dialog.
 - Properties: type, path, size, timestamps, MIME type, Unix permissions (rwx and octal), owner/group (local and remote), symlink target, trash original location, and folder content statistics.
@@ -175,19 +176,25 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 | SFTP | SSH.NET | Password, private key (with passphrase), and SSH Agent authentication; known_hosts validation and TOFU |
 | SMB 2/3 | SMBLibrary | List shares, browse, read/write, rename, and delete; fixed TCP port 445 |
 | WebDAV | HttpClient | PROPFIND / GET / PUT / MKCOL / DELETE / MOVE / COPY with Basic authentication |
+| S3 / S3-compatible | Built-in SigV4 client | AWS S3, MinIO, Cloudflare R2 and B2-compatible endpoints; path-style or virtual-host URLs; list, read, upload, copy, move and delete |
 
 - Connection manager: save connections, initial paths, and password/private-key passphrase storage policies; supports password, private key, and SSH Agent authentication. Failed connections remain editable; saved connections can be hidden, duplicated, or deleted in Settings.
-- Remote session reuse; the address bar accepts `sftp://`, `ftp://`, `ftps://`, `smb://`, `webdav://`, `https://`, and similar URLs.
+- Remote session reuse; the address bar accepts `sftp://`, `ftp://`, `ftps://`, `smb://`, `webdav://`, `https://`, `s3://`, and similar URLs.
+- `~/.ssh/config` import expands `Include` globs, applies host/originalhost/user `Match` blocks, and reads HostName, User, Port, IdentityFile and ProxyJump.
+- SFTP ProxyJump supports single and multi-hop SSH port forwarding; jump hosts are checked against known_hosts.
+- Local network discovery uses native mDNS queries plus WS-Discovery and can fill in SFTP, SMB, FTP and WebDAV hosts without typing addresses.
 - Remote-to-local and remote-to-remote copies/moves use the same streaming engine.
 - In-dialog connection tests and friendly error messages.
 
 ### Interface and themes
 
-- Light, dark, and follow-system themes; five accent colors (jade, indigo, amber, rose, and violet).
+- Light, dark, follow-system and high-contrast themes; five accent colors (jade, indigo, amber, rose, and violet).
+- Seven dark neutral palettes: Graphite, Midnight, Slate, Ocean, Forest, Warm and Black.
 - Compact mode; adjustable sidebar width; window size, sidebar state, sorting, and view preferences are persisted.
 - Command palette (`Ctrl+Shift+P`) covering all major actions.
 - Transfer panel, lightweight toasts, and an immersive custom title bar by default; tiling compositors such as niri, Sway, and Hyprland hide the custom window buttons automatically, and Settings can force them visible or restore the system title bar.
-- Chinese and English UI; switch languages in Settings or follow the system (Chinese systems default to Chinese, others to English).
+- Chinese, English, Japanese, Korean, German, French and Spanish UI; switch languages in Settings or follow the system. Untranslated entries fall back to English.
+- Keyboard focus rings, accessible names for the main file list, search, path, preview and connection fields, and automation metadata for screen readers.
 - Explanatory hints collapse into an info icon by default with the full text on hover; Settings → Appearance can disable collapsing and show the full text again.
 - The About window shows a two-part version aligned with the git tag, a six-character commit hash, and AOT/runtime information.
 - Icons use embedded vector paths and require no icon font.
@@ -488,6 +495,11 @@ tests/Ordoa.Core.Tests
 - Folder sync copies missing or newer files and creates directories; it does not delete extra items, so it is not a destructive mirror mode.
 - Transfer journal recovery requeues unfinished copy/move operations after a restart, but a partially copied file is copied again from the start rather than resumed at a byte offset.
 - Default file-manager registration and `org.freedesktop.FileManager1` are currently Linux-only. Windows and macOS provide opt-in Explorer/Finder context actions instead; they do not change the system default file manager.
+- S3 uses single-request PUTs and does not yet implement multipart upload, bucket policy, versioning, object ACL or server-side encryption settings.
+- Network discovery is best effort: mDNS/WS-Discovery may be blocked by firewalls, container networking or a busy port 5353.
+- ProxyJump reuses the target connection's password/key/agent credentials for every hop; per-hop credentials and advanced Match exec rules are not implemented.
+- Elevated operations are synchronous external commands without transfer progress; they are intended for occasional permission repairs, not bulk work.
+- New language files cover the common UI; less common strings fall back to English until translated.
 - Undo history is kept only for the current session and is cleared when Ordoa exits. Permanent deletion, emptying the trash, overwriting copies/moves, and operations outside the undo scope cannot be undone and clear the history, preventing `Ctrl+Z` from undoing older steps by mistake.
 - System-level mounts are not implemented.
 - Linux prefers the native Wayland backend (Avalonia 12.1, experimental) and falls back to X11/XWayland when no compositor is available. Set `ORDOA_NO_WAYLAND=1` to force X11. On Wayland, KDE global menus, window icons, and background blur are not yet available.
