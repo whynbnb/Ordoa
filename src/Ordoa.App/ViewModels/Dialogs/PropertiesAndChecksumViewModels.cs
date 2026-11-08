@@ -440,6 +440,7 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
                 catch (Exception ex)
                 {
                     row.Error = ex.Message;
+                    row.IsDone = true;
                     Core.Services.Log.Warn($"校验和计算失败: {source.Path}", ex);
                 }
             }
@@ -487,7 +488,7 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
             }
             catch (Exception ex)
             {
-                FatalError = ex.Message;
+                Status = ex.Message;
             }
         }
 
@@ -549,7 +550,7 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
             var equals = line.LastIndexOf('=');
             if (open >= 0 && close > open && equals > close)
             {
-                var name = line[(open + 1)..close].Trim();
+                var name = line[(open + 1)..close].Trim().Replace('\\', '/');
                 var hash = line[(equals + 1)..].Trim();
                 if (hash.Length is 32 or 40 or 64 or 128 && name.Length > 0)
                     result[Path.GetFileName(name)] = hash;

@@ -141,6 +141,8 @@ public sealed class AppServices : IAsyncDisposable
         });
     }
 
+    private int _resumeStarted;
+
     private SearchIndexConfig CreateSearchIndexConfig()
     {
         var settings = Settings.Current;
@@ -180,6 +182,9 @@ public sealed class AppServices : IAsyncDisposable
     /// </summary>
     public async Task<int> ResumePendingTransfersAsync(CancellationToken cancellationToken = default)
     {
+        if (Interlocked.Exchange(ref _resumeStarted, 1) != 0)
+            return 0;
+
         var pending = Journal.Items;
         if (pending.Count == 0)
             return 0;
