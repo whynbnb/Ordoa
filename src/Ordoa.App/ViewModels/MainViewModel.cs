@@ -2513,6 +2513,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             () => PaneAction(p => p.EditTagsAsync()));
         Add(L10n.T("比较选中文件"), L10n.T("并排查看两个文本或二进制文件的差异"), null, "IconPanel",
             () => PaneAction(p => p.CompareSelectionAsync()));
+        Add(L10n.T("比较文件夹…"), L10n.T("递归比较两个文件夹并同步差异"), null, "IconPanel",
+            () => PaneAction(p => p.CompareFoldersAsync()));
         if (_services.Settings.Current.EnableGitIntegration)
         {
             Add(L10n.T("Git 状态"), L10n.T("查看当前仓库的分支与未提交变更"), null, "IconCode",

@@ -2758,6 +2758,21 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         await _services.Dialogs.ShowImageConversionAsync(paths, CurrentPath).ConfigureAwait(true);
     }
 
+    public async Task CompareFoldersAsync()
+    {
+        if (IsTrash || IsArchive)
+            return;
+
+        var leftPath = PrimarySelection is { IsDirectory: true } folder ? folder.Path : CurrentPath;
+        var rightPath = await _services.Dialogs.PickFolderAsync(
+            L10n.T("选择要比较的文件夹"), CurrentPath).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(rightPath))
+            return;
+
+        await _services.Dialogs.ShowFolderCompareAsync(FileSystem, leftPath,
+            LocalFileSystem.Instance, rightPath).ConfigureAwait(true);
+    }
+
     public async Task CompareSelectionAsync()
     {
         var files = _selected.Where(item => !item.IsDirectory).Take(2).ToList();

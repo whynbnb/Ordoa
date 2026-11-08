@@ -1326,6 +1326,8 @@ public partial class PaneView : UserControl
         menu.Items.Add(analysisMenu);
         menu.Items.Add(MenuItem(L10n.T("Git 状态"), pane.ShowGitStatusAsync, pane.CanShowGitStatus));
         menu.Items.Add(MenuItem(L10n.T("比较选中文件"), pane.CompareSelectionAsync, pane.CanCompare));
+        menu.Items.Add(MenuItem(L10n.T("比较文件夹…"), pane.CompareFoldersAsync,
+            !pane.IsTrash && !pane.IsArchive));
         menu.Items.Add(MenuItem(L10n.T("批量转换图片…"), pane.ConvertImagesAsync, pane.CanConvertImages));
         menu.Items.Add(new Separator());
         AddTerminalMenuItems(menu, pane);

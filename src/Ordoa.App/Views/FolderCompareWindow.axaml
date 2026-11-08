@@ -1,0 +1,114 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:FolderCompareDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.FolderCompareWindow"
+        Title="{loc:Tr 文件夹比较与同步}"
+        Width="980" Height="640" MinWidth="760" MinHeight="480" CanResize="True" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,16,22,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{loc:Tr 文件夹比较与同步}" Classes="h2" />
+            <TextBlock Text="{loc:Tr 递归比较两个文件夹，并按需同步缺失或较新的文件}" Classes="caption" />
+          </StackPanel>
+          <Button Grid.Column="1" Content="{loc:Tr 重新扫描}" Classes="subtle" Click="OnRescanClick" />
+        </Grid>
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+          <Border Classes="card" Padding="10,7">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 左侧}" Classes="fieldlabel" />
+              <TextBlock Text="{Binding LeftPathText}" Classes="tiny" TextTrimming="CharacterEllipsis"
+                         ToolTip.Tip="{Binding LeftPathText}" />
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="1" Classes="card" Padding="10,7">
+            <StackPanel Spacing="2">
+              <TextBlock Text="{loc:Tr 右侧}" Classes="fieldlabel" />
+              <TextBlock Text="{Binding RightPathText}" Classes="tiny" TextTrimming="CharacterEllipsis"
+                         ToolTip.Tip="{Binding RightPathText}" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="1" Padding="18,10" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+          <CheckBox Content="{loc:Tr 包含隐藏项}" IsChecked="{Binding IncludeHidden, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 比较文件内容（SHA-256）}" IsChecked="{Binding CompareContents, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 仅显示差异}" IsChecked="{Binding ShowOnlyDifferences, Mode=TwoWay}" />
+          <CheckBox Content="{loc:Tr 试运行}" IsChecked="{Binding DryRun, Mode=TwoWay}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Classes="subtle" Click="OnSyncLeftClick" IsEnabled="{Binding CanSyncLeft}"
+                  Content="{loc:Tr 同步到左侧}" />
+          <Button Click="OnSyncRightClick" IsEnabled="{Binding CanSyncRight}"
+                  Content="{loc:Tr 同步到右侧}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2" RowDefinitions="Auto,*">
+      <Border Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="0,0,0,1" Padding="16,0,14,0" Height="28">
+        <Grid ColumnDefinitions="*,110,190,190,84" ColumnSpacing="0">
+          <TextBlock Text="{loc:Tr 相对路径}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <TextBlock Grid.Column="1" Text="{loc:Tr 状态}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <TextBlock Grid.Column="2" Text="{loc:Tr 左侧}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <TextBlock Grid.Column="3" Text="{loc:Tr 右侧}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <TextBlock Grid.Column="4" Text="{loc:Tr 操作}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+        </Grid>
+      </Border>
+
+      <ListBox Grid.Row="1" ItemsSource="{Binding Rows}" Background="Transparent"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:FolderCompareRowViewModel">
+            <Grid ColumnDefinitions="*,110,190,190,84" Margin="16,2,14,2" MinHeight="30">
+              <TextBlock Text="{Binding RelativePath}" FontSize="12" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RelativePath}" />
+              <TextBlock Grid.Column="1" Text="{Binding StateText}" FontSize="11.5"
+                         Foreground="{Binding StateBrush}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="2" Text="{Binding LeftInfo}" FontSize="11.5" Classes="columnvalue"
+                         TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="3" Text="{Binding RightInfo}" FontSize="11.5" Classes="columnvalue"
+                         TextTrimming="CharacterEllipsis" />
+              <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button Classes="tool" Width="24" Height="24" Content="←"
+                        IsEnabled="{Binding CanCopyLeft}" Click="OnRowCopyLeftClick"
+                        ToolTip.Tip="{loc:Tr 复制到左侧}" />
+                <Button Classes="tool" Width="24" Height="24" Content="→"
+                        IsEnabled="{Binding CanCopyRight}" Click="OnRowCopyRightClick"
+                        ToolTip.Tip="{loc:Tr 复制到右侧}" />
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+
+    <Border Grid.Row="3" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Status}" Classes="caption" TextTrimming="CharacterEllipsis" />
+          <ProgressBar IsIndeterminate="True" Width="70" Height="3" IsVisible="{Binding IsScanning}" />
+          <TextBlock Text="{Binding ProgressText}" Classes="tiny" IsVisible="{Binding IsScanning}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Content="{loc:Tr 取消}" Classes="subtle" Click="OnCancelClick"
+                  IsVisible="{Binding IsScanning}" />
+          <Button Content="{loc:Tr 关闭}" Click="OnCloseClick" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
