@@ -226,7 +226,7 @@ public static class DesktopEntryService
 
     private static string Localized(IReadOnlyDictionary<string, string> values, string key)
     {
-        if (!L10n.IsEnglish)
+        if (L10n.IsChinese)
         {
             foreach (var candidate in new[] { key + "[zh_CN]", key + "[zh]", key })
             {

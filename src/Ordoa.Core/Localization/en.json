@@ -1506,5 +1506,6 @@
  "操作会通过 pkexec、osascript 或 Windows UAC 提权执行；每次都会要求系统确认。": "Operations use pkexec, osascript or Windows UAC for elevation and ask for system confirmation every time.",
  "当前平台不支持管理员操作。": "Administrator operations are not supported on this platform.",
  "管理员操作已取消。": "Administrator operation cancelled.",
- "管理员操作失败（退出码 {0}）": "Administrator operation failed (exit code {0})"
+ "管理员操作失败（退出码 {0}）": "Administrator operation failed (exit code {0})",
+ "高对比度": "High contrast"
 }

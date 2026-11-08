@@ -40,7 +40,18 @@ public static class Humanize
 
         var local = value.Value.ToLocalTime();
         var now = DateTimeOffset.Now;
-        var culture = L10n.IsEnglish ? CultureInfo.GetCultureInfo("en-US") : CultureInfo.CurrentCulture;
+        var culture = L10n.EffectiveLanguage switch
+        {
+            UiLanguage.English => CultureInfo.GetCultureInfo("en-US"),
+            UiLanguage.Japanese => CultureInfo.GetCultureInfo("ja-JP"),
+            UiLanguage.Korean => CultureInfo.GetCultureInfo("ko-KR"),
+            UiLanguage.German => CultureInfo.GetCultureInfo("de-DE"),
+            UiLanguage.French => CultureInfo.GetCultureInfo("fr-FR"),
+            UiLanguage.Spanish => CultureInfo.GetCultureInfo("es-ES"),
+            _ => CultureInfo.CurrentCulture,
+        };
+        var westernDate = L10n.EffectiveLanguage is UiLanguage.English or UiLanguage.German or
+            UiLanguage.French or UiLanguage.Spanish;
 
         if (withTime)
         {
@@ -49,8 +60,8 @@ public static class Humanize
             if (local.Date == now.Date.AddDays(-1))
                 return L10n.T("昨天") + " " + local.ToString("HH:mm", culture);
             if (local.Year == now.Year)
-                return local.ToString(L10n.IsEnglish ? "MMM d HH:mm" : "M月d日 HH:mm", culture);
-            return local.ToString(L10n.IsEnglish ? "MMM d, yyyy" : "yyyy年M月d日", culture);
+                return local.ToString(westernDate ? "MMM d HH:mm" : "M月d日 HH:mm", culture);
+            return local.ToString(westernDate ? "MMM d, yyyy" : "yyyy年M月d日", culture);
         }
 
         return local.ToString("yyyy-MM-dd", CultureInfo.CurrentCulture);

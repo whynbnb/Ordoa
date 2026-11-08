@@ -3,12 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Ordoa.App.ViewModels"
              xmlns:services="using:Ordoa.App.Services"
+             xmlns:automation="using:Avalonia.Automation"
              x:DataType="vm:FilePreviewViewModel"
              x:CompileBindings="True"
              x:Class="Ordoa.App.Views.PreviewContentView">
   <Grid RowDefinitions="*,Auto">
     <Panel Grid.Row="0">
       <Image Source="{Binding Image}" Stretch="Uniform" Margin="12"
+             automation:AutomationProperties.Name="{loc:Tr 预览图片}"
              IsVisible="{Binding ShowPlainImage}" />
 
       <ScrollViewer IsVisible="{Binding HasPdf}" Padding="8"
@@ -20,7 +22,8 @@
       <ScrollViewer IsVisible="{Binding HasText}" Padding="12"
                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
         <SelectableTextBlock Text="{Binding Text}" FontFamily="{DynamicResource MonoFontFamily}"
-                             FontSize="11.5" TextWrapping="NoWrap" />
+                             FontSize="11.5" TextWrapping="NoWrap"
+                             automation:AutomationProperties.Name="{loc:Tr 预览文本}" />
       </ScrollViewer>
 
       <services:MarkdownView Blocks="{Binding MarkdownBlocks}" IsVisible="{Binding HasMarkdown}" />

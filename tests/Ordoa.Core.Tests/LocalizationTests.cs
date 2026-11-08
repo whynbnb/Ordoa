@@ -44,6 +44,28 @@ public sealed class LocalizationTests
         }
     }
 
+    [Theory]
+    [InlineData(UiLanguage.German, "Einstellungen")]
+    [InlineData(UiLanguage.French, "Paramètres")]
+    [InlineData(UiLanguage.Spanish, "Configuración")]
+    [InlineData(UiLanguage.Japanese, "設定")]
+    [InlineData(UiLanguage.Korean, "설정")]
+    public void AdditionalLanguages_TranslateCommonStrings(UiLanguage language, string settings)
+    {
+        var previous = L10n.Language;
+        try
+        {
+            L10n.SetLanguage(language);
+            Assert.Equal(settings, L10n.T("设置"));
+            // Missing keys fall back to English, not to a blank or Chinese string.
+            Assert.Equal("Open in New Tab", L10n.T("在新标签页中打开"));
+        }
+        finally
+        {
+            L10n.SetLanguage(previous);
+        }
+    }
+
     [Fact]
     public void UnknownKeys_FallBackToSource()
     {

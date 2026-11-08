@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
         xmlns:core="using:Ordoa.Core.Services"
+        xmlns:automation="using:Avalonia.Automation"
         x:DataType="vm:ConnectionDialogViewModel"
         x:CompileBindings="True"
         x:Class="Ordoa.App.Views.ConnectionWindow"
@@ -114,29 +115,29 @@
 
         <Grid ColumnDefinitions="100,*" RowDefinitions="Auto">
           <TextBlock Text="{loc:Tr 名称}" Classes="fieldlabel" />
-          <TextBox x:Name="NameBox" Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" PlaceholderText="{loc:Tr 可选，例如：我的服务器}" />
+          <TextBox x:Name="NameBox" Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" automation:AutomationProperties.Name="{loc:Tr 名称}" PlaceholderText="{loc:Tr 可选，例如：我的服务器}" />
         </Grid>
 
         <Grid ColumnDefinitions="100,*,86,*">
           <TextBlock Text="{Binding HostLabel}" Classes="fieldlabel" />
-          <TextBox x:Name="HostBox" Grid.Column="1" Text="{Binding Host, Mode=TwoWay}" PlaceholderText="{loc:Tr 主机名或 IP 地址}" />
+          <TextBox x:Name="HostBox" Grid.Column="1" Text="{Binding Host, Mode=TwoWay}" automation:AutomationProperties.Name="{Binding HostLabel}" PlaceholderText="{loc:Tr 主机名或 IP 地址}" />
           <TextBlock Grid.Column="2" Text="{loc:Tr 端口}" Classes="fieldlabel" Margin="14,0,10,0" />
-          <TextBox Grid.Column="3" Text="{Binding PortText, Mode=TwoWay}" PlaceholderText="{Binding DefaultPortText}" />
+          <TextBox Grid.Column="3" Text="{Binding PortText, Mode=TwoWay}" automation:AutomationProperties.Name="{loc:Tr 端口}" PlaceholderText="{Binding DefaultPortText}" />
         </Grid>
 
         <Grid ColumnDefinitions="100,*" IsVisible="{Binding ShowAuthFields}">
           <TextBlock Text="{Binding UsernameLabel}" Classes="fieldlabel" />
-          <TextBox Grid.Column="1" Text="{Binding Username, Mode=TwoWay}" PlaceholderText="{loc:Tr 登录用户名}" />
+          <TextBox Grid.Column="1" Text="{Binding Username, Mode=TwoWay}" automation:AutomationProperties.Name="{Binding UsernameLabel}" PlaceholderText="{loc:Tr 登录用户名}" />
         </Grid>
 
         <StackPanel Spacing="8" IsVisible="{Binding ShowS3Fields}">
           <Grid ColumnDefinitions="100,*">
             <TextBlock Text="{loc:Tr S3 Bucket}" Classes="fieldlabel" />
-            <TextBox Grid.Column="1" Text="{Binding S3Bucket, Mode=TwoWay}" PlaceholderText="my-bucket" />
+            <TextBox Grid.Column="1" Text="{Binding S3Bucket, Mode=TwoWay}" automation:AutomationProperties.Name="{loc:Tr S3 Bucket}" PlaceholderText="my-bucket" />
           </Grid>
           <Grid ColumnDefinitions="100,*">
             <TextBlock Text="{loc:Tr S3 区域}" Classes="fieldlabel" />
-            <TextBox Grid.Column="1" Text="{Binding S3Region, Mode=TwoWay}" PlaceholderText="us-east-1" />
+            <TextBox Grid.Column="1" Text="{Binding S3Region, Mode=TwoWay}" automation:AutomationProperties.Name="{loc:Tr S3 区域}" PlaceholderText="us-east-1" />
           </Grid>
           <Grid ColumnDefinitions="100,*">
             <TextBlock Text="{loc:Tr Session Token}" Classes="fieldlabel" />
@@ -170,7 +171,7 @@
         <Grid ColumnDefinitions="100,*" IsVisible="{Binding ShowSecretField}">
           <TextBlock Text="{Binding SecretLabel}" Classes="fieldlabel" />
           <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
-            <TextBox x:Name="PasswordBox" Text="{Binding Password, Mode=TwoWay}" PasswordChar="●"
+            <TextBox x:Name="PasswordBox" Text="{Binding Password, Mode=TwoWay}" automation:AutomationProperties.Name="{Binding SecretLabel}" PasswordChar="●"
                      PlaceholderText="{Binding SecretPlaceholder}" />
             <Button Grid.Column="1" Classes="tool" Width="30" Height="30" Click="OnTogglePasswordClick"
                     ToolTip.Tip="{loc:Tr 显示/隐藏密码}">

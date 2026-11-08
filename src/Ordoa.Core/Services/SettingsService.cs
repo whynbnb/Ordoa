@@ -9,6 +9,7 @@ public enum AppTheme
     System,
     Light,
     Dark,
+    HighContrast,
 }
 
 public enum AccentKind

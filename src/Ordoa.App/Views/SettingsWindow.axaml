@@ -140,6 +140,10 @@
                         Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=Dark}">
                   <TextBlock Text="{loc:Tr 深色}" />
                 </Button>
+                <Button Classes="chip" Tag="HighContrast" Click="OnThemeClick"
+                        Classes.active="{Binding Theme, Converter={StaticResource EqualsConverter}, ConverterParameter=HighContrast}">
+                  <TextBlock Text="{loc:Tr 高对比度}" />
+                </Button>
               </StackPanel>
 
               <TextBlock Grid.Row="1" Text="{loc:Tr 强调色}" Classes="fieldlabel" />
@@ -209,7 +213,7 @@
               </Grid>
 
               <TextBlock Grid.Row="6" Text="{loc:Tr 语言}" Classes="fieldlabel" />
-              <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+              <WrapPanel Grid.Row="6" Grid.Column="1" ItemHeight="32">
                 <Button Classes="chip" Tag="System" Click="OnLanguageClick"
                         Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=System}">
                   <TextBlock Text="{loc:Tr 跟随系统}" />
@@ -222,7 +226,27 @@
                         Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=English}">
                   <TextBlock Text="English" />
                 </Button>
-              </StackPanel>
+                <Button Classes="chip" Tag="Japanese" Click="OnLanguageClick"
+                        Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=Japanese}">
+                  <TextBlock Text="日本語" />
+                </Button>
+                <Button Classes="chip" Tag="Korean" Click="OnLanguageClick"
+                        Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=Korean}">
+                  <TextBlock Text="한국어" />
+                </Button>
+                <Button Classes="chip" Tag="German" Click="OnLanguageClick"
+                        Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=German}">
+                  <TextBlock Text="Deutsch" />
+                </Button>
+                <Button Classes="chip" Tag="French" Click="OnLanguageClick"
+                        Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=French}">
+                  <TextBlock Text="Français" />
+                </Button>
+                <Button Classes="chip" Tag="Spanish" Click="OnLanguageClick"
+                        Classes.active="{Binding Language, Converter={StaticResource EqualsConverter}, ConverterParameter=Spanish}">
+                  <TextBlock Text="Español" />
+                </Button>
+              </WrapPanel>
 
               <TextBlock Grid.Row="7" Text="{loc:Tr 说明}" Classes="fieldlabel" />
               <CheckBox Grid.Row="7" Grid.Column="1"

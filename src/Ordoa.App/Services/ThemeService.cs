@@ -71,7 +71,13 @@ public static class ThemeService
 
     private static DarkBackground _darkBackground = DarkBackground.Graphite;
     private static AccentKind _accent = AccentKind.Jade;
+    private static bool _highContrast;
     private static bool _themeSubscribed;
+
+    private static readonly string[] HighContrastExtraKeys =
+    [
+        "ErrorBrush", "ErrorSoftBrush", "WarningBrush", "WarningSoftBrush", "SuccessBrush", "OverlayBrush",
+    ];
 
     public static void Apply(AppSettings settings)
     {
@@ -81,11 +87,13 @@ public static class ThemeService
 
         _darkBackground = settings.DarkBackground;
         _accent = settings.Accent;
+        _highContrast = settings.Theme == AppTheme.HighContrast;
 
         app.RequestedThemeVariant = settings.Theme switch
         {
             AppTheme.Light => ThemeVariant.Light,
             AppTheme.Dark => ThemeVariant.Dark,
+            AppTheme.HighContrast => ThemeVariant.Dark,
             _ => ThemeVariant.Default,
         };
 
@@ -106,7 +114,58 @@ public static class ThemeService
     {
         var isDark = app.ActualThemeVariant == ThemeVariant.Dark;
         ApplyAccent(_accent, isDark);
-        ApplyDarkPalette(_darkBackground, isDark);
+        if (_highContrast)
+            ApplyHighContrastPalette();
+        else
+            ApplyDarkPalette(_darkBackground, isDark);
+    }
+
+    private static void ApplyHighContrastPalette()
+    {
+        var app = Application.Current;
+        if (app is null)
+            return;
+
+        var resources = app.Resources;
+        resources["WindowBackgroundBrush"] = Brush("#000000");
+        resources["SurfaceBrush"] = Brush("#000000");
+        resources["SurfaceAltBrush"] = Brush("#111111");
+        resources["SidebarBrush"] = Brush("#000000");
+        resources["BorderBrush"] = Brush("#FFFFFF");
+        resources["BorderStrongBrush"] = Brush("#FFFFFF");
+        resources["TextPrimaryBrush"] = Brush("#FFFFFF");
+        resources["TextSecondaryBrush"] = Brush("#E6E6E6");
+        resources["TextTertiaryBrush"] = Brush("#C8C8C8");
+        resources["HoverBrush"] = Brush("#222222");
+        resources["PressedBrush"] = Brush("#333333");
+        resources["ToolbarBrush"] = Brush("#000000");
+        resources["StatusBrush"] = Brush("#000000");
+        resources["MenuBackgroundBrush"] = Brush("#000000");
+        resources["InputBackgroundBrush"] = Brush("#000000");
+        resources["ScrollThumbBrush"] = Brush("#777777");
+        resources["ScrollThumbHoverBrush"] = Brush("#AAAAAA");
+        resources["ErrorBrush"] = Brush("#FF6B6B");
+        resources["ErrorSoftBrush"] = Brush("#330000");
+        resources["WarningBrush"] = Brush("#FFD166");
+        resources["WarningSoftBrush"] = Brush("#332600");
+        resources["SuccessBrush"] = Brush("#6BFF9C");
+        resources["OverlayBrush"] = Brush("#CC000000");
+        resources["SelectionBrush"] = Brush("#554400");
+        resources["AccentBrush"] = Brush("#FFD400");
+        resources["AccentHoverBrush"] = Brush("#FFE45C");
+        resources["AccentPressedBrush"] = Brush("#CCAA00");
+        resources["AccentSoftBrush"] = Brush("#554400");
+        resources["AccentBorderBrush"] = Brush("#FFD400");
+        resources["AccentTextBrush"] = Brush("#000000");
+    }
+
+    private static void RemoveHighContrastOverrides()
+    {
+        var app = Application.Current;
+        if (app is null)
+            return;
+        foreach (var key in HighContrastExtraKeys)
+            app.Resources.Remove(key);
     }
 
     /// <summary>Overrides the neutral dark-theme brushes; removes them again in light mode.</summary>
@@ -121,9 +180,11 @@ public static class ThemeService
         {
             foreach (var key in DarkPaletteKeys)
                 resources.Remove(key);
+            RemoveHighContrastOverrides();
             return;
         }
 
+        RemoveHighContrastOverrides();
         var palette = DarkPalettes.TryGetValue(background, out var value)
             ? value
             : DarkPalettes[DarkBackground.Graphite];

@@ -4,6 +4,7 @@
              xmlns:vm="using:Ordoa.App.ViewModels"
              xmlns:models="using:Ordoa.Core.Models"
              xmlns:views="using:Ordoa.App.Views"
+             xmlns:automation="using:Avalonia.Automation"
              x:DataType="vm:PaneViewModel"
              x:CompileBindings="True"
              x:Class="Ordoa.App.Views.PaneView"
@@ -250,6 +251,8 @@
             </Button>
 
             <TextBox x:Name="LocationBox" Classes="path" Text="{Binding LocationText, Mode=TwoWay}"
+                     automation:AutomationProperties.Name="{loc:Tr 路径}"
+                     automation:AutomationProperties.HelpText="{loc:Tr 输入路径或远程地址，按 Enter 导航}"
                      IsVisible="{Binding IsEditingLocation}" KeyDown="OnLocationKeyDown"
                      LostFocus="OnLocationLostFocus" FontSize="12.5" MinHeight="26" Padding="5,3"
                      PlaceholderText="{loc:Tr 输入路径或远程地址}" />
@@ -265,6 +268,8 @@
 
         <Grid Grid.Column="5" Width="160" VerticalAlignment="Center">
           <TextBox x:Name="SearchBox" Classes="search" Text="{Binding FilterText, Mode=TwoWay}"
+                   automation:AutomationProperties.Name="{loc:Tr 搜索}"
+                   automation:AutomationProperties.HelpText="{loc:Tr 输入以过滤；按 Enter 进行深度搜索}"
                    Padding="26,4,26,4" MinHeight="28" KeyDown="OnSearchKeyDown"
                    PlaceholderText="{loc:Tr 搜索}" ToolTip.Tip="{loc:Tr 输入以过滤；按 Enter 进行深度搜索}" />
           <Path Data="{StaticResource IconSearch}" Width="13" Height="13" Stretch="Uniform"
@@ -555,6 +560,8 @@
         </Border>
 
         <ListBox x:Name="FileList" Grid.Row="1" Classes="files"
+                 automation:AutomationProperties.Name="{loc:Tr 文件列表}"
+                 automation:AutomationProperties.HelpText="{loc:Tr 使用方向键移动，Enter 打开，空格预览}"
                  Classes.densitycompact="{Binding IsDensityCompact}"
                  Classes.densityspacious="{Binding IsDensitySpacious}" ItemsSource="{Binding VisibleItems}"
                  Background="Transparent" SelectionMode="Multiple" DragDrop.AllowDrop="True"
@@ -684,6 +691,8 @@
       </Grid>
 
       <ListBox x:Name="FileGrid" Classes="tiles" IsVisible="{Binding IsGrid}" ItemsSource="{Binding VisibleItems}"
+               automation:AutomationProperties.Name="{loc:Tr 文件网格}"
+               automation:AutomationProperties.HelpText="{loc:Tr 使用方向键移动，Enter 打开，空格预览}"
                Background="Transparent" SelectionMode="Multiple" DragDrop.AllowDrop="True"
                SelectionChanged="OnGridSelectionChanged"
                DoubleTapped="OnListDoubleTapped"

@@ -4,6 +4,7 @@
              xmlns:vm="using:Ordoa.App.ViewModels"
              xmlns:services="using:Ordoa.App.Services"
              xmlns:views="using:Ordoa.App.Views"
+             xmlns:automation="using:Avalonia.Automation"
              x:DataType="vm:MainViewModel"
              x:CompileBindings="True"
              x:Class="Ordoa.App.Views.PreviewPanelView">
@@ -21,7 +22,8 @@
   </UserControl.Styles>
 
   <Border Classes="previewpanel" Classes.right="{Binding IsPreviewPanelAtRight}"
-          Classes.bottom="{Binding IsPreviewPanelAtBottom}">
+          Classes.bottom="{Binding IsPreviewPanelAtBottom}"
+          automation:AutomationProperties.Name="{loc:Tr 预览面板}">
     <Grid RowDefinitions="Auto,*,Auto">
       <Border Grid.Row="0" Padding="12,9,8,8" BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="0,0,0,1">
