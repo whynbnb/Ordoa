@@ -11,17 +11,22 @@ permissions:
 
 env:
   DOTNET_VERSION: "10.0.x"
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
 
 jobs:
+  # Keep Linux artifacts on the Ubuntu 24.04 glibc baseline so the published
+  # binaries also run on older LTS distributions. The build workflow runs on 26.04.
   linux-framework:
     name: Linux x64 framework-dependent
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Publish
@@ -30,7 +35,7 @@ jobs:
           ./scripts/publish.sh framework --rid linux-x64 --output "$RUNNER_TEMP/linux-framework"
           ./scripts/package-linux.sh tar "$RUNNER_TEMP/linux-framework" \
             "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-linux-x64-framework.tar.gz"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-framework
           path: ${{ runner.temp }}/ordoa-*-linux-x64-framework.tar.gz
@@ -41,10 +46,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Install NativeAOT dependencies
@@ -57,7 +62,7 @@ jobs:
           ./scripts/publish.sh aot --rid linux-x64 --output "$RUNNER_TEMP/linux-aot-deb"
           ./scripts/package-linux.sh deb "$RUNNER_TEMP/linux-aot-deb" \
             "${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/ordoa_${GITHUB_REF_NAME#v}_amd64.deb"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-aot-deb
           path: ${{ runner.temp }}/ordoa_*_amd64.deb
@@ -68,10 +73,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Install NativeAOT and AppImage dependencies
@@ -91,7 +96,7 @@ jobs:
           APPIMAGETOOL="$RUNNER_TEMP/appimagetool" \
             ./scripts/package-linux.sh appimage "$RUNNER_TEMP/linux-aot-appimage" \
             "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-linux-x64-aot.AppImage"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-aot-appimage
           path: ${{ runner.temp }}/ordoa-*-linux-x64-aot.AppImage
@@ -102,10 +107,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Install static-link dependencies
@@ -120,7 +125,7 @@ jobs:
           test "$(find "$RUNNER_TEMP/linux-aot-static" -type f | wc -l)" -eq 1
           ./scripts/package-linux.sh tar "$RUNNER_TEMP/linux-aot-static" \
             "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-linux-x64-aot-static.tar.gz"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-aot-static
           path: ${{ runner.temp }}/ordoa-*-linux-x64-aot-static.tar.gz
@@ -128,13 +133,13 @@ jobs:
 
   windows-framework:
     name: Windows x64 framework-dependent
-    runs-on: windows-2022
+    runs-on: windows-2025
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Publish and package
@@ -146,7 +151,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $archive = Join-Path $env:RUNNER_TEMP "ordoa-$version-win-x64-framework.zip"
           Compress-Archive -Path (Join-Path $out "*") -DestinationPath $archive -CompressionLevel Optimal
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-framework
           path: ${{ runner.temp }}/ordoa-*-win-x64-framework.zip
@@ -154,16 +159,16 @@ jobs:
 
   windows-aot:
     name: Windows x64 AOT
-    runs-on: windows-2022
+    runs-on: windows-2025
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: TheMrMilchmann/setup-msvc-dev@v3
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: x64
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Publish and package
@@ -175,7 +180,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $archive = Join-Path $env:RUNNER_TEMP "ordoa-$version-win-x64-aot.zip"
           Compress-Archive -Path (Join-Path $out "*") -DestinationPath $archive -CompressionLevel Optimal
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-aot
           path: ${{ runner.temp }}/ordoa-*-win-x64-aot.zip
@@ -183,22 +188,22 @@ jobs:
 
   windows-aot-static:
     name: Windows x64 AOT static
-    runs-on: windows-2022
+    runs-on: windows-2025
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: TheMrMilchmann/setup-msvc-dev@v3
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: x64
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Install LLVM for static linking
         shell: pwsh
         run: |
-          choco install llvm -y --no-progress
+          choco install llvm -y --no-progress --no-progress
           Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\LLVM\bin"
       - name: Publish and package
         shell: pwsh
@@ -214,7 +219,7 @@ jobs:
           }
           $archive = Join-Path $env:RUNNER_TEMP "ordoa-$version-win-x64-aot-static.zip"
           Compress-Archive -Path $exe -DestinationPath $archive -CompressionLevel Optimal
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-aot-static
           path: ${{ runner.temp }}/ordoa-*-win-x64-aot-static.zip
@@ -225,10 +230,10 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Publish and package
@@ -237,7 +242,7 @@ jobs:
           ./scripts/publish.sh framework --rid osx-arm64 --output "$RUNNER_TEMP/macos-framework"
           ./scripts/package-macos.sh zip "$RUNNER_TEMP/macos-framework" \
             "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-macos-arm64-framework.zip"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-framework
           path: ${{ runner.temp }}/ordoa-*-macos-arm64-framework.zip
@@ -248,10 +253,10 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Publish and package
@@ -260,7 +265,7 @@ jobs:
           ./scripts/publish.sh aot --rid osx-arm64 --output "$RUNNER_TEMP/macos-aot"
           ./scripts/package-macos.sh dmg "$RUNNER_TEMP/macos-aot" \
             "${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/ordoa-${GITHUB_REF_NAME#v}-macos-arm64-aot.dmg"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-aot-dmg
           path: ${{ runner.temp }}/ordoa-*-macos-arm64-aot.dmg
@@ -279,18 +284,19 @@ jobs:
       - macos-framework
       - macos-aot-dmg
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: release-assets
           merge-multiple: true
       - name: Show release assets
         run: ls -lh release-assets
       - name: Remove stale README asset
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const tag = context.ref.replace('refs/tags/', '');
@@ -310,7 +316,7 @@ jobs:
             } catch (error) {
               if (error.status !== 404) throw error;
             }
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: Ordoa ${{ github.ref_name }}
