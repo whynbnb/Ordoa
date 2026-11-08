@@ -34,6 +34,8 @@ public sealed class ConnectionProfile
     public SshAuthMethod SshAuth { get; set; } = SshAuthMethod.Password;
     /// <summary>Path to an OpenSSH/PEM private key for SFTP private-key auth.</summary>
     public string PrivateKeyPath { get; set; } = string.Empty;
+    /// <summary>OpenSSH ProxyJump specification, for example "bastion" or "user@jump:2222".</summary>
+    public string ProxyJump { get; set; } = string.Empty;
     /// <summary>Last connection error, kept so failed entries remain editable in the sidebar.</summary>
     public string? LastError { get; set; }
     public bool Secure { get; set; } = true;

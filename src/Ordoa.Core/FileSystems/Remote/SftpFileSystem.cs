@@ -20,12 +20,17 @@ public sealed class SftpFileSystem : FileSystemBase
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly ConnectionProfile _profile;
     private readonly ConcurrentDictionary<string, EntryKind> _resolvedLinks = new(StringComparer.Ordinal);
+    private readonly List<SshClient> _jumpClients;
+    private readonly List<ForwardedPortLocal> _jumpPorts;
 
-    private SftpFileSystem(ConnectionProfile profile, SftpClient client)
+    private SftpFileSystem(ConnectionProfile profile, SftpClient client,
+        List<SshClient>? jumpClients = null, List<ForwardedPortLocal>? jumpPorts = null)
         : base(profile.Id, profile.Scheme, profile.Name)
     {
         _profile = profile;
         _client = client;
+        _jumpClients = jumpClients ?? [];
+        _jumpPorts = jumpPorts ?? [];
     }
 
     public string? HostKeyFingerprint { get; private set; }
@@ -42,91 +47,177 @@ public sealed class SftpFileSystem : FileSystemBase
     {
         return Task.Run(() =>
         {
-            var methods = BuildAuthenticationMethods(profile, password);
-            var connectionInfo = new ConnectionInfo(profile.Host, profile.EffectivePort, profile.Username, methods)
-            {
-                Timeout = TimeSpan.FromSeconds(25),
-                ChannelCloseTimeout = TimeSpan.FromSeconds(15),
-                RetryAttempts = 1,
-            };
-
-            var client = new SftpClient(connectionInfo)
-            {
-                OperationTimeout = TimeSpan.FromSeconds(60),
-                KeepAliveInterval = TimeSpan.FromSeconds(30),
-            };
-
-            SftpFileSystem? result = null;
-            var fingerprint = string.Empty;
-            string? hostKeyError = null;
-            var knownHostsStatus = KnownHostsStatus.Unknown;
-            client.HostKeyReceived += (_, e) =>
-            {
-                fingerprint = e.FingerPrintSHA256;
-                var hostKey = e.HostKey ?? [];
-                var keyType = GetHostKeyType(hostKey) ?? e.HostKeyName ?? string.Empty;
-                var knownHosts = KnownHostsStore.Default.Check(
-                    profile.Host, profile.EffectivePort, keyType, hostKey);
-                knownHostsStatus = knownHosts.Status;
-
-                if (knownHosts.Status == KnownHostsStatus.Revoked)
-                {
-                    e.CanTrust = false;
-                    hostKeyError = L10n.T("服务器主机密钥已被 known_hosts 标记为吊销，连接已中止。");
-                    return;
-                }
-
-                if (!string.IsNullOrWhiteSpace(profile.HostKeyFingerprint))
-                {
-                    e.CanTrust = string.Equals(profile.HostKeyFingerprint, e.FingerPrintSHA256, StringComparison.Ordinal);
-                    if (!e.CanTrust)
-                        hostKeyError = L10n.T("服务器主机密钥与之前保存的指纹不一致，连接已中止。");
-                    return;
-                }
-
-                switch (knownHosts.Status)
-                {
-                    case KnownHostsStatus.Match:
-                        e.CanTrust = true;
-                        break;
-                    case KnownHostsStatus.Mismatch:
-                        e.CanTrust = false;
-                        hostKeyError = L10n.T("服务器主机密钥与 known_hosts 中的记录不一致，连接已中止。");
-                        break;
-                    default:
-                        // Trust on first use; the fingerprint is pinned in the
-                        // connection profile after a successful connection.
-                        e.CanTrust = true;
-                        break;
-                }
-            };
+            var jumps = SshProxyJump.Parse(profile.ProxyJump, profile.Username);
+            var jumpClients = new List<SshClient>();
+            var jumpPorts = new List<ForwardedPortLocal>();
+            var targetHost = profile.Host;
+            var targetPort = profile.EffectivePort;
+            var connectHost = targetHost;
+            var connectPort = targetPort;
+            var finalHost = targetHost;
+            var finalPort = targetPort;
+            string? jumpError = null;
 
             try
             {
-                client.Connect();
-                result = new SftpFileSystem(profile, client)
+                for (var index = 0; index < jumps.Count; index++)
                 {
-                    HostKeyFingerprint = string.IsNullOrWhiteSpace(profile.HostKeyFingerprint) ? fingerprint : profile.HostKeyFingerprint,
-                    HostKeyAccepted = string.IsNullOrWhiteSpace(profile.HostKeyFingerprint) &&
-                                      knownHostsStatus == KnownHostsStatus.Unknown,
+                    var hop = jumps[index];
+                    var jumpMethods = BuildAuthenticationMethods(profile, password, hop.User);
+                    var jumpInfo = new ConnectionInfo(connectHost, connectPort, hop.User, jumpMethods)
+                    {
+                        Timeout = TimeSpan.FromSeconds(25),
+                        ChannelCloseTimeout = TimeSpan.FromSeconds(15),
+                        RetryAttempts = 1,
+                    };
+                    var jump = new SshClient(jumpInfo)
+                    {
+                        KeepAliveInterval = TimeSpan.FromSeconds(30),
+                    };
+                    jump.HostKeyReceived += (_, e) =>
+                    {
+                        var hostKey = e.HostKey ?? [];
+                        var keyType = GetHostKeyType(hostKey) ?? e.HostKeyName ?? string.Empty;
+                        var known = KnownHostsStore.Default.Check(hop.Host, hop.Port, keyType, hostKey);
+                        if (known.Status is KnownHostsStatus.Revoked or KnownHostsStatus.Mismatch)
+                        {
+                            e.CanTrust = false;
+                            jumpError = L10n.T("跳板机主机密钥校验失败，连接已中止。");
+                        }
+                        else
+                        {
+                            e.CanTrust = true;
+                        }
+                    };
+                    jump.Connect();
+                    jumpClients.Add(jump);
+
+                    var nextHost = index + 1 < jumps.Count ? jumps[index + 1].Host : finalHost;
+                    var nextPort = index + 1 < jumps.Count ? jumps[index + 1].Port : finalPort;
+
+                    var port = new ForwardedPortLocal("127.0.0.1", 0, nextHost, (uint)nextPort);
+                    jump.AddForwardedPort(port);
+                    port.Start();
+                    jumpPorts.Add(port);
+                    connectHost = "127.0.0.1";
+                    connectPort = (int)port.BoundPort;
+                }
+                targetHost = connectHost;
+                targetPort = connectPort;
+
+                var targetMethods = BuildAuthenticationMethods(profile, password, profile.Username);
+                var connectionInfo = new ConnectionInfo(targetHost, targetPort, profile.Username, targetMethods)
+                {
+                    Timeout = TimeSpan.FromSeconds(25),
+                    ChannelCloseTimeout = TimeSpan.FromSeconds(15),
+                    RetryAttempts = 1,
                 };
-                return result;
+
+                var client = new SftpClient(connectionInfo)
+                {
+                    OperationTimeout = TimeSpan.FromSeconds(60),
+                    KeepAliveInterval = TimeSpan.FromSeconds(30),
+                };
+
+                SftpFileSystem? result = null;
+                var fingerprint = string.Empty;
+                string? hostKeyError = null;
+                var knownHostsStatus = KnownHostsStatus.Unknown;
+                client.HostKeyReceived += (_, e) =>
+                {
+                    fingerprint = e.FingerPrintSHA256;
+                    var hostKey = e.HostKey ?? [];
+                    var keyType = GetHostKeyType(hostKey) ?? e.HostKeyName ?? string.Empty;
+                    var knownHosts = KnownHostsStore.Default.Check(
+                        profile.Host, profile.EffectivePort, keyType, hostKey);
+                    knownHostsStatus = knownHosts.Status;
+
+                    if (knownHosts.Status == KnownHostsStatus.Revoked)
+                    {
+                        e.CanTrust = false;
+                        hostKeyError = L10n.T("服务器主机密钥已被 known_hosts 标记为吊销，连接已中止。");
+                        return;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(profile.HostKeyFingerprint))
+                    {
+                        e.CanTrust = string.Equals(profile.HostKeyFingerprint, e.FingerPrintSHA256,
+                            StringComparison.Ordinal);
+                        if (!e.CanTrust)
+                            hostKeyError = L10n.T("服务器主机密钥与之前保存的指纹不一致，连接已中止。");
+                        return;
+                    }
+
+                    switch (knownHosts.Status)
+                    {
+                        case KnownHostsStatus.Match:
+                            e.CanTrust = true;
+                            break;
+                        case KnownHostsStatus.Mismatch:
+                            e.CanTrust = false;
+                            hostKeyError = L10n.T("服务器主机密钥与 known_hosts 中的记录不一致，连接已中止。");
+                            break;
+                        default:
+                            e.CanTrust = true;
+                            break;
+                    }
+                };
+
+                try
+                {
+                    client.Connect();
+                    result = new SftpFileSystem(profile, client, jumpClients, jumpPorts)
+                    {
+                        HostKeyFingerprint = string.IsNullOrWhiteSpace(profile.HostKeyFingerprint)
+                            ? fingerprint
+                            : profile.HostKeyFingerprint,
+                        HostKeyAccepted = string.IsNullOrWhiteSpace(profile.HostKeyFingerprint) &&
+                                          knownHostsStatus == KnownHostsStatus.Unknown,
+                    };
+                    return result;
+                }
+                catch (Exception ex) when (hostKeyError is not null)
+                {
+                    client.Dispose();
+                    throw new IOException(hostKeyError, ex);
+                }
+                catch
+                {
+                    client.Dispose();
+                    throw;
+                }
             }
-            catch (Exception ex) when (hostKeyError is not null)
+            catch (Exception ex) when (jumpError is not null)
             {
-                client.Dispose();
-                throw new IOException(hostKeyError, ex);
+                DisposeJumps(jumpPorts, jumpClients);
+                throw new IOException(jumpError, ex);
             }
             catch
             {
-                client.Dispose();
+                DisposeJumps(jumpPorts, jumpClients);
                 throw;
             }
         }, cancellationToken);
     }
 
-    private static AuthenticationMethod[] BuildAuthenticationMethods(ConnectionProfile profile, string secret)
+    private static void DisposeJumps(List<ForwardedPortLocal> ports, List<SshClient> clients)
     {
+        foreach (var port in ports)
+        {
+            try { if (port.IsStarted) port.Stop(); } catch { /* ignore */ }
+            try { port.Dispose(); } catch { /* ignore */ }
+        }
+        foreach (var client in clients)
+        {
+            try { if (client.IsConnected) client.Disconnect(); } catch { /* ignore */ }
+            try { client.Dispose(); } catch { /* ignore */ }
+        }
+    }
+
+    private static AuthenticationMethod[] BuildAuthenticationMethods(ConnectionProfile profile, string secret,
+        string? username = null)
+    {
+        username ??= profile.Username;
         var methods = new List<AuthenticationMethod>();
         switch (profile.SshAuth)
         {
@@ -138,7 +229,7 @@ public sealed class SftpFileSystem : FileSystemBase
                         L10n.T("SSH Agent 中没有可用身份，请先使用 ssh-add 添加密钥。"));
                 }
 
-                methods.Add(new PrivateKeyAuthenticationMethod(profile.Username, identities));
+                methods.Add(new PrivateKeyAuthenticationMethod(username, identities));
                 break;
 
             case SshAuthMethod.PrivateKey:
@@ -149,7 +240,7 @@ public sealed class SftpFileSystem : FileSystemBase
                 try
                 {
                     var keyFile = new PrivateKeyFile(keyPath, string.IsNullOrEmpty(secret) ? null : secret);
-                    methods.Add(new PrivateKeyAuthenticationMethod(profile.Username, keyFile));
+                    methods.Add(new PrivateKeyAuthenticationMethod(username, keyFile));
                 }
                 catch (SshPassPhraseNullOrEmptyException ex)
                 {
@@ -163,9 +254,9 @@ public sealed class SftpFileSystem : FileSystemBase
 
             default:
                 if (!string.IsNullOrEmpty(secret))
-                    methods.Add(new PasswordAuthenticationMethod(profile.Username, secret));
+                    methods.Add(new PasswordAuthenticationMethod(username, secret));
 
-                var keyboard = new KeyboardInteractiveAuthenticationMethod(profile.Username);
+                var keyboard = new KeyboardInteractiveAuthenticationMethod(username);
                 keyboard.AuthenticationPrompt += (_, e) =>
                 {
                     foreach (var prompt in e.Prompts)
@@ -330,6 +421,7 @@ public sealed class SftpFileSystem : FileSystemBase
         }
         catch { /* ignore */ }
         _client.Dispose();
+        DisposeJumps(_jumpPorts, _jumpClients);
         _gate.Dispose();
     }
 

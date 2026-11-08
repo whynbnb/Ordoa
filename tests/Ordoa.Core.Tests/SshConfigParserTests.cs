@@ -85,6 +85,67 @@ public sealed class SshConfigParserTests
     }
 
     [Fact]
+    public void Load_ExpandsIncludeGlobs()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"ordoa-ssh-{Guid.NewGuid():N}");
+        try
+        {
+            var includeDir = Path.Combine(root, "config.d");
+            Directory.CreateDirectory(includeDir);
+            var config = Path.Combine(root, "config");
+            File.WriteAllText(config, "Include config.d/*.conf\n");
+            File.WriteAllText(Path.Combine(includeDir, "work.conf"),
+                "Host work\n  HostName work.example.com\n  User alice\n");
+
+            var entries = SshConfigParser.Load(config);
+            var entry = Assert.Single(entries);
+            Assert.Equal("work", entry.Alias);
+            Assert.Equal("work.example.com", entry.HostName);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { /* ignore */ }
+        }
+    }
+
+    [Fact]
+    public void Parse_AppliesMatchingMatchBlocksOnly()
+    {
+        var entries = SshConfigParser.Parse(
+        [
+            "Host prod",
+            "  User alice",
+            "Match host prod",
+            "  Port 2222",
+            "  ProxyJump bastion",
+            "Host other",
+            "  User bob",
+            "Match host staging",
+            "  Port 2200",
+        ]);
+
+        var prod = Assert.Single(entries, entry => entry.Alias == "prod");
+        Assert.Equal(2222, prod.Port);
+        Assert.Equal("bastion", prod.ProxyJump);
+        var other = Assert.Single(entries, entry => entry.Alias == "other");
+        Assert.Equal(22, other.Port);
+    }
+
+    [Fact]
+    public void Parse_AppliesUserMatchConditions()
+    {
+        var entries = SshConfigParser.Parse(
+        [
+            "Host prod",
+            "  User alice",
+            "Match user alice",
+            "  Port 2022",
+        ]);
+
+        Assert.Equal(2022, Assert.Single(entries).Port);
+    }
+
+    [Fact]
     public void Load_MissingFileReturnsEmpty()
     {
         var path = Path.Combine(Path.GetTempPath(), $"ordoa-missing-{Guid.NewGuid():N}", "config");

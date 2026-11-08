@@ -82,6 +82,7 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         _savePassword = _source.SavePassword;
         _sshAuth = _source.SshAuth;
         _privateKeyPath = _source.PrivateKeyPath;
+        _proxyJump = _source.ProxyJump;
         _secure = _source.Secure;
         _allowInvalidCertificate = _source.AllowInvalidCertificate;
         _s3Bucket = _source.S3Bucket;
@@ -136,6 +137,7 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
             SshAuth = SshAuthMethod.Agent;
             PrivateKeyPath = string.Empty;
         }
+        ProxyJump = value.ProxyJump ?? string.Empty;
         ValidationMessage = null;
     }
 
@@ -174,6 +176,7 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowSshAuth))]
     [NotifyPropertyChangedFor(nameof(ShowSecretField))]
     [NotifyPropertyChangedFor(nameof(ShowPrivateKeyField))]
+    [NotifyPropertyChangedFor(nameof(ShowProxyJump))]
     [NotifyPropertyChangedFor(nameof(ShowAgentHint))]
     [NotifyPropertyChangedFor(nameof(ShowSaveSecret))]
     [NotifyPropertyChangedFor(nameof(ShowKnownHostsHint))]
@@ -225,6 +228,9 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     private string _privateKeyPath;
 
     [ObservableProperty]
+    private string _proxyJump = string.Empty;
+
+    [ObservableProperty]
     private bool _savePassword;
 
     [ObservableProperty]
@@ -274,6 +280,7 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
     public bool ShowSshAuth => IsSftp && !Anonymous;
     public bool ShowSecretField => ShowAuthFields && (!IsSftp || SshAuth != SshAuthMethod.Agent);
     public bool ShowPrivateKeyField => IsSftp && SshAuth == SshAuthMethod.PrivateKey;
+    public bool ShowProxyJump => IsSftp;
     public bool ShowAgentHint => IsSftp && SshAuth == SshAuthMethod.Agent;
     public bool ShowSaveSecret => ShowSecretField;
     public bool ShowKnownHostsHint => IsSftp;
@@ -429,6 +436,7 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
                                !(Protocol == RemoteProtocol.Sftp && SshAuth == SshAuthMethod.Agent);
         profile.SshAuth = SshAuth;
         profile.PrivateKeyPath = (PrivateKeyPath ?? string.Empty).Trim();
+        profile.ProxyJump = (ProxyJump ?? string.Empty).Trim();
         profile.Secure = Secure;
         profile.AllowInvalidCertificate = AllowInvalidCertificate;
         profile.S3Bucket = S3Bucket.Trim();

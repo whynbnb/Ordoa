@@ -191,6 +191,14 @@
         <TextBlock Text="{loc:Tr 使用 SSH_AUTH_SOCK 中的身份。请先用 ssh-add 添加密钥；Ordoa 不会读取或保存私钥本身。}"
                    Classes="tiny" TextWrapping="Wrap" IsVisible="{Binding ShowAgentHint}" />
 
+        <Grid ColumnDefinitions="100,*" IsVisible="{Binding ShowProxyJump}">
+          <TextBlock Text="{loc:Tr 跳板机}" Classes="fieldlabel" />
+          <TextBox Grid.Column="1" Text="{Binding ProxyJump, Mode=TwoWay}"
+                   PlaceholderText="{loc:Tr 可选，例如 user@bastion:22 或多级跳板}" />
+        </Grid>
+        <TextBlock Text="{loc:Tr 使用 SSH 端口转发通过跳板机连接目标；支持逗号分隔的多级跳板。}"
+                   Classes="tiny" TextWrapping="Wrap" IsVisible="{Binding ShowProxyJump}" />
+
         <Grid ColumnDefinitions="100,*" IsVisible="{Binding IsSmb}">
           <TextBlock Text="{loc:Tr 域}" Classes="fieldlabel" />
           <TextBox Grid.Column="1" Text="{Binding Domain, Mode=TwoWay}" PlaceholderText="{loc:Tr 可选，例如 WORKGROUP}" />

@@ -1482,5 +1482,9 @@
  "需要安装 xz 命令行工具才能读取 tar.xz": "Install the xz command-line tool to read tar.xz",
  "xz 没有生成压缩文件": "xz did not produce an archive",
  "压缩或解压失败": "Compression or extraction failed",
- "仅支持 zip、tar、tar.gz、tar.zst 和 tar.xz 格式": "Only zip, tar, tar.gz, tar.zst and tar.xz are supported"
+ "仅支持 zip、tar、tar.gz、tar.zst 和 tar.xz 格式": "Only zip, tar, tar.gz, tar.zst and tar.xz are supported",
+ "跳板机": "Jump host",
+ "可选，例如 user@bastion:22 或多级跳板": "Optional, for example user@bastion:22 or multiple hops",
+ "使用 SSH 端口转发通过跳板机连接目标；支持逗号分隔的多级跳板。": "Use SSH port forwarding through a jump host; comma-separated multi-hop chains are supported.",
+ "跳板机主机密钥校验失败，连接已中止。": "Jump-host key verification failed; connection aborted."
 }
