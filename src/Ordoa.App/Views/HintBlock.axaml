@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:Ordoa.App.Views"
+             x:Class="Ordoa.App.Views.HintBlock"
+             x:Name="Root"
+             x:DataType="views:HintBlock"
+             x:CompileBindings="True">
+  <Panel>
+    <TextBlock x:Name="HintText"
+               Text="{Binding Text, ElementName=Root}"
+               IsVisible="{Binding !IsCollapsed, ElementName=Root}"
+               FontSize="10.5"
+               Foreground="{DynamicResource TextTertiaryBrush}"
+               TextWrapping="Wrap" />
+    <Path x:Name="InfoIcon" Data="{StaticResource IconInfo}" Width="13" Height="13" Stretch="Uniform"
+          Fill="{DynamicResource TextTertiaryBrush}"
+          IsVisible="{Binding IsCollapsed, ElementName=Root}"
+          HorizontalAlignment="Left" VerticalAlignment="Center"
+          Cursor="Help">
+      <ToolTip.Tip>
+        <TextBlock Text="{Binding Text, ElementName=Root}" MaxWidth="420"
+                   TextWrapping="Wrap" FontSize="11.5" />
+      </ToolTip.Tip>
+    </Path>
+  </Panel>
+</UserControl>

@@ -92,7 +92,7 @@
         <Flyout x:Key="SearchFlyout" Placement="BottomEdgeAlignedRight">
           <StackPanel Width="300" Spacing="8" x:CompileBindings="True" x:DataType="vm:PaneViewModel">
             <TextBlock Text="{loc:Tr 搜索语法}" Classes="h2" />
-            <TextBlock Text="{loc:Tr 普通词匹配文件名；多个词需同时匹配。}" Classes="fieldhint"
+            <TextBlock Classes="fieldhint" Text="{loc:Tr 普通词匹配文件名；多个词需同时匹配。}"
                        TextWrapping="Wrap" />
             <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="5" Padding="8,6">
               <StackPanel Spacing="3">
@@ -101,8 +101,8 @@
                 <TextBlock Text="type:image size:&lt;2MB modified:today" Classes="tiny" FontFamily="monospace" />
               </StackPanel>
             </Border>
-            <TextBlock Text="{loc:Tr 支持 glob、排除项 -词、ext:、type:、size:、modified:、content:、tag: 和 color:；使用引号包含空格。}"
-                       Classes="fieldhint" TextWrapping="Wrap" />
+            <TextBlock Classes="fieldhint" Text="{loc:Tr 支持 glob、排除项 -词、ext:、type:、size:、modified:、content:、tag: 和 color:；使用引号包含空格。}"
+                       TextWrapping="Wrap" />
 
             <Border Classes="divider" />
             <Button Content="{loc:Tr 保存当前搜索…}" Classes="ghost" HorizontalAlignment="Stretch"

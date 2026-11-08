@@ -467,6 +467,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _theme = settings.Theme;
         _accent = settings.Accent;
         _compactMode = settings.CompactMode;
+        _collapseHints = settings.CollapseHints;
         _showHidden = settings.ShowHidden;
         _foldersFirst = settings.FoldersFirst;
         _view = settings.View;
@@ -712,6 +713,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _compactMode;
+
+    [ObservableProperty]
+    private bool _collapseHints;
 
     [ObservableProperty]
     private bool _showHidden;
@@ -1067,6 +1071,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.Theme = Theme;
         settings.Accent = Accent;
         settings.CompactMode = CompactMode;
+        settings.CollapseHints = CollapseHints;
         settings.ShowHidden = ShowHidden;
         settings.FoldersFirst = FoldersFirst;
         settings.View = View;
@@ -1172,6 +1177,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         Theme = defaults.Theme;
         Accent = defaults.Accent;
         CompactMode = defaults.CompactMode;
+        CollapseHints = defaults.CollapseHints;
         ShowHidden = defaults.ShowHidden;
         FoldersFirst = defaults.FoldersFirst;
         View = defaults.View;

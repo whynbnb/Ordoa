@@ -77,6 +77,8 @@ public sealed class AppSettings
     public AppTheme Theme { get; set; } = AppTheme.System;
     public AccentKind Accent { get; set; } = AccentKind.Jade;
     public bool CompactMode { get; set; }
+    /// <summary>Collapse explanatory hints into an info icon with a tooltip.</summary>
+    public bool CollapseHints { get; set; } = true;
     public bool ShowHidden { get; set; }
     public bool FoldersFirst { get; set; } = true;
     public SortColumn SortColumn { get; set; } = SortColumn.Name;

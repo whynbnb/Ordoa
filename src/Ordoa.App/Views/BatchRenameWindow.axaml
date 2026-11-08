@@ -2,6 +2,7 @@
         xmlns:loc="using:Ordoa.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        xmlns:views="using:Ordoa.App.Views"
         x:DataType="vm:BatchRenameDialogViewModel"
         x:CompileBindings="True"
         x:Class="Ordoa.App.Views.BatchRenameWindow"
@@ -81,8 +82,8 @@
 
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
             <CheckBox Content="{loc:Tr 使用正则表达式}" IsChecked="{Binding UseRegex, Mode=TwoWay}" />
-            <TextBlock Grid.Column="1" Text="{loc:Tr 替换内容可使用 $1、$2 等捕获组；无效表达式会标记为错误。}"
-                       Classes="fieldhint" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <views:HintBlock Grid.Column="1" Text="{loc:Tr 替换内容可使用 $1、$2 等捕获组；无效表达式会标记为错误。}"
+                             VerticalAlignment="Center" />
           </Grid>
 
           <Grid ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="8">

@@ -397,6 +397,8 @@
  "隐藏当前标签页的第二个面板": "Hide the second pane of the current tab",
  "键盘快捷键与关于": "Keyboard Shortcuts & About",
  "提示": "Info",
+ "说明": "Hints",
+ "折叠说明文字（悬停查看）": "Collapse explanatory text (hover to view)",
  "错误": "Error",
  "完成": "Done",
  "根目录": "Root",

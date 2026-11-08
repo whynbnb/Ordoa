@@ -2,6 +2,7 @@
         xmlns:loc="using:Ordoa.App.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        xmlns:views="using:Ordoa.App.Views"
         x:DataType="vm:ImageConversionDialogViewModel"
         x:CompileBindings="True"
         x:Class="Ordoa.App.Views.ImageConversionWindow"
@@ -26,20 +27,20 @@
         <TextBlock Text="{loc:Tr 输出格式}" Classes="fieldlabel" />
         <ComboBox Grid.Column="1" ItemsSource="{Binding Formats}" SelectedIndex="{Binding FormatIndex, Mode=TwoWay}"
                   MinWidth="120" HorizontalAlignment="Left" />
-        <TextBlock Grid.Column="2" Text="{loc:Tr JPEG/WebP 使用质量设置}" Classes="fieldhint"
-                   VerticalAlignment="Center" Margin="10,0,0,0" />
+        <views:HintBlock Grid.Column="2" Text="{loc:Tr JPEG/WebP 使用质量设置}"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
 
         <TextBlock Grid.Row="1" Text="{loc:Tr 质量}" Classes="fieldlabel" />
         <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="100" Increment="1" FormatString="0"
                        Value="{Binding Quality, Mode=TwoWay}" />
-        <TextBlock Grid.Row="1" Grid.Column="2" Text="{loc:Tr 1–100，默认 85}" Classes="fieldhint"
-                   VerticalAlignment="Center" Margin="10,0,0,0" />
+        <views:HintBlock Grid.Row="1" Grid.Column="2" Text="{loc:Tr 1–100，默认 85}"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
 
         <TextBlock Grid.Row="2" Text="{loc:Tr 最大边长}" Classes="fieldlabel" />
         <NumericUpDown Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="20000" Increment="100" FormatString="0"
                        Value="{Binding MaxDimension, Mode=TwoWay}" />
-        <TextBlock Grid.Row="2" Grid.Column="2" Text="{loc:Tr 像素；0 表示保持原始尺寸}" Classes="fieldhint"
-                   VerticalAlignment="Center" Margin="10,0,0,0" />
+        <views:HintBlock Grid.Row="2" Grid.Column="2" Text="{loc:Tr 像素；0 表示保持原始尺寸}"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
 
         <TextBlock Grid.Row="3" Text="{loc:Tr 输出文件夹}" Classes="fieldlabel" />
         <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding OutputDirectory, Mode=TwoWay}"
@@ -50,8 +51,8 @@
         <TextBlock Grid.Row="4" Text="{loc:Tr 文件名后缀}" Classes="fieldlabel" />
         <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Suffix, Mode=TwoWay}"
                  FontFamily="{DynamicResource MonoFontFamily}" />
-        <TextBlock Grid.Row="4" Grid.Column="2" Text="{loc:Tr 避免覆盖原文件；留空时自动改名}" Classes="fieldhint"
-                   VerticalAlignment="Center" Margin="10,0,0,0" />
+        <views:HintBlock Grid.Row="4" Grid.Column="2" Text="{loc:Tr 避免覆盖原文件；留空时自动改名}"
+                         VerticalAlignment="Center" Margin="10,0,0,0" />
       </Grid>
     </Border>
 
