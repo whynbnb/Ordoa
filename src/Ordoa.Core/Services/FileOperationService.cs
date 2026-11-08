@@ -291,13 +291,15 @@ public sealed class FileOperationService : IDisposable
     private readonly SettingsService? _settings;
     private readonly ConcurrencyGate _gate = new();
     private readonly BandwidthLimiter _bandwidth;
+    private readonly TransferJournal? _journal;
 
     public FileOperationService(TrashService trash, Action<Action>? uiPost = null,
-        SettingsService? settings = null)
+        SettingsService? settings = null, TransferJournal? journal = null)
     {
         _trash = trash;
         _post = uiPost;
         _settings = settings;
+        _journal = journal;
         _bandwidth = new BandwidthLimiter(() =>
             (_settings?.Current.TransferSpeedLimitMb ?? 0) * 1024L * 1024L);
         _gate.SetLimit(_settings?.Current.TransferConcurrency ?? 1);
@@ -321,7 +323,7 @@ public sealed class FileOperationService : IDisposable
     }
 
     public FileOperationItem Copy(IReadOnlyList<OperationSource> sources, IFileSystem destinationFileSystem,
-        string destinationDirectory, bool move, ConflictChoice? conflictChoice = null)
+        string destinationDirectory, bool move, ConflictChoice? conflictChoice = null, bool journal = true)
     {
         ValidateSources(sources);
         var entries = sources.Select(source => new CopyEntry(source, destinationDirectory)).ToList();
@@ -334,6 +336,16 @@ public sealed class FileOperationService : IDisposable
         item.RetryFactory = () => item.State == OperationState.Failed && item.FailedTransfers.Count > 0
             ? RetryFailedTransfers(item, destinationFileSystem, move)
             : Copy(sources, destinationFileSystem, destinationDirectory, move);
+        if (journal && _journal is not null)
+        {
+            _journal.Add(new PendingTransfer(
+                item.Id,
+                sources.Select(source => new PendingTransferSource(source.FileSystem.Id, source.Path)).ToList(),
+                destinationFileSystem.Id,
+                destinationDirectory,
+                move,
+                DateTimeOffset.Now));
+        }
         Enqueue(item, token => RunCopyAsync(item, entries, destinationFileSystem, move, token,
             conflictChoice));
         return item;
@@ -443,7 +455,17 @@ public sealed class FileOperationService : IDisposable
             _post(() => Operations.Insert(0, item));
 
         _gate.SetLimit(_settings?.Current.TransferConcurrency ?? 1);
-        _queue.Writer.TryWrite(new Job(item, work));
+        _queue.Writer.TryWrite(new Job(item, async token =>
+        {
+            try
+            {
+                await work(token).ConfigureAwait(false);
+            }
+            finally
+            {
+                _journal?.Remove(item.Id);
+            }
+        }));
     }
 
     private async Task ProcessLoopAsync()

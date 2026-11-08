@@ -96,6 +96,16 @@ public sealed class DialogService : IDialogService
         await ShowDialogAsync("properties", window, owner).ConfigureAwait(true);
     }
 
+    public async Task<bool> ShowBatchPermissionsAsync(IReadOnlyList<FileEntry> entries, IFileSystem fileSystem)
+    {
+        if (entries.Count == 0 || !TryPrepareDialog("batchpermissions", out var owner))
+            return false;
+
+        var viewModel = new BatchPermissionsDialogViewModel(entries, fileSystem);
+        var window = new BatchPermissionsWindow { DataContext = viewModel };
+        return await ShowDialogAsync<bool>("batchpermissions", window, owner).ConfigureAwait(true);
+    }
+
     public async Task ShowChecksumAsync(IReadOnlyList<OperationSource> sources)
     {
         if (!TryPrepareDialog("checksum", out var owner))

@@ -296,6 +296,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public event Action? CommandPaletteOpened;
     public event Action<TabViewModel?>? ActiveTabChanged;
 
+    public async Task<int> ResumePendingTransfersAsync()
+    {
+        var count = await _services.ResumePendingTransfersAsync().ConfigureAwait(true);
+        if (count > 0)
+        {
+            AddToast(L10n.T("已恢复未完成的传输"), L10n.Format("{0} 个队列项目", count),
+                ToastKind.Success);
+        }
+        return count;
+    }
+
     public async Task InitializeAsync()
     {
         if (_initialized)
@@ -2443,6 +2454,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Add(L10n.T("复制"), L10n.T("复制选中的项目"), _services.Shortcuts.GetGesture("copy"), "IconCopy", () => PaneAction(p => p.CopySelectionAsync(false)));
         Add(L10n.T("剪切"), L10n.T("剪切选中的项目"), _services.Shortcuts.GetGesture("cut"), "IconCut", () => PaneAction(p => p.CopySelectionAsync(true)));
         Add(L10n.T("粘贴"), L10n.T("将剪贴板中的项目粘贴到此处"), _services.Shortcuts.GetGesture("paste"), "IconPaste", () => PaneAction(p => p.PasteAsync()));
+        Add(L10n.T("复制到…"), L10n.T("选择目标文件夹并复制选中的项目"), null, "IconCopy",
+            () => PaneAction(p => p.CopySelectionToAsync(false)));
+        Add(L10n.T("移动到…"), L10n.T("选择目标文件夹并移动选中的项目"), null, "IconCut",
+            () => PaneAction(p => p.CopySelectionToAsync(true)));
+        Add(L10n.T("创建副本"), L10n.T("在当前文件夹中复制选中的项目"), null, "IconCopy", () =>
+        {
+            ActivePane?.DuplicateSelection();
+            return Task.CompletedTask;
+        });
+        Add(L10n.T("粘贴为符号链接"), L10n.T("为剪贴板中的项目创建符号链接"), null, "IconLink",
+            () => PaneAction(p => p.PasteAsLinkAsync()));
         Add(L10n.T("全选"), L10n.T("选择当前视图中的所有项目"), _services.Shortcuts.GetGesture("selectAll"), "IconSelectAll", () =>
         {
             ActivePane?.RequestSelectAll();
@@ -2480,7 +2502,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return Task.CompletedTask;
         });
         Add(L10n.T("属性"), L10n.T("查看选中项目的详细信息"), "Alt+Enter", "IconInfo", () => PaneAction(p => p.PropertiesAsync()));
-        Add(L10n.T("计算 SHA-256"), L10n.T("计算选中文件的校验和"), null, "IconCheckCircle", () => PaneAction(p => p.ChecksumAsync()));
+        Add(L10n.T("批量权限…"), L10n.T("批量修改八进制权限和所有者"), null, "IconInfo",
+            () => PaneAction(p => p.BatchPermissionsAsync()));
+        Add(L10n.T("计算校验和"), L10n.T("计算选中文件的校验和"), null, "IconCheckCircle", () => PaneAction(p => p.ChecksumAsync()));
         Add(L10n.T("磁盘占用分析"), L10n.T("用树图查看当前文件夹的空间占用"), null, "IconDisk", () => PaneAction(p => p.AnalyzeDiskUsageAsync()));
         Add(L10n.T("查找重复文件"), L10n.T("按内容查找当前文件夹中的重复文件"), null, "IconCopy", () => PaneAction(p => p.FindDuplicateFilesAsync()));
         Add(L10n.T("批量转换图片…"), L10n.T("转换格式、质量或最大尺寸"), null, "IconImage",

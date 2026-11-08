@@ -1863,6 +1863,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanEditArchive));
         OnPropertyChanged(nameof(CanAddToArchive));
         OnPropertyChanged(nameof(CanConvertImages));
+        OnPropertyChanged(nameof(CanBatchPermissions));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -1939,6 +1940,93 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         }
 
         Toast(L10n.T("没有可粘贴的项目"), L10n.T("剪贴板为空或内容不是文件"), false);
+    }
+
+    /// <summary>Copies or moves the selection to a folder chosen in a picker.</summary>
+    public async Task CopySelectionToAsync(bool move)
+    {
+        if (!HasSelection || IsTrash || IsArchive)
+            return;
+
+        var destination = await _services.Dialogs.PickFolderAsync(
+            L10n.T(move ? "移动到文件夹" : "复制到文件夹"), CurrentPath).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(destination))
+            return;
+
+        var sources = _selected.Select(item => new OperationSource(FileSystem, item.Entry)).ToList();
+        var destinationFileSystem = LocalFileSystem.Instance;
+        var preview = await PreviewTransferAsync(sources, destinationFileSystem, destination, move)
+            .ConfigureAwait(true);
+        if (preview == ConflictChoice.Cancel)
+            return;
+
+        _services.Operations.Copy(sources, destinationFileSystem, destination, move, preview);
+        OperationStarted?.Invoke(this);
+        Toast(move ? L10n.T("正在移动") : L10n.T("正在复制"),
+            L10n.Format("{0} 个项目", sources.Count), false);
+    }
+
+    /// <summary>Creates a copy of each selected item in the current folder.</summary>
+    public void DuplicateSelection()
+    {
+        if (!HasSelection || IsTrash || IsArchive)
+            return;
+
+        var sources = _selected.Select(item => new OperationSource(FileSystem, item.Entry)).ToList();
+        _services.Operations.Copy(sources, FileSystem, CurrentPath, move: false, ConflictChoice.RenameAll,
+            journal: false);
+        OperationStarted?.Invoke(this);
+        Toast(L10n.T("正在创建副本"), L10n.Format("{0} 个项目", sources.Count), false);
+    }
+
+    /// <summary>Pastes clipboard items as symbolic links in the current local folder.</summary>
+    public async Task PasteAsLinkAsync()
+    {
+        if (!IsLocal || IsTrash || IsArchive)
+            return;
+
+        ClipboardPayload? payload = null;
+        try
+        {
+            payload = await _services.Clipboard.TryReadInternalAsync().ConfigureAwait(true);
+        }
+        catch { /* ignore */ }
+
+        if (payload is not { Sources.Count: > 0 })
+        {
+            Toast(L10n.T("没有可粘贴的项目"), L10n.T("剪贴板为空或内容不是文件"), false);
+            return;
+        }
+
+        var created = 0;
+        var failed = 0;
+        foreach (var source in payload.Sources)
+        {
+            if (!source.FileSystem.IsLocal)
+            {
+                failed++;
+                continue;
+            }
+
+            try
+            {
+                var name = GlobMatcher.SuggestFileName(
+                    LinkService.SuggestLinkName(source.Entry.Name), IsNameTaken);
+                LinkService.CreateSymbolicLink(source.Entry.Path, Path.Combine(CurrentPath, name), false);
+                created++;
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                Core.Services.Log.Warn($"创建链接失败: {source.Path}", ex);
+            }
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+        if (created > 0)
+            Toast(L10n.T("已创建符号链接"), L10n.Format("{0} 个项目", created), false);
+        if (failed > 0)
+            Toast(L10n.T("部分链接未能创建"), L10n.Format("{0} 个项目", failed), true);
     }
 
     public async Task DeleteSelectionAsync(bool permanent)
@@ -2199,6 +2287,23 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             Toast(L10n.T("创建文件失败"), ex.Message, true);
+        }
+    }
+
+    public bool CanBatchPermissions => HasSelection && !IsTrash && !IsArchive &&
+        FileSystem.Capabilities.Has(FileSystemCapabilities.UnixPermissions) &&
+        _selected.Any(item => item.Entry.UnixMode is not null);
+
+    public async Task BatchPermissionsAsync()
+    {
+        if (!CanBatchPermissions)
+            return;
+
+        var entries = _selected.Select(item => item.Entry).ToList();
+        if (await _services.Dialogs.ShowBatchPermissionsAsync(entries, FileSystem).ConfigureAwait(true))
+        {
+            await RefreshAsync().ConfigureAwait(true);
+            Toast(L10n.T("权限已更新"), L10n.Format("{0} 个项目", entries.Count), false);
         }
     }
 

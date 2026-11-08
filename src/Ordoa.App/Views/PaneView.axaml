@@ -325,13 +325,16 @@
               <MenuItem Header="{loc:Tr 新建文件夹}" Click="OnNewFolderClick" />
               <MenuItem Header="{loc:Tr 新建空文件}" Click="OnNewFileClick" />
               <MenuItem Header="{loc:Tr 粘贴}" Click="OnPasteClick" />
+              <MenuItem Header="{loc:Tr 复制到…}" Click="OnCopyToClick" />
+              <MenuItem Header="{loc:Tr 移动到…}" Click="OnMoveToClick" />
+              <MenuItem Header="{loc:Tr 粘贴为符号链接}" Click="OnPasteAsLinkClick" />
               <MenuItem Header="{loc:Tr 全选}" Click="OnSelectAllClick" />
               <Separator />
               <MenuItem Header="{loc:Tr 压缩为 ZIP}" Click="OnCompressZipClick" />
               <MenuItem Header="{loc:Tr 压缩为 tar.gz}" Click="OnCompressTarClick" />
               <MenuItem Header="{loc:Tr 压缩为 7z}" Click="OnCompress7zClick" />
               <MenuItem Header="{loc:Tr 解压到此处}" Click="OnExtractClick" />
-              <MenuItem Header="{loc:Tr 计算 SHA-256}" Click="OnChecksumClick" />
+              <MenuItem Header="{loc:Tr 计算校验和}" Click="OnChecksumClick" />
               <MenuItem Header="{loc:Tr 分析工具}">
                 <MenuItem Header="{loc:Tr 磁盘占用分析}" Click="OnDiskUsageClick" />
                 <MenuItem Header="{loc:Tr 查找重复文件}" Click="OnDuplicateFinderClick" />

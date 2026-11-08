@@ -21,6 +21,7 @@ public interface IDialogService
     Task<bool> ConfirmAsync(string title, string message, string? confirmText = null, bool destructive = false);
     Task<string?> PromptAsync(string title, string label, string initial = "", Func<string, string?>? validate = null);
     Task ShowPropertiesAsync(FileEntry entry, IFileSystem fileSystem);
+    Task<bool> ShowBatchPermissionsAsync(IReadOnlyList<FileEntry> entries, IFileSystem fileSystem);
     Task ShowChecksumAsync(IReadOnlyList<OperationSource> sources);
     Task<BatchRenamePlan?> ShowBatchRenameAsync(BatchRenameRequest request);
     Task<OpenWithChoice?> ShowOpenWithAsync(FileEntry entry, IReadOnlyList<DesktopApplication> applications,

@@ -239,6 +239,15 @@ public partial class MainWindow : Window
             _viewModel.AddToast(L10n.T("启动时发生错误"), ex.Message, ToastKind.Error);
         }
 
+        try
+        {
+            await _viewModel.ResumePendingTransfersAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("恢复传输队列失败", ex);
+        }
+
         _initialized = true;
     }
 

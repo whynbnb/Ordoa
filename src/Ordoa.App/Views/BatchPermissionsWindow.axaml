@@ -1,0 +1,53 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:loc="using:Ordoa.App.Localization"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ordoa.App.ViewModels.Dialogs"
+        x:DataType="vm:BatchPermissionsDialogViewModel"
+        x:CompileBindings="True"
+        x:Class="Ordoa.App.Views.BatchPermissionsWindow"
+        Title="{loc:Tr 批量权限}"
+        Width="480" Height="440" CanResize="False" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="22,16,22,12" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="2">
+        <TextBlock Text="{loc:Tr 批量权限}" Classes="h2" />
+        <TextBlock Text="{Binding Summary}" Classes="caption" />
+      </StackPanel>
+    </Border>
+
+    <StackPanel Grid.Row="1" Margin="22,16" Spacing="12">
+      <StackPanel Spacing="5" IsVisible="{Binding CanEditPermissions}">
+        <TextBlock Text="{loc:Tr 八进制权限}" Classes="fieldlabel" />
+        <TextBox Text="{Binding OctalInput, Mode=TwoWay}" PlaceholderText="755"
+                 FontFamily="{DynamicResource MonoFontFamily}" />
+        <TextBlock Text="{loc:Tr 留空则不修改权限；输入 3 或 4 位八进制数字。}"
+                   Classes="fieldhint" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <StackPanel Spacing="5" IsVisible="{Binding CanEditOwnership}">
+        <TextBlock Text="{loc:Tr 所有者}" Classes="fieldlabel" />
+        <TextBox Text="{Binding OwnerInput, Mode=TwoWay}" PlaceholderText="{loc:Tr 留空则保持不变}" />
+        <TextBlock Text="{loc:Tr 用户组}" Classes="fieldlabel" />
+        <TextBox Text="{Binding GroupInput, Mode=TwoWay}" PlaceholderText="{loc:Tr 留空则保持不变}" />
+        <TextBlock Text="{loc:Tr 修改所有权通常需要管理员权限。}" Classes="fieldhint" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <TextBlock Text="{Binding Status}" Foreground="{DynamicResource TextSecondaryBrush}"
+                 Classes="caption" TextWrapping="Wrap" IsVisible="{Binding Status, Converter={StaticResource NotNullConverter}}" />
+    </StackPanel>
+
+    <Border Grid.Row="2" Padding="18,10,18,14" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <ProgressBar IsIndeterminate="True" Width="80" Height="3" HorizontalAlignment="Left"
+                     VerticalAlignment="Center" IsVisible="{Binding IsApplying}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Content="{loc:Tr 取消}" Classes="subtle" Click="OnCancelClick" />
+          <Button Content="{loc:Tr 应用}" Click="OnApplyClick" IsEnabled="{Binding !IsApplying}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

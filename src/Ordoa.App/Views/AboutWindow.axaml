@@ -50,7 +50,7 @@
           <TextBlock Grid.Row="1" Text="{loc:Tr · 跨文件系统复制、移动与传输队列}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="1" Grid.Column="1" Text="{loc:Tr · 符合 XDG 规范的回收站与恢复}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="2" Text="{loc:Tr · zip / tar / tar.gz 压缩与解压}" Classes="shortcutdesc" />
-          <TextBlock Grid.Row="2" Grid.Column="1" Text="{loc:Tr · SHA-256 校验和与权限查看}" Classes="shortcutdesc" />
+          <TextBlock Grid.Row="2" Grid.Column="1" Text="{loc:Tr · 校验和与权限查看}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="3" Text="{loc:Tr · 递归搜索、自然排序、缩略图}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="3" Grid.Column="1" Text="{loc:Tr · 空格快速预览与命令面板}" Classes="shortcutdesc" />
           <TextBlock Grid.Row="4" Text="{loc:Tr · 常驻预览面板（F3，右侧或底部）}" Classes="shortcutdesc" />

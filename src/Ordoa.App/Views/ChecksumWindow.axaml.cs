@@ -19,6 +19,12 @@ public partial class ChecksumWindow : Window
         Closed += (_, _) => (DataContext as ChecksumDialogViewModel)?.Dispose();
     }
 
+    private void OnAlgorithmClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is ChecksumDialogViewModel vm && sender is Button { Tag: string algorithm })
+            vm.SetAlgorithm(algorithm);
+    }
+
     private void OnCloseClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is ChecksumDialogViewModel { IsRunning: true } vm)

@@ -1087,6 +1087,9 @@ public partial class PaneView : UserControl
     private void OnNewFolderClick(object? sender, RoutedEventArgs e) => Run(pane => pane.NewFolderAsync());
     private void OnNewFileClick(object? sender, RoutedEventArgs e) => Run(pane => pane.NewFileAsync());
     private void OnPasteClick(object? sender, RoutedEventArgs e) => Run(pane => pane.PasteAsync());
+    private void OnCopyToClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CopySelectionToAsync(false));
+    private void OnMoveToClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CopySelectionToAsync(true));
+    private void OnPasteAsLinkClick(object? sender, RoutedEventArgs e) => Run(pane => pane.PasteAsLinkAsync());
     private void OnSelectAllClick(object? sender, RoutedEventArgs e) => _pane?.RequestSelectAll();
     private void OnCompressZipClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CompressAsync(false));
     private void OnCompressTarClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CompressAsync(true));
@@ -1240,8 +1243,19 @@ public partial class PaneView : UserControl
         menu.Items.Add(MenuItem(L10n.T("剪切"), () => pane.CopySelectionAsync(true), pane.CanCopy));
         menu.Items.Add(MenuItem(L10n.T("复制"), () => pane.CopySelectionAsync(false), pane.CanCopy));
         menu.Items.Add(MenuItem(L10n.T("粘贴"), pane.PasteAsync, pane.CanPaste));
+        menu.Items.Add(MenuItem(L10n.T("复制到…"), () => pane.CopySelectionToAsync(false),
+            pane.HasSelection && !pane.IsTrash && !pane.IsArchive));
+        menu.Items.Add(MenuItem(L10n.T("移动到…"), () => pane.CopySelectionToAsync(true),
+            pane.HasSelection && !pane.IsTrash && !pane.IsArchive));
+        menu.Items.Add(MenuItem(L10n.T("粘贴为符号链接"), pane.PasteAsLinkAsync,
+            pane.IsLocal && !pane.IsTrash && !pane.IsArchive));
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem(L10n.T("重命名"), pane.RenameAsync, pane.CanRename));
+        menu.Items.Add(MenuItem(L10n.T("创建副本"), () =>
+        {
+            pane.DuplicateSelection();
+            return Task.CompletedTask;
+        }, pane.HasSelection && !pane.IsTrash && !pane.IsArchive));
         menu.Items.Add(MenuItem(L10n.T("批量重命名"), pane.BatchRenameAsync, pane.CanBatchRename));
         var tagMenu = new MenuItem { Header = L10n.T("标签与颜色") };
         tagMenu.Items.Add(MenuItem(L10n.T("无颜色"), () =>
@@ -1303,7 +1317,7 @@ public partial class PaneView : UserControl
         menu.Items.Add(MenuItem(L10n.T("压缩为 tar.gz"), () => pane.CompressAsync(true), pane.CanCompress));
         menu.Items.Add(MenuItem(L10n.T("解压到此处"), pane.ExtractAsync, pane.CanExtract));
         menu.Items.Add(MenuItem(L10n.T("解压到…"), pane.ExtractSelectionToAsync, pane.CanExtractTo));
-        menu.Items.Add(MenuItem(L10n.T("计算 SHA-256"), pane.ChecksumAsync, pane.CanChecksum));
+        menu.Items.Add(MenuItem(L10n.T("计算校验和"), pane.ChecksumAsync, pane.CanChecksum));
         menu.Items.Add(MenuItem(L10n.T("计算文件夹大小"), pane.CalculateFolderSizesAsync,
             pane.CanCalculateFolderSize));
         var analysisMenu = new MenuItem { Header = L10n.T("分析工具") };
@@ -1318,6 +1332,7 @@ public partial class PaneView : UserControl
         AddCustomCommandMenuItems(menu, pane);
         menu.Items.Add(MenuItem(L10n.T("复制路径"), pane.CopyPathAsync, true));
         menu.Items.Add(MenuItem(L10n.T("复制名称"), pane.CopyNameAsync, pane.HasSelection));
+        menu.Items.Add(MenuItem(L10n.T("批量权限…"), pane.BatchPermissionsAsync, pane.CanBatchPermissions));
         menu.Items.Add(MenuItem(L10n.T("属性"), pane.PropertiesAsync, true));
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem(L10n.T("新建文件夹"), pane.NewFolderAsync, pane.CanCreateFolder));

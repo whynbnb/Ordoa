@@ -303,14 +303,28 @@ public sealed partial class ChecksumRowViewModel : ObservableObject
 
     public bool HasError => !string.IsNullOrEmpty(Error);
     public bool HasHash => !string.IsNullOrEmpty(Hash);
+
+    [ObservableProperty]
+    private string _expectedHash = string.Empty;
+
+    [ObservableProperty]
+    private string? _verificationStatus;
+
+    [ObservableProperty]
+    private bool _isVerified;
+
+    public bool HasExpectedHash => !string.IsNullOrEmpty(ExpectedHash);
+    public bool HasVerification => !string.IsNullOrEmpty(VerificationStatus);
 }
 
 public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposable
 {
     private readonly IReadOnlyList<OperationSource> _sources;
     private readonly ClipboardService _clipboard;
-    private readonly CancellationTokenSource _cts = new();
+    private CancellationTokenSource _cts = new();
     private bool _started;
+    private int _runVersion;
+    private ChecksumAlgorithm _algorithm = ChecksumAlgorithm.Sha256;
 
     public ChecksumDialogViewModel(IReadOnlyList<OperationSource> sources, ClipboardService clipboard)
     {
@@ -329,6 +343,54 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
 
     public ObservableCollection<ChecksumRowViewModel> Rows { get; } = [];
 
+    public ChecksumAlgorithm Algorithm
+    {
+        get => _algorithm;
+        set
+        {
+            if (SetProperty(ref _algorithm, value))
+            {
+                OnPropertyChanged(nameof(AlgorithmName));
+                OnPropertyChanged(nameof(Description));
+            }
+        }
+    }
+
+    public string AlgorithmName => Algorithm.DisplayName();
+    public string Description =>
+        L10n.Format("对文件内容计算 {0} 摘要，用于校验完整性", AlgorithmName);
+
+    public void SetAlgorithm(string value)
+    {
+        if (!Enum.TryParse<ChecksumAlgorithm>(value, ignoreCase: true, out var algorithm))
+            return;
+        if (Algorithm == algorithm)
+            return;
+
+        Algorithm = algorithm;
+        _ = RestartAsync();
+    }
+
+    public async Task RestartAsync()
+    {
+        _runVersion++;
+        try { _cts.Cancel(); } catch { /* ignore */ }
+        _cts.Dispose();
+        _cts = new CancellationTokenSource();
+        foreach (var row in Rows)
+        {
+            row.Hash = string.Empty;
+            row.Error = null;
+            row.IsDone = false;
+            row.Progress = 0;
+            row.ExpectedHash = string.Empty;
+            row.VerificationStatus = null;
+            row.IsVerified = false;
+        }
+        _started = false;
+        await StartAsync().ConfigureAwait(true);
+    }
+
     [ObservableProperty]
     private bool _isRunning;
 
@@ -345,20 +407,22 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
         if (_started)
             return;
         _started = true;
+        var version = _runVersion;
+        var cts = _cts;
         IsRunning = true;
         try
         {
             for (var i = 0; i < _sources.Count; i++)
             {
-                _cts.Token.ThrowIfCancellationRequested();
+                cts.Token.ThrowIfCancellationRequested();
                 var source = _sources[i];
                 var row = Rows[i];
-                Status = L10n.Format("正在计算 SHA-256 · {0} / {1}", i + 1, _sources.Count);
+                Status = L10n.Format("正在计算 {0} · {1} / {2}", AlgorithmName, i + 1, _sources.Count);
                 try
                 {
                     var progress = new Progress<double>(value => row.Progress = value);
-                    row.Hash = await ChecksumService.Sha256Async(source.FileSystem, source.Path, source.Entry.Size,
-                        progress, _cts.Token).ConfigureAwait(true);
+                    row.Hash = await ChecksumService.ComputeAsync(source.FileSystem, source.Path, Algorithm,
+                        source.Entry.Size, progress, cts.Token).ConfigureAwait(true);
                     row.IsDone = true;
                 }
                 catch (OperationCanceledException)
@@ -372,16 +436,18 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
                 }
             }
 
-            Status = _cts.Token.IsCancellationRequested ? L10n.T("已取消") : L10n.T("计算完成");
+            Status = cts.Token.IsCancellationRequested ? L10n.T("已取消") : L10n.T("计算完成");
             OnPropertyChanged(nameof(HasResults));
         }
         catch (OperationCanceledException)
         {
-            Status = L10n.T("已取消");
+            if (version == _runVersion)
+                Status = L10n.T("已取消");
         }
         finally
         {
-            IsRunning = false;
+            if (version == _runVersion)
+                IsRunning = false;
         }
     }
 
@@ -390,6 +456,99 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
     {
         try { _cts.Cancel(); } catch { /* ignore */ }
         Status = L10n.T("已取消");
+    }
+
+    [RelayCommand]
+    private async Task VerifyFileAsync()
+    {
+        var dialogs = App.Services?.Dialogs;
+        if (dialogs is null)
+            return;
+
+        var files = await dialogs.PickFilesAsync(L10n.T("选择校验文件")).ConfigureAwait(true);
+        if (files.Count == 0)
+            return;
+
+        string? text = null;
+        foreach (var file in files)
+        {
+            try
+            {
+                text = await File.ReadAllTextAsync(file).ConfigureAwait(true);
+                break;
+            }
+            catch (Exception ex)
+            {
+                FatalError = ex.Message;
+            }
+        }
+
+        if (text is null)
+            return;
+
+        var expected = ParseChecksumFile(text);
+        var matched = 0;
+        foreach (var row in Rows)
+        {
+            if (!expected.TryGetValue(row.Name, out var hash))
+                continue;
+
+            row.ExpectedHash = hash;
+            matched++;
+            if (row.HasHash)
+            {
+                row.IsVerified = string.Equals(row.Hash, hash, StringComparison.OrdinalIgnoreCase);
+                row.VerificationStatus = row.IsVerified ? L10n.T("一致") : L10n.T("不一致");
+            }
+            else
+            {
+                row.VerificationStatus = L10n.T("等待计算");
+            }
+        }
+
+        Status = matched == 0
+            ? L10n.T("校验文件中没有匹配当前项目的记录")
+            : L10n.Format("已对照 {0} 个项目", matched);
+        OnPropertyChanged(nameof(HasResults));
+    }
+
+    private static Dictionary<string, string> ParseChecksumFile(string text)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#'))
+                continue;
+
+            // GNU coreutils: "<hash>  <name>" or "<hash> *<name>".
+            var space = line.IndexOf(' ');
+            if (space > 0)
+            {
+                var hash = line[..space].Trim();
+                var name = line[(space + 1)..].Trim().TrimStart('*');
+                name = name.Replace('\\', '/');
+                if (hash.Length is 32 or 40 or 64 or 128 && name.Length > 0)
+                {
+                    result[Path.GetFileName(name)] = hash;
+                    continue;
+                }
+            }
+
+            // BSD: "SHA256 (name) = <hash>".
+            var open = line.IndexOf('(');
+            var close = line.IndexOf(')', open + 1);
+            var equals = line.LastIndexOf('=');
+            if (open >= 0 && close > open && equals > close)
+            {
+                var name = line[(open + 1)..close].Trim();
+                var hash = line[(equals + 1)..].Trim();
+                if (hash.Length is 32 or 40 or 64 or 128 && name.Length > 0)
+                    result[Path.GetFileName(name)] = hash;
+            }
+        }
+
+        return result;
     }
 
     [RelayCommand]

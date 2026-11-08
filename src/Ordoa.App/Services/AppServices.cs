@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
+using Ordoa.Core.Abstractions;
 using Ordoa.Core.FileSystems;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
@@ -21,6 +22,7 @@ public sealed class AppServices : IAsyncDisposable
         Trash = new TrashService();
         TrashFs = new TrashFileSystem(Trash);
         FileSystems = new FileSystemManager();
+        Journal = new TransferJournal();
         Recent = new RecentService();
         Bookmarks = new BookmarkService();
         Search = new SearchService();
@@ -40,9 +42,10 @@ public sealed class AppServices : IAsyncDisposable
         Dialogs = new DialogService(() => Windows.ActiveWindow);
         Integration = new SystemIntegrationService();
         FileManager1 = new FileManager1Service((uris, action) => Windows.HandleFileManagerRequestAsync(uris, action));
-        Operations = new FileOperationService(Trash, action => Dispatcher.UIThread.Post(action), Settings);
+        Operations = new FileOperationService(Trash, action => Dispatcher.UIThread.Post(action), Settings, Journal);
         Operations.ConflictResolver = new DialogConflictResolver(Dialogs);
         Operations.Finished += OnOperationFinishedForTags;
+        Operations.Finished += OnOperationFinishedForResume;
         Undo = new UndoService(this);
     }
 
@@ -52,6 +55,7 @@ public sealed class AppServices : IAsyncDisposable
     public TrashService Trash { get; }
     public TrashFileSystem TrashFs { get; }
     public FileOperationService Operations { get; }
+    public TransferJournal Journal { get; }
     public SearchService Search { get; }
     public RecentService Recent { get; }
     public BookmarkService Bookmarks { get; }
@@ -112,6 +116,80 @@ public sealed class AppServices : IAsyncDisposable
 
         return await FileManager1.StartAsync().ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Requeues copy/move requests that were still pending when the previous
+    /// process exited. Completed items are removed from the journal as their
+    /// resumed operation finishes.
+    /// </summary>
+    public async Task<int> ResumePendingTransfersAsync(CancellationToken cancellationToken = default)
+    {
+        var pending = Journal.Items;
+        if (pending.Count == 0)
+            return 0;
+
+        var resumed = 0;
+        foreach (var record in pending)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var destination = await ResolveFileSystemAsync(record.DestinationFileSystemId, cancellationToken)
+                    .ConfigureAwait(false);
+                var sources = new List<OperationSource>();
+                foreach (var source in record.Sources)
+                {
+                    var fileSystem = await ResolveFileSystemAsync(source.FileSystemId, cancellationToken)
+                        .ConfigureAwait(false);
+                    var entry = await fileSystem.GetEntryAsync(source.Path, cancellationToken).ConfigureAwait(false);
+                    if (entry is not null)
+                        sources.Add(new OperationSource(fileSystem, entry));
+                }
+
+                if (sources.Count == 0)
+                {
+                    Journal.Remove(record.Id);
+                    continue;
+                }
+
+                var item = Operations.Copy(sources, destination, record.DestinationPath, record.Move,
+                    ConflictChoice.ReplaceAll, journal: false);
+                lock (_resumedTransfers)
+                    _resumedTransfers[item.Id] = record.Id;
+                resumed++;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"恢复传输失败: {record.Id}", ex);
+                Journal.Remove(record.Id);
+            }
+        }
+
+        return resumed;
+    }
+
+    private readonly Dictionary<string, string> _resumedTransfers = new(StringComparer.Ordinal);
+
+    private void OnOperationFinishedForResume(object? sender, FileOperationItem item)
+    {
+        string? journalId;
+        lock (_resumedTransfers)
+        {
+            if (!_resumedTransfers.Remove(item.Id, out journalId))
+                return;
+        }
+
+        Journal.Remove(journalId);
+    }
+
+    private Task<IFileSystem> ResolveFileSystemAsync(string id, CancellationToken cancellationToken)
+        => id == FileSystems.Local.Id
+            ? Task.FromResult(FileSystems.Local)
+            : FileSystems.ConnectByIdAsync(id, cancellationToken);
 
     public async ValueTask DisposeAsync()
     {
