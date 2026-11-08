@@ -18,6 +18,7 @@ public sealed class AppServices : IAsyncDisposable
         Settings = new SettingsService();
         Shortcuts = new ShortcutService(Settings);
         SearchIndex = new SearchIndexService();
+        PlatformIntegration = new PlatformIntegrationService();
         ThemeService.Apply(Settings.Current);
 
         Trash = new TrashService();
@@ -47,6 +48,9 @@ public sealed class AppServices : IAsyncDisposable
         Operations.ConflictResolver = new DialogConflictResolver(Dialogs);
         Operations.Finished += OnOperationFinishedForTags;
         Settings.Changed += OnSettingsChangedForSearchIndex;
+        _lastWindowsShellIntegration = Settings.Current.WindowsShellIntegrationEnabled;
+        _lastMacFinderService = Settings.Current.MacFinderServiceEnabled;
+        Settings.Changed += OnSettingsChangedForPlatformIntegration;
         Undo = new UndoService(this);
     }
 
@@ -59,6 +63,7 @@ public sealed class AppServices : IAsyncDisposable
     public TransferJournal Journal { get; }
     public SearchService Search { get; }
     public SearchIndexService SearchIndex { get; }
+    public PlatformIntegrationService PlatformIntegration { get; }
     public RecentService Recent { get; }
     public BookmarkService Bookmarks { get; }
     public SessionService Session { get; }
@@ -80,6 +85,38 @@ public sealed class AppServices : IAsyncDisposable
     public DialogService Dialogs { get; }
     public Window? MainWindow => Windows.ActiveWindow;
 
+    private bool _lastWindowsShellIntegration;
+    private bool _lastMacFinderService;
+
+    private void OnSettingsChangedForPlatformIntegration(object? sender, EventArgs e)
+    {
+        var settings = Settings.Current;
+        if (settings.WindowsShellIntegrationEnabled != _lastWindowsShellIntegration ||
+            settings.MacFinderServiceEnabled != _lastMacFinderService)
+        {
+            _lastWindowsShellIntegration = settings.WindowsShellIntegrationEnabled;
+            _lastMacFinderService = settings.MacFinderServiceEnabled;
+            _ = ApplyPlatformIntegrationAsync();
+        }
+    }
+
+    /// <summary>Applies registry/Finder integration only when the user opted in.</summary>
+    public async Task ApplyPlatformIntegrationAsync(CancellationToken cancellationToken = default)
+    {
+        if (!PlatformIntegration.IsSupported)
+            return;
+
+        var enabled = PlatformIntegration.IsWindows
+            ? Settings.Current.WindowsShellIntegrationEnabled
+            : Settings.Current.MacFinderServiceEnabled;
+        if (PlatformIntegration.IsRegistered() == enabled)
+            return;
+
+        var result = await PlatformIntegration.ApplyAsync(enabled, cancellationToken).ConfigureAwait(false);
+        if (!result.Success)
+            Log.Warn($"平台集成失败: {result.Message}");
+    }
+
     public async Task StartIntegrationAsync()
     {
         if (Settings.Current.SingleInstance)
@@ -92,6 +129,15 @@ public sealed class AppServices : IAsyncDisposable
             {
                 Log.Warn("启动单实例服务失败", ex);
             }
+        }
+
+        try
+        {
+            await ApplyPlatformIntegrationAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("应用平台集成失败", ex);
         }
 
         if (!AppPaths.IsLinux)

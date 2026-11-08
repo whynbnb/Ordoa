@@ -861,6 +861,29 @@
               </Grid>
             </StackPanel>
 
+            <Border Classes="divider" IsVisible="{Binding IsPlatformIntegrationSupported}" />
+
+            <TextBlock Text="{loc:Tr 系统菜单集成}" Classes="section"
+                       IsVisible="{Binding IsPlatformIntegrationSupported}" />
+            <StackPanel Spacing="8" IsVisible="{Binding IsPlatformIntegrationSupported}">
+              <CheckBox IsVisible="{Binding IsWindows}"
+                        Content="{loc:Tr 添加“Open in Ordoa”和“在此处打开 Ordoa”资源管理器菜单}"
+                        IsChecked="{Binding WindowsShellIntegrationEnabled, Mode=TwoWay}" />
+              <CheckBox IsVisible="{Binding IsMacOS}"
+                        Content="{loc:Tr 安装“在 Ordoa 中打开”Finder 快速操作}"
+                        IsChecked="{Binding MacFinderServiceEnabled, Mode=TwoWay}" />
+              <TextBlock Classes="fieldhint"
+                         Text="{loc:Tr 这些选项默认关闭，只写入当前用户的注册表或 ~/Library/Services，不会修改系统级设置。}"
+                         TextWrapping="Wrap" />
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Button Content="{loc:Tr 应用系统集成}" Classes="subtle"
+                        Click="OnApplyPlatformIntegrationClick"
+                        IsEnabled="{Binding !IsApplyingPlatformIntegration}" />
+                <TextBlock Grid.Column="1" Text="{Binding PlatformIntegrationStatus}" Classes="caption"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+              </Grid>
+            </StackPanel>
+
             <Border Classes="divider" IsVisible="{Binding IsLinux}" />
 
             <TextBlock Text="{loc:Tr 打开方式}" Classes="section" IsVisible="{Binding IsLinux}" />

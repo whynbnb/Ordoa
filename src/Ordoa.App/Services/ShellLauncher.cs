@@ -66,7 +66,44 @@ public sealed class ShellLauncher
         });
     }
 
-    public bool RevealSupported => !RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+    public bool RevealSupported => RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ||
+                                   RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+    public string RevealLabel => RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+        ? "在 Finder 中显示"
+        : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? "在资源管理器中显示"
+            : "在文件管理器中显示";
+
+    /// <summary>Selects a file or folder in Finder or Explorer.</summary>
+    public Task RevealAsync(string path)
+    {
+        return Task.Run(() =>
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                TryStart("/usr/bin/open", ["-R", path]);
+                return;
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{path.Replace("\"", "\\\"", StringComparison.Ordinal)}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                Process.Start(startInfo);
+                return;
+            }
+
+            var parent = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(parent))
+                TryStart("xdg-open", [parent]);
+        });
+    }
 
     private static bool TryStart(string executable, string[] arguments)
     {

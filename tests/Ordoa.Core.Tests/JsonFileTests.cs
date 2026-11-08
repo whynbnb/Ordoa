@@ -24,6 +24,8 @@ public sealed class JsonFileTests
                 ShowVolumes = false,
                 ShowHiddenVolumes = true,
                 ShowTagsColumn = true,
+                WindowsShellIntegrationEnabled = true,
+                MacFinderServiceEnabled = true,
                 ColumnOrder =
                 [
                     nameof(FileListColumn.Name),
@@ -86,6 +88,8 @@ public sealed class JsonFileTests
             Assert.False(loaded.ShowVolumes);
             Assert.True(loaded.ShowHiddenVolumes);
             Assert.True(loaded.ShowTagsColumn);
+            Assert.True(loaded.WindowsShellIntegrationEnabled);
+            Assert.True(loaded.MacFinderServiceEnabled);
             Assert.Equal(7, loaded.ColumnOrder.Count);
             Assert.Equal(nameof(FileListColumn.Owner), loaded.ColumnOrder[1]);
             Assert.Equal(91, loaded.ColumnWidths["Size"]);

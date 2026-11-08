@@ -1864,6 +1864,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanAddToArchive));
         OnPropertyChanged(nameof(CanConvertImages));
         OnPropertyChanged(nameof(CanBatchPermissions));
+        OnPropertyChanged(nameof(CanReveal));
         OnPropertyChanged(nameof(CanOpenArchive));
         OnPropertyChanged(nameof(CanShowGitStatus));
         OnPropertyChanged(nameof(CanOpenWith));
@@ -2288,6 +2289,17 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             Toast(L10n.T("创建文件失败"), ex.Message, true);
         }
+    }
+
+    public bool CanReveal => FileSystem.IsLocal && HasSelection && _services.Shell.RevealSupported;
+    public string RevealLabel => L10n.T(_services.Shell.RevealLabel);
+
+    public async Task RevealSelectionAsync()
+    {
+        if (!CanReveal || PrimarySelection is not { } item)
+            return;
+
+        await _services.Shell.RevealAsync(item.Path).ConfigureAwait(true);
     }
 
     public bool CanBatchPermissions => HasSelection && !IsTrash && !IsArchive &&

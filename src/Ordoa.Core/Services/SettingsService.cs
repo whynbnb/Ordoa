@@ -170,6 +170,10 @@ public sealed class AppSettings
     public GridThumbnailSize GridThumbnailSize { get; set; } = GridThumbnailSize.Medium;
     public ListDensity ListDensity { get; set; } = ListDensity.Normal;
     public GroupByMode GroupBy { get; set; } = GroupByMode.None;
+    /// <summary>Register Explorer context-menu verbs for Ordoa on Windows. Intrusive and off by default.</summary>
+    public bool WindowsShellIntegrationEnabled { get; set; }
+    /// <summary>Install a Finder Quick Action for Ordoa on macOS. Intrusive and off by default.</summary>
+    public bool MacFinderServiceEnabled { get; set; }
     /// <summary>Enable the optional local search index. Disabled by default.</summary>
     public bool SearchIndexEnabled { get; set; }
     public SearchIndexMode SearchIndexMode { get; set; } = SearchIndexMode.Whitelist;

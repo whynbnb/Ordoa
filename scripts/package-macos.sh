@@ -64,6 +64,24 @@ package_dmg() {
   <key>CFBundleVersion</key><string>$version</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key><string>Folder</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array><string>public.folder</string><string>public.directory</string></array>
+    </dict>
+  </array>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>me.whynbnb.Ordoa</string>
+      <key>CFBundleURLSchemes</key>
+      <array><string>sftp</string><string>ftp</string><string>ftps</string><string>smb</string><string>dav</string><string>webdav</string></array>
+    </dict>
+  </array>
 </dict>
 </plist>
 EOF

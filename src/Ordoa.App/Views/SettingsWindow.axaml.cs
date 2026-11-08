@@ -31,6 +31,7 @@ public partial class SettingsWindow : Window
 
             await vm.LoadVolumesAsync();
             vm.RefreshSearchIndexStatus();
+            vm.RefreshPlatformIntegrationStatus();
             vm.PropertyChanged += OnVolumeSettingsChanged;
         };
     }
@@ -72,6 +73,12 @@ public partial class SettingsWindow : Window
     {
         if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string mode })
             vm.SetWindowButtonMode(mode);
+    }
+
+    private async void OnApplyPlatformIntegrationClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+            await vm.ApplyPlatformIntegrationAsync();
     }
 
     private void OnSearchIndexModeClick(object? sender, RoutedEventArgs e)

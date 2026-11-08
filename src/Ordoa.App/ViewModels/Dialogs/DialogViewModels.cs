@@ -506,6 +506,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _searchIndexMode = settings.SearchIndexMode;
         _searchIndexRootsText = string.Join(Environment.NewLine, settings.SearchIndexRoots);
         _searchIndexExcludesText = string.Join(Environment.NewLine, settings.SearchIndexExcludes);
+        _windowsShellIntegrationEnabled = settings.WindowsShellIntegrationEnabled;
+        _macFinderServiceEnabled = settings.MacFinderServiceEnabled;
         _transferConcurrency = settings.TransferConcurrency;
         _transferSpeedLimit = settings.TransferSpeedLimitMb;
         _copyVerificationIndex = (int)settings.CopyVerification;
@@ -1009,6 +1011,18 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     [ObservableProperty]
     private string _integrationStatus = string.Empty;
 
+    [ObservableProperty]
+    private bool _windowsShellIntegrationEnabled;
+
+    [ObservableProperty]
+    private bool _macFinderServiceEnabled;
+
+    [ObservableProperty]
+    private string _platformIntegrationStatus = string.Empty;
+
+    [ObservableProperty]
+    private bool _isApplyingPlatformIntegration;
+
     public IReadOnlyList<string> FolderOpenModes { get; }
     public IReadOnlyList<string> UndoBehaviors { get; }
     public IReadOnlyList<string> PreviewPanelPlacements { get; }
@@ -1017,6 +1031,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     public string SettingsPath => AppPaths.SettingsFile;
 
     public bool IsMacOS => OperatingSystem.IsMacOS();
+
+    public bool IsWindows => OperatingSystem.IsWindows();
+
+    public bool IsPlatformIntegrationSupported => IsMacOS || IsWindows;
 
     public bool IsLinux => OperatingSystem.IsLinux();
 
@@ -1200,6 +1218,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.SearchIndexMode = SearchIndexMode;
         settings.SearchIndexRoots = SplitIndexLines(SearchIndexRootsText);
         settings.SearchIndexExcludes = SplitIndexLines(SearchIndexExcludesText);
+        settings.WindowsShellIntegrationEnabled = WindowsShellIntegrationEnabled;
+        settings.MacFinderServiceEnabled = MacFinderServiceEnabled;
         settings.TransferConcurrency = Math.Clamp((int)TransferConcurrency, 1, 4);
         settings.TransferSpeedLimitMb = Math.Clamp((int)TransferSpeedLimit, 0, 100_000);
         settings.CopyVerification = (CopyVerificationMode)Math.Clamp(CopyVerificationIndex, 0, 2);
@@ -1314,6 +1334,8 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         SearchIndexMode = defaults.SearchIndexMode;
         SearchIndexRootsText = string.Join(Environment.NewLine, defaults.SearchIndexRoots);
         SearchIndexExcludesText = string.Join(Environment.NewLine, defaults.SearchIndexExcludes);
+        WindowsShellIntegrationEnabled = defaults.WindowsShellIntegrationEnabled;
+        MacFinderServiceEnabled = defaults.MacFinderServiceEnabled;
         TransferConcurrency = defaults.TransferConcurrency;
         TransferSpeedLimit = defaults.TransferSpeedLimitMb;
         CopyVerificationIndex = (int)defaults.CopyVerification;
@@ -1466,6 +1488,47 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         var index = App.Services?.SearchIndex;
         if (index is not null)
             SearchIndexStatus = index.StatusText;
+        RefreshPlatformIntegrationStatus();
+    }
+
+    public void RefreshPlatformIntegrationStatus()
+    {
+        var integration = App.Services?.PlatformIntegration;
+        if (integration is null || !integration.IsSupported)
+        {
+            PlatformIntegrationStatus = L10n.T("当前平台不支持系统菜单集成。");
+            return;
+        }
+
+        PlatformIntegrationStatus = integration.IsRegistered()
+            ? L10n.T("系统菜单集成已安装。")
+            : L10n.T("系统菜单集成未安装。");
+    }
+
+    public async Task ApplyPlatformIntegrationAsync()
+    {
+        var services = App.Services;
+        if (services is null || IsApplyingPlatformIntegration)
+            return;
+
+        IsApplyingPlatformIntegration = true;
+        PlatformIntegrationStatus = L10n.T("正在更新系统集成…");
+        try
+        {
+            var enabled = services.PlatformIntegration.IsWindows
+                ? WindowsShellIntegrationEnabled
+                : MacFinderServiceEnabled;
+            var result = await services.PlatformIntegration.ApplyAsync(enabled).ConfigureAwait(true);
+            PlatformIntegrationStatus = result.Message;
+        }
+        catch (Exception ex)
+        {
+            PlatformIntegrationStatus = ex.Message;
+        }
+        finally
+        {
+            IsApplyingPlatformIntegration = false;
+        }
     }
 
     private static List<string> SplitIndexLines(string text)

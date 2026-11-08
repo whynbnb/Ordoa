@@ -1237,6 +1237,7 @@ public partial class PaneView : UserControl
             pane.RequestPreview();
             return Task.CompletedTask;
         }, pane.HasSelection));
+        menu.Items.Add(MenuItem(pane.RevealLabel, pane.RevealSelectionAsync, pane.CanReveal));
         menu.Items.Add(MenuItem(L10n.T("在新标签页中打开"), () => pane.OpenSelectionInNewTabAsync(), pane.HasSelection));
         menu.Items.Add(MenuItem(L10n.T("在新窗口打开"), pane.OpenInNewWindowAsync, pane.CanOpenInNewWindow));
         menu.Items.Add(new Separator());
