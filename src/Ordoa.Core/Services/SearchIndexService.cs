@@ -93,6 +93,7 @@ public sealed class SearchIndexService : IDisposable
     {
         _config = config;
         _preparedExcludes = PrepareExcludes(config);
+        StopWatching();
         if (config.Roots.Count == 0)
         {
             IsReady = false;
