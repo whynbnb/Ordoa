@@ -1093,6 +1093,8 @@ public partial class PaneView : UserControl
     private void OnSelectAllClick(object? sender, RoutedEventArgs e) => _pane?.RequestSelectAll();
     private void OnCompressZipClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CompressAsync(false));
     private void OnCompressTarClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CompressAsync(true));
+    private void OnCompressZstdClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CompressZstdAsync());
+    private void OnCompressXzClick(object? sender, RoutedEventArgs e) => Run(pane => pane.CompressXzAsync());
     private void OnCompress7zClick(object? sender, RoutedEventArgs e) => Run(pane => pane.Compress7zAsync());
     private void OnExtractClick(object? sender, RoutedEventArgs e) => Run(pane => pane.ExtractAsync());
     private void OnChecksumClick(object? sender, RoutedEventArgs e) => Run(pane => pane.ChecksumAsync());
@@ -1316,6 +1318,8 @@ public partial class PaneView : UserControl
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem(L10n.T("压缩为 ZIP"), () => pane.CompressAsync(false), pane.CanCompress));
         menu.Items.Add(MenuItem(L10n.T("压缩为 tar.gz"), () => pane.CompressAsync(true), pane.CanCompress));
+        menu.Items.Add(MenuItem(L10n.T("压缩为 tar.zst"), pane.CompressZstdAsync, pane.CanCompress));
+        menu.Items.Add(MenuItem(L10n.T("压缩为 tar.xz"), pane.CompressXzAsync, pane.CanCompress));
         menu.Items.Add(MenuItem(L10n.T("解压到此处"), pane.ExtractAsync, pane.CanExtract));
         menu.Items.Add(MenuItem(L10n.T("解压到…"), pane.ExtractSelectionToAsync, pane.CanExtractTo));
         menu.Items.Add(MenuItem(L10n.T("计算校验和"), pane.ChecksumAsync, pane.CanChecksum));

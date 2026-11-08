@@ -19,6 +19,8 @@ public static class ArchiveService
         Zip,
         Tar,
         TarGz,
+        TarZstd,
+        TarXz,
         SevenZip,
         Rar,
     }
@@ -30,6 +32,10 @@ public static class ArchiveService
             return ArchiveKind.Zip;
         if (lower.EndsWith(".tar.gz", StringComparison.Ordinal) || lower.EndsWith(".tgz", StringComparison.Ordinal))
             return ArchiveKind.TarGz;
+        if (lower.EndsWith(".tar.zst", StringComparison.Ordinal) || lower.EndsWith(".tzst", StringComparison.Ordinal))
+            return ArchiveKind.TarZstd;
+        if (lower.EndsWith(".tar.xz", StringComparison.Ordinal) || lower.EndsWith(".txz", StringComparison.Ordinal))
+            return ArchiveKind.TarXz;
         if (lower.EndsWith(".tar", StringComparison.Ordinal))
             return ArchiveKind.Tar;
         if (lower.EndsWith(".7z", StringComparison.Ordinal))
@@ -44,6 +50,14 @@ public static class ArchiveService
         var lower = fileName.ToLowerInvariant();
         if (lower.EndsWith(".tar.gz", StringComparison.Ordinal))
             return fileName[..^7];
+        if (lower.EndsWith(".tar.zst", StringComparison.Ordinal))
+            return fileName[..^8];
+        if (lower.EndsWith(".tar.xz", StringComparison.Ordinal))
+            return fileName[..^7];
+        if (lower.EndsWith(".tzst", StringComparison.Ordinal))
+            return fileName[..^5];
+        if (lower.EndsWith(".txz", StringComparison.Ordinal))
+            return fileName[..^4];
         var dot = fileName.LastIndexOf('.');
         return dot > 0 ? fileName[..dot] : fileName;
     }
@@ -55,7 +69,7 @@ public static class ArchiveService
         {
             var kind = GetArchiveKind(destinationArchive);
             if (kind is ArchiveKind.None or ArchiveKind.SevenZip or ArchiveKind.Rar)
-                throw new NotSupportedException(L10n.T("仅支持 zip、tar 和 tar.gz 格式"));
+                throw new NotSupportedException(L10n.T("仅支持 zip、tar、tar.gz、tar.zst 和 tar.xz 格式"));
 
             var items = Scan(paths, destinationArchive, cancellationToken);
             if (items.Count == 0)
@@ -63,6 +77,8 @@ public static class ArchiveService
 
             if (kind == ArchiveKind.Zip)
                 CreateZip(items, destinationArchive, progress, cancellationToken);
+            else if (kind is ArchiveKind.TarZstd or ArchiveKind.TarXz)
+                CreateCompressedTar(items, destinationArchive, kind, progress, cancellationToken);
             else
                 CreateTar(items, destinationArchive, kind == ArchiveKind.TarGz, progress, cancellationToken);
         }, cancellationToken);
@@ -101,6 +117,8 @@ public static class ArchiveService
                 Directory.CreateDirectory(destination);
                 SevenZipTool.Extract(archivePath, destination, null, cancellationToken);
             }
+            else if (kind is ArchiveKind.TarZstd or ArchiveKind.TarXz)
+                ExtractCompressedTar(archivePath, destination, kind, null, progress, cancellationToken);
             else
                 ExtractTar(archivePath, destination, kind == ArchiveKind.TarGz, null, progress, cancellationToken);
 
@@ -136,6 +154,8 @@ public static class ArchiveService
             else if (kind is ArchiveKind.SevenZip or ArchiveKind.Rar)
                 SevenZipTool.Extract(archivePath, destination, selected.Count == 0 ? null : selected,
                     cancellationToken, password);
+            else if (kind is ArchiveKind.TarZstd or ArchiveKind.TarXz)
+                ExtractCompressedTar(archivePath, destination, kind, selection, progress, cancellationToken);
             else
                 ExtractTar(archivePath, destination, kind == ArchiveKind.TarGz, selection, progress,
                     cancellationToken);
@@ -268,6 +288,49 @@ public static class ArchiveService
         {
             if (gzip)
                 sink.Dispose();
+        }
+    }
+
+    private static void CreateCompressedTar(List<ArchiveItem> items, string destination, ArchiveKind kind,
+        IProgress<ArchiveProgress>? progress, CancellationToken cancellationToken)
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "ordoa-tar-" + Guid.NewGuid().ToString("N") + ".tar");
+        try
+        {
+            CreateTar(items, temp, gzip: false, progress, cancellationToken);
+            var toolKind = kind == ArchiveKind.TarZstd ? CompressedTarTool.Kind.Zstd : CompressedTarTool.Kind.Xz;
+            if (!CompressedTarTool.IsAvailable(toolKind))
+                throw new NotSupportedException(kind == ArchiveKind.TarZstd
+                    ? L10n.T("需要安装 zstd 命令行工具才能创建 tar.zst")
+                    : L10n.T("需要安装 xz 命令行工具才能创建 tar.xz"));
+            CompressedTarTool.CompressAsync(toolKind, temp, destination, cancellationToken)
+                .GetAwaiter().GetResult();
+        }
+        finally
+        {
+            try { File.Delete(temp); } catch { /* ignore */ }
+        }
+    }
+
+    private static void ExtractCompressedTar(string archivePath, string destination, ArchiveKind kind,
+        IReadOnlyList<string>? selection, IProgress<ArchiveProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "ordoa-tar-" + Guid.NewGuid().ToString("N") + ".tar");
+        try
+        {
+            var toolKind = kind == ArchiveKind.TarZstd ? CompressedTarTool.Kind.Zstd : CompressedTarTool.Kind.Xz;
+            if (!CompressedTarTool.IsAvailable(toolKind))
+                throw new NotSupportedException(kind == ArchiveKind.TarZstd
+                    ? L10n.T("需要安装 zstd 命令行工具才能读取 tar.zst")
+                    : L10n.T("需要安装 xz 命令行工具才能读取 tar.xz"));
+            CompressedTarTool.DecompressAsync(toolKind, archivePath, temp, cancellationToken)
+                .GetAwaiter().GetResult();
+            ExtractTar(temp, destination, gzip: false, selection, progress, cancellationToken);
+        }
+        finally
+        {
+            try { File.Delete(temp); } catch { /* ignore */ }
         }
     }
 

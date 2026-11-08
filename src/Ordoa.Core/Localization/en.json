@@ -1469,5 +1469,18 @@
  "可使用": "Usable",
  "发现依赖局域网组播；防火墙或容器网络可能限制结果。": "Discovery uses local multicast; firewalls or container networking may limit results.",
  "使用此设备": "Use this device",
- "发现局域网设备…": "Discover network devices…"
+ "发现局域网设备…": "Discover network devices…",
+ "压缩为 tar.zst": "Compress as tar.zst",
+ "压缩为 tar.xz": "Compress as tar.xz",
+ "使用 zstd 压缩选中的项目": "Compress selected items with zstd",
+ "使用 xz 压缩选中的项目": "Compress selected items with xz",
+ "需要安装 zstd 命令行工具": "The zstd command-line tool is required",
+ "需要安装 xz 命令行工具": "The xz command-line tool is required",
+ "需要安装 zstd 命令行工具才能创建 tar.zst": "Install the zstd command-line tool to create tar.zst",
+ "需要安装 xz 命令行工具才能创建 tar.xz": "Install the xz command-line tool to create tar.xz",
+ "需要安装 zstd 命令行工具才能读取 tar.zst": "Install the zstd command-line tool to read tar.zst",
+ "需要安装 xz 命令行工具才能读取 tar.xz": "Install the xz command-line tool to read tar.xz",
+ "xz 没有生成压缩文件": "xz did not produce an archive",
+ "压缩或解压失败": "Compression or extraction failed",
+ "仅支持 zip、tar、tar.gz、tar.zst 和 tar.xz 格式": "Only zip, tar, tar.gz, tar.zst and tar.xz are supported"
 }

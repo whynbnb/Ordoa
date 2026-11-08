@@ -407,6 +407,8 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         {
             ArchiveFormat.Zip => "ZIP",
             ArchiveFormat.TarGz => "TAR.GZ",
+            ArchiveFormat.TarZstd => "TAR.ZST",
+            ArchiveFormat.TarXz => "TAR.XZ",
             _ => "TAR",
         },
         { IsLocal: true } => L10n.T("本机"),
@@ -415,6 +417,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         { Scheme: "ftps" } => "FTPS",
         { Scheme: "smb" } => "SMB",
         { Scheme: "webdav" } => "WebDAV",
+        { Scheme: "s3" } => "S3",
         _ => L10n.T("远程"),
     };
 
@@ -1932,7 +1935,13 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         await _services.Dialogs.ShowChecksumAsync(sources).ConfigureAwait(true);
     }
 
-    public async Task CompressAsync(bool tarGz)
+    public Task CompressAsync(bool tarGz) => CompressToAsync(tarGz ? ".tar.gz" : ".zip");
+
+    public Task CompressZstdAsync() => CompressToAsync(".tar.zst");
+
+    public Task CompressXzAsync() => CompressToAsync(".tar.xz");
+
+    private async Task CompressToAsync(string extension)
     {
         if (!CanCompress)
             return;
@@ -1941,7 +1950,6 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         if (paths.Count == 0)
             return;
 
-        var extension = tarGz ? ".tar.gz" : ".zip";
         var baseName = paths.Count == 1 ? Path.GetFileName(paths[0].TrimEnd(Path.DirectorySeparatorChar)) : L10n.T("压缩包");
         var candidateName = baseName + extension;
         if (!IsNameFree(candidateName))

@@ -22,6 +22,7 @@ public sealed class ArchiveFileSystem : FileSystemBase
     private readonly object _extractLock = new();
     private readonly string _tempRoot;
     private readonly string? _password;
+    private string _tarSourcePath;
     private bool _disposed;
     private bool _hasEncryptedEntries;
 
@@ -33,6 +34,7 @@ public sealed class ArchiveFileSystem : FileSystemBase
         _password = password;
         _tempRoot = Path.Combine(AppPaths.CacheDirectory, "archives",
             HashPath(archivePath)[..16] + "-" + Guid.NewGuid().ToString("N")[..8]);
+        _tarSourcePath = archivePath;
         _nodes["/"] = new ArchiveNode("/", DisplayName, true, 0, null);
     }
 
@@ -110,6 +112,10 @@ public sealed class ArchiveFileSystem : FileSystemBase
                 throw new NotSupportedException(L10n.T("仅支持 zip、tar、tar.gz、7z 和 rar 格式"));
             if (format is ArchiveFormat.SevenZip or ArchiveFormat.Rar && !SevenZipTool.IsAvailable)
                 throw new NotSupportedException(L10n.T("需要安装 7z 命令行工具才能读取此压缩包"));
+            if (format == ArchiveFormat.TarZstd && !CompressedTarTool.IsAvailable(CompressedTarTool.Kind.Zstd))
+                throw new NotSupportedException(L10n.T("需要安装 zstd 命令行工具才能读取 tar.zst"));
+            if (format == ArchiveFormat.TarXz && !CompressedTarTool.IsAvailable(CompressedTarTool.Kind.Xz))
+                throw new NotSupportedException(L10n.T("需要安装 xz 命令行工具才能读取 tar.xz"));
 
             var fileSystem = new ArchiveFileSystem(Path.GetFullPath(archivePath), format, password);
             fileSystem.BuildIndex(cancellationToken);
@@ -214,12 +220,25 @@ public sealed class ArchiveFileSystem : FileSystemBase
 
     private void BuildIndex(CancellationToken cancellationToken)
     {
+        _tarSourcePath = ArchivePath;
         if (Format is ArchiveFormat.SevenZip or ArchiveFormat.Rar)
             BuildSevenZipIndex(cancellationToken);
         else if (Format == ArchiveFormat.Zip)
             BuildZipIndex(cancellationToken);
         else
+        {
+            if (Format is ArchiveFormat.TarZstd or ArchiveFormat.TarXz)
+            {
+                Directory.CreateDirectory(_tempRoot);
+                _tarSourcePath = Path.Combine(_tempRoot, "archive.tar");
+                var kind = Format == ArchiveFormat.TarZstd
+                    ? CompressedTarTool.Kind.Zstd
+                    : CompressedTarTool.Kind.Xz;
+                CompressedTarTool.DecompressAsync(kind, ArchivePath, _tarSourcePath, cancellationToken)
+                    .GetAwaiter().GetResult();
+            }
             BuildTarIndex(cancellationToken);
+        }
 
         foreach (var node in _nodes.Values.ToList())
         {
@@ -272,7 +291,7 @@ public sealed class ArchiveFileSystem : FileSystemBase
 
     private void BuildTarIndex(CancellationToken cancellationToken)
     {
-        using var file = new FileStream(ArchivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var file = new FileStream(_tarSourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         Stream source = Format == ArchiveFormat.TarGz
             ? new GZipStream(file, CompressionMode.Decompress, leaveOpen: true)
             : file;
@@ -349,7 +368,7 @@ public sealed class ArchiveFileSystem : FileSystemBase
             return;
         }
 
-        using var file = new FileStream(ArchivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var file = new FileStream(_tarSourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         Stream source = Format == ArchiveFormat.TarGz
             ? new GZipStream(file, CompressionMode.Decompress, leaveOpen: true)
             : file;
@@ -410,6 +429,10 @@ public sealed class ArchiveFileSystem : FileSystemBase
             return ArchiveFormat.Zip;
         if (lower.EndsWith(".tar.gz", StringComparison.Ordinal) || lower.EndsWith(".tgz", StringComparison.Ordinal))
             return ArchiveFormat.TarGz;
+        if (lower.EndsWith(".tar.zst", StringComparison.Ordinal) || lower.EndsWith(".tzst", StringComparison.Ordinal))
+            return ArchiveFormat.TarZstd;
+        if (lower.EndsWith(".tar.xz", StringComparison.Ordinal) || lower.EndsWith(".txz", StringComparison.Ordinal))
+            return ArchiveFormat.TarXz;
         if (lower.EndsWith(".tar", StringComparison.Ordinal))
             return ArchiveFormat.Tar;
         if (lower.EndsWith(".7z", StringComparison.Ordinal))
@@ -435,6 +458,8 @@ public enum ArchiveFormat
     Zip,
     Tar,
     TarGz,
+    TarZstd,
+    TarXz,
     SevenZip,
     Rar,
 }
