@@ -1,4 +1,5 @@
 using Ordoa.Core.FileSystems;
+using Ordoa.Core.Localization;
 using Ordoa.Core.Models;
 using Ordoa.Core.Services;
 using Ordoa.Core.Util;
@@ -79,17 +80,28 @@ public sealed class BatchRenamePlannerTests
     [Fact]
     public void InvalidRegex_MarksPlanAsInvalid()
     {
-        var entries = new[] { Item("notes.txt") };
-        var plan = Plan(entries, new BatchRenameOptions
+        var previous = L10n.Language;
+        try
         {
-            FindText = "([",
-            ReplaceText = "$1",
-            UseRegex = true,
-        });
+            // Pin the UI language so the assertion does not depend on the machine locale.
+            L10n.SetLanguage(UiLanguage.Chinese);
 
-        Assert.False(plan.CanApply);
-        Assert.Equal(BatchRenameIssue.InvalidName, plan.Rows[0].Issue);
-        Assert.Contains("正则表达式无效", plan.Rows[0].IssueText);
+            var entries = new[] { Item("notes.txt") };
+            var plan = Plan(entries, new BatchRenameOptions
+            {
+                FindText = "([",
+                ReplaceText = "$1",
+                UseRegex = true,
+            });
+
+            Assert.False(plan.CanApply);
+            Assert.Equal(BatchRenameIssue.InvalidName, plan.Rows[0].Issue);
+            Assert.Contains("正则表达式无效", plan.Rows[0].IssueText);
+        }
+        finally
+        {
+            L10n.SetLanguage(previous);
+        }
     }
 
     [Fact]
