@@ -200,6 +200,52 @@
         <TextBlock Text="{loc:Tr 使用 SSH 端口转发通过跳板机连接目标；支持逗号分隔的多级跳板。}"
                    Classes="tiny" TextWrapping="Wrap" IsVisible="{Binding ShowProxyJump}" />
 
+        <StackPanel Spacing="6" IsVisible="{Binding ShowProxyJump}">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{loc:Tr 逐跳凭据}" Classes="section" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="{loc:Tr 添加跳板}" Classes="link"
+                    Click="OnAddJumpHostClick" />
+          </Grid>
+          <TextBlock Text="{loc:Tr 每一跳可以使用独立的用户名、端口、密码、私钥或 SSH Agent；留空的行会被忽略。}"
+                     Classes="tiny" TextWrapping="Wrap" />
+          <TextBlock Text="{loc:Tr 如果添加了跳板行，将以逐跳凭据为准；上方文本框只用于快速导入。}"
+                     Classes="tiny" TextWrapping="Wrap" />
+          <ItemsControl ItemsSource="{Binding JumpHosts}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SshJumpEditorViewModel">
+                <Border Classes="card" Padding="9" Margin="0,2">
+                  <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="*,74,28" ColumnSpacing="6">
+                      <TextBox Text="{Binding Host, Mode=TwoWay}"
+                               automation:AutomationProperties.Name="{loc:Tr 跳板机主机}"
+                               PlaceholderText="{loc:Tr 跳板机主机}" />
+                      <TextBox Grid.Column="1" Text="{Binding PortText, Mode=TwoWay}"
+                               automation:AutomationProperties.Name="{loc:Tr 端口}"
+                               PlaceholderText="22" />
+                      <Button Grid.Column="2" Classes="tool" Width="26" Height="26"
+                              Content="×" Click="OnRemoveJumpHostClick"
+                              ToolTip.Tip="{loc:Tr 移除这一跳}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                      <TextBox Text="{Binding Username, Mode=TwoWay}"
+                               automation:AutomationProperties.Name="{loc:Tr 用户名}"
+                               PlaceholderText="{loc:Tr 用户名}" />
+                      <ComboBox Grid.Column="1" MinWidth="118" ItemsSource="{Binding AuthModes}"
+                                SelectedIndex="{Binding AuthIndex, Mode=TwoWay}" />
+                    </Grid>
+                    <TextBox IsVisible="{Binding ShowPrivateKey}" Text="{Binding PrivateKeyPath, Mode=TwoWay}"
+                             automation:AutomationProperties.Name="{loc:Tr 私钥文件}"
+                             PlaceholderText="~/.ssh/id_ed25519" />
+                    <TextBox IsVisible="{Binding ShowPassword}" Text="{Binding Password, Mode=TwoWay}"
+                             PasswordChar="●" automation:AutomationProperties.Name="{loc:Tr 每跳密码或私钥口令}"
+                             PlaceholderText="{loc:Tr 每跳密码或私钥口令}" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
         <Grid ColumnDefinitions="100,*" IsVisible="{Binding IsSmb}">
           <TextBlock Text="{loc:Tr 域}" Classes="fieldlabel" />
           <TextBox Grid.Column="1" Text="{Binding Domain, Mode=TwoWay}" PlaceholderText="{loc:Tr 可选，例如 WORKGROUP}" />

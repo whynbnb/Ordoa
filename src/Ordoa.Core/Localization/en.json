@@ -1507,5 +1507,15 @@
  "当前平台不支持管理员操作。": "Administrator operations are not supported on this platform.",
  "管理员操作已取消。": "Administrator operation cancelled.",
  "管理员操作失败（退出码 {0}）": "Administrator operation failed (exit code {0})",
- "高对比度": "High contrast"
+ "高对比度": "High contrast",
+ "逐跳凭据": "Per-hop credentials",
+ "添加跳板": "Add jump host",
+ "每一跳可以使用独立的用户名、端口、密码、私钥或 SSH Agent；留空的行会被忽略。": "Each hop can use its own username, port, password, private key or SSH Agent; empty rows are ignored.",
+ "跳板机主机": "Jump host",
+ "移除这一跳": "Remove this hop",
+ "每跳密码或私钥口令": "Per-hop password or key passphrase",
+ "密码": "Password",
+ "私钥": "Private key",
+ "SSH Agent": "SSH Agent",
+ "如果添加了跳板行，将以逐跳凭据为准；上方文本框只用于快速导入。": "When jump-host rows are present they take precedence; the text field above is only for quick import."
 }

@@ -18,6 +18,19 @@ public enum SshAuthMethod
     Agent,
 }
 
+/// <summary>Per-hop credentials for an SSH ProxyJump chain.</summary>
+public sealed class SshJumpProfile
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Host { get; set; } = string.Empty;
+    public int Port { get; set; } = 22;
+    public string Username { get; set; } = string.Empty;
+    public SshAuthMethod SshAuth { get; set; } = SshAuthMethod.Password;
+    public string PrivateKeyPath { get; set; } = string.Empty;
+
+    public SshJumpProfile Clone() => (SshJumpProfile)MemberwiseClone();
+}
+
 public sealed class ConnectionProfile
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
@@ -36,6 +49,8 @@ public sealed class ConnectionProfile
     public string PrivateKeyPath { get; set; } = string.Empty;
     /// <summary>OpenSSH ProxyJump specification, for example "bastion" or "user@jump:2222".</summary>
     public string ProxyJump { get; set; } = string.Empty;
+    /// <summary>Per-hop credentials. When present, this takes precedence over parsing ProxyJump.</summary>
+    public List<SshJumpProfile> SshJumps { get; set; } = [];
     /// <summary>Last connection error, kept so failed entries remain editable in the sidebar.</summary>
     public string? LastError { get; set; }
     public bool Secure { get; set; } = true;
@@ -103,7 +118,12 @@ public sealed class ConnectionProfile
         return path;
     }
 
-    public ConnectionProfile Clone() => (ConnectionProfile)MemberwiseClone();
+    public ConnectionProfile Clone()
+    {
+        var clone = (ConnectionProfile)MemberwiseClone();
+        clone.SshJumps = (SshJumps ?? []).Select(jump => jump.Clone()).ToList();
+        return clone;
+    }
 
     public string ProtocolLabel => Protocol switch
     {

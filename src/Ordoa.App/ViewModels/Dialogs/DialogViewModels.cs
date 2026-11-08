@@ -53,6 +53,61 @@ public sealed partial class PromptDialogViewModel : ObservableObject
     }
 }
 
+public sealed partial class SshJumpEditorViewModel : ObservableObject
+{
+    public SshJumpEditorViewModel(SshJumpProfile? profile = null, string? defaultUser = null)
+    {
+        Id = profile?.Id ?? Guid.NewGuid().ToString("N");
+        _host = profile?.Host ?? string.Empty;
+        _portText = profile is { Port: > 0 and not 22 } ? profile.Port.ToString() : string.Empty;
+        _username = string.IsNullOrWhiteSpace(profile?.Username) ? defaultUser ?? string.Empty : profile.Username;
+        _authIndex = (int)(profile?.SshAuth ?? SshAuthMethod.Agent);
+        _privateKeyPath = profile?.PrivateKeyPath ?? string.Empty;
+    }
+
+    public string Id { get; }
+
+    [ObservableProperty]
+    private string _host = string.Empty;
+
+    [ObservableProperty]
+    private string _portText = string.Empty;
+
+    [ObservableProperty]
+    private string _username = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPrivateKey))]
+    [NotifyPropertyChangedFor(nameof(ShowPassword))]
+    private int _authIndex;
+
+    [ObservableProperty]
+    private string _privateKeyPath = string.Empty;
+
+    [ObservableProperty]
+    private string _password = string.Empty;
+
+    public IReadOnlyList<string> AuthModes { get; } =
+        [L10n.T("密码"), L10n.T("私钥"), L10n.T("SSH Agent")];
+
+    public bool ShowPrivateKey => AuthIndex == (int)SshAuthMethod.PrivateKey;
+    public bool ShowPassword => AuthIndex != (int)SshAuthMethod.Agent;
+
+    public SshJumpProfile ToProfile()
+    {
+        var port = int.TryParse(PortText, out var parsed) && parsed is > 0 and <= 65535 ? parsed : 22;
+        return new SshJumpProfile
+        {
+            Id = Id,
+            Host = Host.Trim(),
+            Port = port,
+            Username = Username.Trim(),
+            SshAuth = (SshAuthMethod)Math.Clamp(AuthIndex, 0, 2),
+            PrivateKeyPath = (PrivateKeyPath ?? string.Empty).Trim(),
+        };
+    }
+}
+
 public sealed partial class ConnectionDialogViewModel : ObservableObject
 {
     private readonly ConnectionProfile _source;
@@ -90,10 +145,15 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         _s3UsePathStyle = _source.S3UsePathStyle;
         _s3SessionToken = _source.S3SessionToken;
         _saveProfile = true;
+        foreach (var jump in _source.SshJumps)
+            JumpHosts.Add(new SshJumpEditorViewModel(jump, _source.Username));
+        if (JumpHosts.Count == 0 && !string.IsNullOrWhiteSpace(_source.ProxyJump))
+            SyncJumpsFromProxyJump(_source.Username);
         ReloadSshProfiles();
     }
 
     public System.Collections.ObjectModel.ObservableCollection<SshConfigEntry> SshProfiles { get; } = [];
+    public System.Collections.ObjectModel.ObservableCollection<SshJumpEditorViewModel> JumpHosts { get; } = [];
     public string SshConfigPath => SshConfigParser.DefaultPath;
     public bool HasSshProfiles => SshProfiles.Count > 0;
 
@@ -111,6 +171,70 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
             : SshProfiles.FirstOrDefault(item => string.Equals(item.Alias, selected,
                 StringComparison.OrdinalIgnoreCase));
         OnPropertyChanged(nameof(HasSshProfiles));
+    }
+
+    public void AddJumpHost()
+    {
+        if (JumpHosts.Count == 0 && !string.IsNullOrWhiteSpace(ProxyJump))
+        {
+            SyncJumpsFromProxyJump(Username);
+            return;
+        }
+        JumpHosts.Add(new SshJumpEditorViewModel(defaultUser: Username));
+    }
+
+    public void RemoveJumpHost(SshJumpEditorViewModel? jump)
+    {
+        if (jump is not null)
+            JumpHosts.Remove(jump);
+    }
+
+    public async Task LoadJumpSecretsAsync()
+    {
+        foreach (var jump in JumpHosts)
+        {
+            if ((SshAuthMethod)jump.AuthIndex == SshAuthMethod.Agent)
+                continue;
+            try
+            {
+                var secret = await _fileSystems.Credentials.GetPasswordAsync(jump.Id).ConfigureAwait(true);
+                if (!string.IsNullOrEmpty(secret))
+                    jump.Password = secret;
+            }
+            catch
+            {
+                // A missing keyring should not block editing the connection.
+            }
+        }
+    }
+
+    public Dictionary<string, string> GetJumpPasswords()
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var jump in JumpHosts)
+        {
+            if ((SshAuthMethod)jump.AuthIndex == SshAuthMethod.Agent)
+                continue;
+            if (!string.IsNullOrEmpty(jump.Password))
+                result[jump.Id] = jump.Password;
+        }
+        return result;
+    }
+
+    private void SyncJumpsFromProxyJump(string defaultUser)
+    {
+        JumpHosts.Clear();
+        foreach (var hop in SshProxyJump.Parse(ProxyJump, defaultUser))
+        {
+            JumpHosts.Add(new SshJumpEditorViewModel(new SshJumpProfile
+            {
+                Host = hop.Host,
+                Port = hop.Port,
+                Username = hop.User,
+                SshAuth = SshAuth,
+                PrivateKeyPath = SshAuth == SshAuthMethod.PrivateKey ? PrivateKeyPath : string.Empty,
+            }, defaultUser));
+        }
     }
 
     partial void OnSelectedSshProfileChanged(SshConfigEntry? value)
@@ -138,6 +262,9 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
             PrivateKeyPath = string.Empty;
         }
         ProxyJump = value.ProxyJump ?? string.Empty;
+        JumpHosts.Clear();
+        if (!string.IsNullOrWhiteSpace(ProxyJump))
+            SyncJumpsFromProxyJump(value.User);
         ValidationMessage = null;
     }
 
@@ -363,7 +490,8 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         TestStatus = L10n.T("正在连接…");
         try
         {
-            await _fileSystems.TestAsync(profile, Password, cancellationToken).ConfigureAwait(true);
+            await _fileSystems.TestAsync(profile, Password, cancellationToken, GetJumpPasswords())
+                .ConfigureAwait(true);
             TestStatus = L10n.T("连接成功");
             IsTestError = false;
         }
@@ -437,6 +565,29 @@ public sealed partial class ConnectionDialogViewModel : ObservableObject
         profile.SshAuth = SshAuth;
         profile.PrivateKeyPath = (PrivateKeyPath ?? string.Empty).Trim();
         profile.ProxyJump = (ProxyJump ?? string.Empty).Trim();
+        var jumps = JumpHosts
+            .Where(jump => !string.IsNullOrWhiteSpace(jump.Host))
+            .Select(jump => jump.ToProfile())
+            .ToList();
+        if (jumps.Count == 0 && !string.IsNullOrWhiteSpace(profile.ProxyJump))
+        {
+            jumps = SshProxyJump.Parse(profile.ProxyJump, profile.Username)
+                .Select(hop => new SshJumpProfile
+                {
+                    Host = hop.Host,
+                    Port = hop.Port,
+                    Username = hop.User,
+                    SshAuth = profile.SshAuth,
+                    PrivateKeyPath = profile.PrivateKeyPath,
+                })
+                .ToList();
+        }
+        profile.SshJumps = jumps;
+        if (jumps.Count > 0)
+            profile.ProxyJump = string.Join(",", jumps.Select(jump =>
+                string.IsNullOrWhiteSpace(jump.Username)
+                    ? $"{jump.Host}:{jump.Port}"
+                    : $"{jump.Username}@{jump.Host}:{jump.Port}"));
         profile.Secure = Secure;
         profile.AllowInvalidCertificate = AllowInvalidCertificate;
         profile.S3Bucket = S3Bucket.Trim();

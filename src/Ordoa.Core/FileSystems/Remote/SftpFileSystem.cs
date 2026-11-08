@@ -43,11 +43,17 @@ public sealed class SftpFileSystem : FileSystemBase
         FileSystemCapabilities.UnixPermissions | FileSystemCapabilities.SetModifiedTime;
 
     public static Task<SftpFileSystem> ConnectAsync(ConnectionProfile profile, string password,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyDictionary<string, string>? jumpPasswords = null)
     {
         return Task.Run(() =>
         {
-            var jumps = SshProxyJump.Parse(profile.ProxyJump, profile.Username);
+            var jumpProfiles = profile.SshJumps ?? [];
+            var jumps = jumpProfiles.Count > 0
+                ? jumpProfiles.Select(jump => new SshJumpHop(
+                    string.IsNullOrWhiteSpace(jump.Username) ? profile.Username : jump.Username,
+                    jump.Host, jump.Port > 0 ? jump.Port : 22)).ToList()
+                : SshProxyJump.Parse(profile.ProxyJump, profile.Username);
             var jumpClients = new List<SshClient>();
             var jumpPorts = new List<ForwardedPortLocal>();
             var targetHost = profile.Host;
@@ -63,7 +69,18 @@ public sealed class SftpFileSystem : FileSystemBase
                 for (var index = 0; index < jumps.Count; index++)
                 {
                     var hop = jumps[index];
-                    var jumpMethods = BuildAuthenticationMethods(profile, password, hop.User);
+                    var jumpProfile = index < jumpProfiles.Count ? jumpProfiles[index] : null;
+                    var jumpAuth = jumpProfile?.SshAuth ?? profile.SshAuth;
+                    var jumpSecret = jumpProfile is not null
+                        ? jumpPasswords?.GetValueOrDefault(jumpProfile.Id) ?? string.Empty
+                        : password;
+                    if (jumpProfile is not null && jumpSecret.Length == 0 && jumpAuth != SshAuthMethod.Agent)
+                        jumpSecret = password;
+                    var jumpKey = string.IsNullOrWhiteSpace(jumpProfile?.PrivateKeyPath)
+                        ? profile.PrivateKeyPath
+                        : jumpProfile.PrivateKeyPath;
+                    var jumpMethods = BuildAuthenticationMethods(profile, jumpSecret, hop.User,
+                        jumpAuth, jumpKey);
                     var jumpInfo = new ConnectionInfo(connectHost, connectPort, hop.User, jumpMethods)
                     {
                         Timeout = TimeSpan.FromSeconds(25),
@@ -215,11 +232,12 @@ public sealed class SftpFileSystem : FileSystemBase
     }
 
     private static AuthenticationMethod[] BuildAuthenticationMethods(ConnectionProfile profile, string secret,
-        string? username = null)
+        string? username = null, SshAuthMethod? authOverride = null, string? privateKeyOverride = null)
     {
         username ??= profile.Username;
+        var auth = authOverride ?? profile.SshAuth;
         var methods = new List<AuthenticationMethod>();
-        switch (profile.SshAuth)
+        switch (auth)
         {
             case SshAuthMethod.Agent:
                 var identities = RequestAgentIdentities();
@@ -233,7 +251,7 @@ public sealed class SftpFileSystem : FileSystemBase
                 break;
 
             case SshAuthMethod.PrivateKey:
-                var keyPath = ExpandPath(profile.PrivateKeyPath);
+                var keyPath = ExpandPath(privateKeyOverride ?? profile.PrivateKeyPath);
                 if (string.IsNullOrWhiteSpace(keyPath) || !File.Exists(keyPath))
                     throw new FileNotFoundException(L10n.T("找不到私钥文件，请检查路径。"), profile.PrivateKeyPath);
 

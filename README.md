@@ -181,7 +181,7 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Connection manager: save connections, initial paths, and password/private-key passphrase storage policies; supports password, private key, and SSH Agent authentication. Failed connections remain editable; saved connections can be hidden, duplicated, or deleted in Settings.
 - Remote session reuse; the address bar accepts `sftp://`, `ftp://`, `ftps://`, `smb://`, `webdav://`, `https://`, `s3://`, and similar URLs.
 - `~/.ssh/config` import expands `Include` globs, applies host/originalhost/user `Match` blocks, and reads HostName, User, Port, IdentityFile and ProxyJump.
-- SFTP ProxyJump supports single and multi-hop SSH port forwarding; jump hosts are checked against known_hosts.
+- SFTP ProxyJump supports single and multi-hop SSH port forwarding; jump hosts are checked against known_hosts, and every hop can have its own username, port, password, private key or SSH Agent.
 - Local network discovery uses native mDNS queries plus WS-Discovery and can fill in SFTP, SMB, FTP and WebDAV hosts without typing addresses.
 - Remote-to-local and remote-to-remote copies/moves use the same streaming engine.
 - In-dialog connection tests and friendly error messages.
@@ -497,7 +497,7 @@ tests/Ordoa.Core.Tests
 - Default file-manager registration and `org.freedesktop.FileManager1` are currently Linux-only. Windows and macOS provide opt-in Explorer/Finder context actions instead; they do not change the system default file manager.
 - S3 uses single-request PUTs and does not yet implement multipart upload, bucket policy, versioning, object ACL or server-side encryption settings.
 - Network discovery is best effort: mDNS/WS-Discovery may be blocked by firewalls, container networking or a busy port 5353.
-- ProxyJump reuses the target connection's password/key/agent credentials for every hop; per-hop credentials and advanced Match exec rules are not implemented.
+- ProxyJump per-hop credentials are configured in the connection dialog and stored in the system keyring. Advanced `Match exec`/`localnetwork` rules are still ignored.
 - Elevated operations are synchronous external commands without transfer progress; they are intended for occasional permission repairs, not bulk work.
 - New language files cover the common UI; less common strings fall back to English until translated.
 - Undo history is kept only for the current session and is cleared when Ordoa exits. Permanent deletion, emptying the trash, overwriting copies/moves, and operations outside the undo scope cannot be undone and clear the history, preventing `Ctrl+Z` from undoing older steps by mistake.

@@ -181,7 +181,7 @@
 - 连接管理器：保存连接、初始路径、密码/私钥口令保存策略；支持密码、私钥和 SSH Agent 认证。连接失败会保留为可编辑的失败项；设置中可隐藏、复制或删除已保存的连接。
 - 远程会话复用；地址栏支持 `sftp://`、`ftp://`、`ftps://`、`smb://`、`webdav://`、`https://`、`s3://` 等 URL。
 - 导入 `~/.ssh/config` 时展开 `Include` glob，应用 host/originalhost/user `Match` 块，并读取 HostName、User、Port、IdentityFile 和 ProxyJump。
-- SFTP ProxyJump 支持单级和多级 SSH 端口转发；跳板机同样会校验 known_hosts。
+- SFTP ProxyJump 支持单级和多级 SSH 端口转发；跳板机同样会校验 known_hosts，每一跳都可以单独设置用户名、端口、密码、私钥或 SSH Agent。
 - 局域网发现使用原生 mDNS 查询和 WS-Discovery，可直接填入 SFTP、SMB、FTP 和 WebDAV 主机。
 - 远程↔本地、远程↔远程复制/移动通过统一的流式引擎完成。
 - 连接测试（对话框内）与友好的错误提示。
@@ -497,7 +497,7 @@ tests/Ordoa.Core.Tests
 - 默认文件管理器注册和 `org.freedesktop.FileManager1` 目前仅支持 Linux。Windows/macOS 提供可选的资源管理器/Finder 右键操作，但不会修改系统默认文件管理器。
 - S3 使用单次 PUT，尚未实现分片上传、Bucket 策略、版本控制、对象 ACL 或服务端加密配置。
 - 局域网发现是尽力而为：mDNS/WS-Discovery 可能被防火墙、容器网络或 5353 端口占用阻断。
-- ProxyJump 每一跳复用目标连接的密码/私钥/Agent 凭据；暂不支持逐跳凭据和高级 Match exec 规则。
+- ProxyJump 的逐跳凭据在连接对话框中配置，并保存到系统密钥环。高级 `Match exec`/`localnetwork` 规则仍会被忽略。
 - 管理员操作是同步外部命令，不显示传输进度，适合偶尔修复权限，不适合批量传输。
 - 新增语言文件覆盖常用界面；较少使用的字符串在翻译前回退到英文。
 - 撤销历史仅在当前会话中保留，退出 Ordoa 后清空。永久删除、清空回收站、覆盖已有目标的复制/移动，以及未纳入撤销范围的操作不可撤销，并会清空历史，避免 `Ctrl+Z` 误撤销更早的步骤。

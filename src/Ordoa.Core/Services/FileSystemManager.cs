@@ -26,7 +26,8 @@ public sealed class FileSystemManager : IAsyncDisposable
     public FileSystemCapabilities LocalCapabilities => LocalFileSystem.Instance.Capabilities;
 
     public async Task<IFileSystem> ConnectAsync(ConnectionProfile profile, string? passwordOverride = null,
-        bool savePassword = true, CancellationToken cancellationToken = default)
+        bool savePassword = true, CancellationToken cancellationToken = default,
+        IReadOnlyDictionary<string, string>? jumpPasswords = null)
     {
         if (profile.Protocol == RemoteProtocol.Ftp || profile.Protocol == RemoteProtocol.Ftps ||
             profile.Protocol == RemoteProtocol.Sftp || profile.Protocol == RemoteProtocol.Smb ||
@@ -45,7 +46,8 @@ public sealed class FileSystemManager : IAsyncDisposable
             }
 
             var lazy = _sessions.GetOrAdd(profile.Id,
-                _ => new Lazy<Task<IFileSystem>>(() => ConnectCoreAsync(profile, passwordOverride, savePassword, cancellationToken)));
+                _ => new Lazy<Task<IFileSystem>>(() => ConnectCoreAsync(profile, passwordOverride, savePassword,
+                    cancellationToken, jumpPasswords)));
 
             try
             {
@@ -132,9 +134,11 @@ public sealed class FileSystemManager : IAsyncDisposable
         }
     }
 
-    public async Task TestAsync(ConnectionProfile profile, string password, CancellationToken cancellationToken = default)
+    public async Task TestAsync(ConnectionProfile profile, string password,
+        CancellationToken cancellationToken = default,
+        IReadOnlyDictionary<string, string>? jumpPasswords = null)
     {
-        var fs = await OpenAsync(profile, password, cancellationToken).ConfigureAwait(false);
+        var fs = await OpenAsync(profile, password, cancellationToken, jumpPasswords).ConfigureAwait(false);
         try
         {
             var path = profile.NormalizeInitialPath(profile.InitialPath);
@@ -162,6 +166,7 @@ public sealed class FileSystemManager : IAsyncDisposable
     }
 
     public async Task SaveProfileAsync(ConnectionProfile profile, string? password, bool deletePassword = false,
+        IReadOnlyDictionary<string, string>? jumpPasswords = null,
         CancellationToken cancellationToken = default)
     {
         await _manageGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -177,6 +182,17 @@ public sealed class FileSystemManager : IAsyncDisposable
                     await Credentials.DeletePasswordAsync(profile.Id, cancellationToken).ConfigureAwait(false);
                 else
                     await Credentials.SetPasswordAsync(profile.Id, password, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (jumpPasswords is not null)
+            {
+                foreach (var jump in profile.SshJumps ?? [])
+                {
+                    if (jumpPasswords.TryGetValue(jump.Id, out var secret) && secret.Length > 0)
+                        await Credentials.SetPasswordAsync(jump.Id, secret, cancellationToken).ConfigureAwait(false);
+                    else
+                        await Credentials.DeletePasswordAsync(jump.Id, cancellationToken).ConfigureAwait(false);
+                }
             }
 
             Connections.Save(profile);
@@ -219,8 +235,14 @@ public sealed class FileSystemManager : IAsyncDisposable
 
     public async Task RemoveProfileAsync(string connectionId, CancellationToken cancellationToken = default)
     {
+        var profile = Connections.Get(connectionId);
         await DisconnectAsync(connectionId).ConfigureAwait(false);
         await Credentials.DeletePasswordAsync(connectionId, cancellationToken).ConfigureAwait(false);
+        if (profile is not null)
+        {
+            foreach (var jump in profile.SshJumps ?? [])
+                await Credentials.DeletePasswordAsync(jump.Id, cancellationToken).ConfigureAwait(false);
+        }
         Connections.Remove(connectionId);
     }
 
@@ -242,7 +264,8 @@ public sealed class FileSystemManager : IAsyncDisposable
     }
 
     private async Task<IFileSystem> ConnectCoreAsync(ConnectionProfile profile, string? passwordOverride,
-        bool savePassword, CancellationToken cancellationToken)
+        bool savePassword, CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? jumpPasswords = null)
     {
         var password = passwordOverride;
         if (password is null && !profile.Anonymous && !UsesSshAgent(profile))
@@ -251,7 +274,8 @@ public sealed class FileSystemManager : IAsyncDisposable
         }
         password ??= string.Empty;
 
-        var fs = await OpenAsync(profile, password, cancellationToken).ConfigureAwait(false);
+        jumpPasswords ??= await LoadJumpPasswordsAsync(profile, cancellationToken).ConfigureAwait(false);
+        var fs = await OpenAsync(profile, password, cancellationToken, jumpPasswords).ConfigureAwait(false);
         var effectivePassword = password;
 
         try
@@ -289,11 +313,26 @@ public sealed class FileSystemManager : IAsyncDisposable
         }
     }
 
+    private async Task<Dictionary<string, string>> LoadJumpPasswordsAsync(ConnectionProfile profile,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var jump in profile.SshJumps ?? [])
+        {
+            if (jump.SshAuth == SshAuthMethod.Agent)
+                continue;
+            var secret = await Credentials.GetPasswordAsync(jump.Id, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(secret))
+                result[jump.Id] = secret;
+        }
+        return result;
+    }
+
     private static bool UsesSshAgent(ConnectionProfile profile)
         => profile.Protocol == RemoteProtocol.Sftp && profile.SshAuth == SshAuthMethod.Agent;
 
     private static async Task<IFileSystem> OpenAsync(ConnectionProfile profile, string password,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, IReadOnlyDictionary<string, string>? jumpPasswords = null)
     {
         var safeProfile = profile.Clone();
         if (string.IsNullOrWhiteSpace(safeProfile.Host))
@@ -308,8 +347,8 @@ public sealed class FileSystemManager : IAsyncDisposable
         {
             RemoteProtocol.Ftp or RemoteProtocol.Ftps => await FtpFileSystem.ConnectAsync(safeProfile, password, cancellationToken)
                 .ConfigureAwait(false),
-            RemoteProtocol.Sftp => await SftpFileSystem.ConnectAsync(safeProfile, password, cancellationToken)
-                .ConfigureAwait(false),
+            RemoteProtocol.Sftp => await SftpFileSystem.ConnectAsync(safeProfile, password, cancellationToken,
+                    jumpPasswords).ConfigureAwait(false),
             RemoteProtocol.Smb => await SmbFileSystem.ConnectAsync(safeProfile, password, cancellationToken)
                 .ConfigureAwait(false),
             RemoteProtocol.WebDav => await WebDavFileSystem.ConnectAsync(safeProfile, password, cancellationToken)

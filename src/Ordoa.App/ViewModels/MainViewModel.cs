@@ -789,7 +789,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         IFileSystem fs;
         try
         {
-            fs = await _services.FileSystems.ConnectAsync(profile, result.Password).ConfigureAwait(true);
+            fs = await _services.FileSystems.ConnectAsync(profile, result.Password,
+                jumpPasswords: result.JumpPasswords).ConfigureAwait(true);
         }
         catch (Exception ex)
         {
@@ -807,7 +808,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         profile.LastError = null;
         if (result.SaveProfile)
             await _services.FileSystems.SaveProfileAsync(profile, result.Password,
-                deletePassword: !profile.SavePassword).ConfigureAwait(true);
+                deletePassword: !profile.SavePassword, jumpPasswords: result.JumpPasswords).ConfigureAwait(true);
 
         try
         {
@@ -870,14 +871,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             var oldId = profile.Id;
             await _services.FileSystems.DisconnectAsync(oldId).ConfigureAwait(true);
             await _services.FileSystems.SaveProfileAsync(updated, result.Password,
-                deletePassword: !updated.SavePassword).ConfigureAwait(true);
+                deletePassword: !updated.SavePassword, jumpPasswords: result.JumpPasswords).ConfigureAwait(true);
 
             var affected = Tabs.SelectMany(t => t.Panes).Where(p => p.FileSystem.Id == oldId).ToList();
             if (affected.Count > 0)
             {
                 try
                 {
-                    var newFs = await _services.FileSystems.ConnectAsync(updated, result.Password).ConfigureAwait(true);
+                    var newFs = await _services.FileSystems.ConnectAsync(updated, result.Password,
+                        jumpPasswords: result.JumpPasswords).ConfigureAwait(true);
                     foreach (var pane in affected)
                     {
                         try

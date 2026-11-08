@@ -1355,6 +1355,7 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
 
         ConnectionProfile? profile = saved;
         string? password = null;
+        Dictionary<string, string>? jumpPasswords = null;
         if (profile is null)
         {
             profile = new ConnectionProfile
@@ -1374,14 +1375,17 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
                 return;
             profile = result.Profile;
             password = result.Password;
+            jumpPasswords = result.JumpPasswords;
             if (result.SaveProfile)
-                await _services.FileSystems.SaveProfileAsync(profile, password).ConfigureAwait(true);
+                await _services.FileSystems.SaveProfileAsync(profile, password,
+                    jumpPasswords: result.JumpPasswords).ConfigureAwait(true);
         }
 
         IFileSystem fs;
         try
         {
-            fs = await _services.FileSystems.ConnectAsync(profile, password ?? uriPassword).ConfigureAwait(true);
+            fs = await _services.FileSystems.ConnectAsync(profile, password ?? uriPassword,
+                jumpPasswords: jumpPasswords).ConfigureAwait(true);
         }
         catch (Exception ex)
         {

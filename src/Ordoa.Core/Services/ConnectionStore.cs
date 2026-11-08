@@ -19,6 +19,7 @@ public sealed class ConnectionStore
             if (string.IsNullOrWhiteSpace(profile.Name))
                 profile.Name = DefaultName(profile);
             profile.InitialPath = profile.NormalizeInitialPath(profile.InitialPath);
+            profile.SshJumps ??= [];
         }
     }
 

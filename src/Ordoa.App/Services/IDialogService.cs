@@ -5,7 +5,8 @@ using Ordoa.Core.Services;
 
 namespace Ordoa.App.Services;
 
-public sealed record ConnectionDialogResult(ConnectionProfile Profile, string Password, bool SaveProfile);
+public sealed record ConnectionDialogResult(ConnectionProfile Profile, string Password, bool SaveProfile,
+    Dictionary<string, string> JumpPasswords);
 
 public sealed record TransferPreviewRequest(
     bool Move,

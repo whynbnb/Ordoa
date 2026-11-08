@@ -16,8 +16,10 @@ public partial class ConnectionWindow : Window
     {
         InitializeComponent();
         WindowAppearance.Apply(this);
-        Opened += (_, _) =>
+        Opened += async (_, _) =>
         {
+            if (DataContext is ConnectionDialogViewModel viewModel)
+                await viewModel.LoadJumpSecretsAsync();
             if (DataContext is ConnectionDialogViewModel { Host.Length: > 0 })
                 NameBox?.Focus();
             else
@@ -37,6 +39,21 @@ public partial class ConnectionWindow : Window
         var service = await services.Dialogs.ShowNetworkDiscoveryAsync();
         if (service is not null)
             viewModel.ApplyDiscoveredService(service);
+    }
+
+    private void OnAddJumpHostClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is ConnectionDialogViewModel viewModel)
+            viewModel.AddJumpHost();
+    }
+
+    private void OnRemoveJumpHostClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is ConnectionDialogViewModel viewModel &&
+            sender is Button { DataContext: SshJumpEditorViewModel jump })
+        {
+            viewModel.RemoveJumpHost(jump);
+        }
     }
 
     private void OnReloadSshProfilesClick(object? sender, RoutedEventArgs e)
@@ -101,7 +118,7 @@ public partial class ConnectionWindow : Window
         if (profile is null)
             return;
 
-        Close(new ConnectionDialogResult(profile, vm.Password, vm.SaveProfile));
+        Close(new ConnectionDialogResult(profile, vm.Password, vm.SaveProfile, vm.GetJumpPasswords()));
     }
 
     private void OnCancelClick(object? sender, RoutedEventArgs e) => Close(null);
