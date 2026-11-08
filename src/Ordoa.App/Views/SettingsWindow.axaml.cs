@@ -51,6 +51,12 @@ public partial class SettingsWindow : Window
             vm.SetLanguage(language);
     }
 
+    private void OnDarkBackgroundClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string background })
+            vm.SetDarkBackground(background);
+    }
+
     private void OnThemeClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string theme })

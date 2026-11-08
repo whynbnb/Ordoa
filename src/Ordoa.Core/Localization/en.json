@@ -1431,5 +1431,14 @@
  "此平台不支持编辑扩展属性": "This platform does not support editing extended attributes",
  "此平台不支持编辑 ACL": "This platform does not support editing ACLs",
  "无法启动 setfacl": "Could not start setfacl",
- "修改 ACL 失败": "Failed to update ACL"
+ "修改 ACL 失败": "Failed to update ACL",
+ "深色背景": "Dark background",
+ "仅在深色模式下生效；每套配色都会同时调整窗口、侧栏、列表和弹窗。": "Applies in dark mode only; each palette adjusts the window, sidebar, lists and dialogs together.",
+ "石墨": "Graphite",
+ "午夜蓝": "Midnight",
+ "冷灰": "Slate",
+ "深海": "Ocean",
+ "森林": "Forest",
+ "暖棕": "Warm",
+ "纯黑": "Black"
 }

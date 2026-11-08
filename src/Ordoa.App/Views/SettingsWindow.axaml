@@ -229,6 +229,63 @@
                         Content="{loc:Tr 折叠说明文字（悬停查看）}"
                         IsChecked="{Binding CollapseHints, Mode=TwoWay}" />
             </Grid>
+
+            <StackPanel Spacing="6">
+              <TextBlock Text="{loc:Tr 深色背景}" Classes="section" />
+              <TextBlock Text="{loc:Tr 仅在深色模式下生效；每套配色都会同时调整窗口、侧栏、列表和弹窗。}"
+                         Classes="fieldhint" TextWrapping="Wrap" />
+              <WrapPanel ItemHeight="32">
+                <Button Classes="chip" Tag="Graphite" Click="OnDarkBackgroundClick"
+                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Graphite}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="12" Height="12" CornerRadius="3" Background="#141816" BorderBrush="#3A433E" BorderThickness="1" />
+                    <TextBlock Text="{loc:Tr 石墨}" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="chip" Tag="Midnight" Click="OnDarkBackgroundClick"
+                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Midnight}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="12" Height="12" CornerRadius="3" Background="#0B1220" BorderBrush="#31425F" BorderThickness="1" />
+                    <TextBlock Text="{loc:Tr 午夜蓝}" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="chip" Tag="Slate" Click="OnDarkBackgroundClick"
+                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Slate}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="12" Height="12" CornerRadius="3" Background="#151719" BorderBrush="#3A414A" BorderThickness="1" />
+                    <TextBlock Text="{loc:Tr 冷灰}" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="chip" Tag="Ocean" Click="OnDarkBackgroundClick"
+                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Ocean}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="12" Height="12" CornerRadius="3" Background="#0C1719" BorderBrush="#2E565A" BorderThickness="1" />
+                    <TextBlock Text="{loc:Tr 深海}" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="chip" Tag="Forest" Click="OnDarkBackgroundClick"
+                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Forest}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="12" Height="12" CornerRadius="3" Background="#101713" BorderBrush="#3A5544" BorderThickness="1" />
+                    <TextBlock Text="{loc:Tr 森林}" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="chip" Tag="Warm" Click="OnDarkBackgroundClick"
+                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Warm}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="12" Height="12" CornerRadius="3" Background="#1A1512" BorderBrush="#4E4037" BorderThickness="1" />
+                    <TextBlock Text="{loc:Tr 暖棕}" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="chip" Tag="Black" Click="OnDarkBackgroundClick"
+                        Classes.active="{Binding DarkBackground, Converter={StaticResource EqualsConverter}, ConverterParameter=Black}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="12" Height="12" CornerRadius="3" Background="#000000" BorderBrush="#2C2C2C" BorderThickness="1" />
+                    <TextBlock Text="{loc:Tr 纯黑}" />
+                  </StackPanel>
+                </Button>
+              </WrapPanel>
+            </StackPanel>
           </StackPanel>
 
           <!-- Browsing -->

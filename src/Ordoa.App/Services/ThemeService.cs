@@ -8,6 +8,58 @@ namespace Ordoa.App.Services;
 
 public static class ThemeService
 {
+    private sealed record DarkPalette(
+        string Window,
+        string Surface,
+        string SurfaceAlt,
+        string Sidebar,
+        string Border,
+        string BorderStrong,
+        string TextPrimary,
+        string TextSecondary,
+        string TextTertiary,
+        string Hover,
+        string Pressed,
+        string Toolbar,
+        string Status,
+        string Menu,
+        string Input,
+        string Scroll,
+        string ScrollHover);
+
+    private static readonly Dictionary<DarkBackground, DarkPalette> DarkPalettes = new()
+    {
+        [DarkBackground.Graphite] = new("#141816", "#1B201D", "#222824", "#171C19", "#2A312D",
+            "#3A433E", "#E9EEEA", "#A3ADA7", "#748078", "#252C28", "#2E3631", "#181D1A",
+            "#151A17", "#202622", "#1E2420", "#3A443E", "#4C5951"),
+        [DarkBackground.Midnight] = new("#0B1220", "#111A2B", "#172238", "#0D1524", "#22304A",
+            "#31425F", "#E6EDF7", "#9BA9C0", "#6F7F99", "#1B2940", "#23324A", "#0E1727",
+            "#0C1422", "#141F33", "#131D2E", "#334663", "#496080"),
+        [DarkBackground.Slate] = new("#151719", "#1C1F23", "#23272C", "#171A1E", "#2B3036",
+            "#3A414A", "#ECEEF1", "#A5ABB4", "#737B85", "#252A30", "#2E343B", "#181B1F",
+            "#14161A", "#20242A", "#1E2227", "#3B424B", "#4E5660"),
+        [DarkBackground.Ocean] = new("#0C1719", "#112124", "#182B2E", "#0E1B1D", "#214044",
+            "#2E565A", "#E3F2F1", "#9DB8B5", "#6B8986", "#193034", "#214044", "#0F1C1E",
+            "#0B1517", "#152A2D", "#132528", "#2E4F53", "#416B70"),
+        [DarkBackground.Forest] = new("#101713", "#17211A", "#1E2C23", "#121B15", "#2B4032",
+            "#3A5544", "#E7F1E9", "#A7BBA9", "#748A77", "#1D2D22", "#273B2D", "#131D16",
+            "#0E1611", "#1A2A1F", "#18251C", "#34523E", "#48725A"),
+        [DarkBackground.Warm] = new("#1A1512", "#221C18", "#2B231E", "#1C1613", "#3B3029",
+            "#4E4037", "#F4ECE5", "#C0AEA1", "#8A786C", "#2A211C", "#352A24", "#1D1714",
+            "#17120F", "#261E1A", "#241D19", "#45372F", "#5A493E"),
+        [DarkBackground.Black] = new("#000000", "#0A0A0A", "#111111", "#050505", "#1E1E1E",
+            "#2C2C2C", "#F2F2F2", "#A6A6A6", "#737373", "#141414", "#1C1C1C", "#050505",
+            "#030303", "#0E0E0E", "#0D0D0D", "#2A2A2A", "#3B3B3B"),
+    };
+
+    private static readonly string[] DarkPaletteKeys =
+    [
+        "WindowBackgroundBrush", "SurfaceBrush", "SurfaceAltBrush", "SidebarBrush",
+        "BorderBrush", "BorderStrongBrush", "TextPrimaryBrush", "TextSecondaryBrush",
+        "TextTertiaryBrush", "HoverBrush", "PressedBrush", "ToolbarBrush", "StatusBrush",
+        "MenuBackgroundBrush", "InputBackgroundBrush", "ScrollThumbBrush", "ScrollThumbHoverBrush",
+    ];
+
     private static readonly Dictionary<AccentKind, (string Base, string Text)> Accents = new()
     {
         [AccentKind.Jade] = ("#17937F", "#FFFFFF"),
@@ -17,11 +69,18 @@ public static class ThemeService
         [AccentKind.Violet] = ("#7C63D8", "#FFFFFF"),
     };
 
+    private static DarkBackground _darkBackground = DarkBackground.Graphite;
+    private static AccentKind _accent = AccentKind.Jade;
+    private static bool _themeSubscribed;
+
     public static void Apply(AppSettings settings)
     {
         var app = Application.Current;
         if (app is null)
             return;
+
+        _darkBackground = settings.DarkBackground;
+        _accent = settings.Accent;
 
         app.RequestedThemeVariant = settings.Theme switch
         {
@@ -30,9 +89,64 @@ public static class ThemeService
             _ => ThemeVariant.Default,
         };
 
-        var isDark = app.ActualThemeVariant == ThemeVariant.Dark;
-        ApplyAccent(settings.Accent, isDark);
+        ApplyCurrentTheme(app);
+
+        if (!_themeSubscribed)
+        {
+            _themeSubscribed = true;
+            app.ActualThemeVariantChanged += (_, _) =>
+            {
+                if (Application.Current is { } current)
+                    ApplyCurrentTheme(current);
+            };
+        }
     }
+
+    private static void ApplyCurrentTheme(Application app)
+    {
+        var isDark = app.ActualThemeVariant == ThemeVariant.Dark;
+        ApplyAccent(_accent, isDark);
+        ApplyDarkPalette(_darkBackground, isDark);
+    }
+
+    /// <summary>Overrides the neutral dark-theme brushes; removes them again in light mode.</summary>
+    private static void ApplyDarkPalette(DarkBackground background, bool dark)
+    {
+        var app = Application.Current;
+        if (app is null)
+            return;
+
+        var resources = app.Resources;
+        if (!dark)
+        {
+            foreach (var key in DarkPaletteKeys)
+                resources.Remove(key);
+            return;
+        }
+
+        var palette = DarkPalettes.TryGetValue(background, out var value)
+            ? value
+            : DarkPalettes[DarkBackground.Graphite];
+        resources["WindowBackgroundBrush"] = Brush(palette.Window);
+        resources["SurfaceBrush"] = Brush(palette.Surface);
+        resources["SurfaceAltBrush"] = Brush(palette.SurfaceAlt);
+        resources["SidebarBrush"] = Brush(palette.Sidebar);
+        resources["BorderBrush"] = Brush(palette.Border);
+        resources["BorderStrongBrush"] = Brush(palette.BorderStrong);
+        resources["TextPrimaryBrush"] = Brush(palette.TextPrimary);
+        resources["TextSecondaryBrush"] = Brush(palette.TextSecondary);
+        resources["TextTertiaryBrush"] = Brush(palette.TextTertiary);
+        resources["HoverBrush"] = Brush(palette.Hover);
+        resources["PressedBrush"] = Brush(palette.Pressed);
+        resources["ToolbarBrush"] = Brush(palette.Toolbar);
+        resources["StatusBrush"] = Brush(palette.Status);
+        resources["MenuBackgroundBrush"] = Brush(palette.Menu);
+        resources["InputBackgroundBrush"] = Brush(palette.Input);
+        resources["ScrollThumbBrush"] = Brush(palette.Scroll);
+        resources["ScrollThumbHoverBrush"] = Brush(palette.ScrollHover);
+    }
+
+    private static SolidColorBrush Brush(string hex) => new(Color.Parse(hex));
 
     /// <summary>
     /// Switches between the normal platform title bar and the immersive

@@ -524,6 +524,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _language = settings.Language;
         _theme = settings.Theme;
         _accent = settings.Accent;
+        _darkBackground = settings.DarkBackground;
         _compactMode = settings.CompactMode;
         _collapseHints = settings.CollapseHints;
         _macAppBundles = settings.MacAppBundles;
@@ -826,6 +827,9 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private AccentKind _accent;
+
+    [ObservableProperty]
+    private DarkBackground _darkBackground;
 
     [ObservableProperty]
     private bool _compactMode;
@@ -1247,6 +1251,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         settings.Language = Language;
         settings.Theme = Theme;
         settings.Accent = Accent;
+        settings.DarkBackground = DarkBackground;
         settings.CompactMode = CompactMode;
         settings.CollapseHints = CollapseHints;
         settings.MacAppBundles = MacAppBundles;
@@ -1368,6 +1373,7 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         Language = defaults.Language;
         Theme = defaults.Theme;
         Accent = defaults.Accent;
+        DarkBackground = defaults.DarkBackground;
         CompactMode = defaults.CompactMode;
         CollapseHints = defaults.CollapseHints;
         MacAppBundles = defaults.MacAppBundles;
@@ -1606,6 +1612,12 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     {
         if (Enum.TryParse<AccentKind>(value, true, out var accent))
             Accent = accent;
+    }
+
+    public void SetDarkBackground(string value)
+    {
+        if (Enum.TryParse<DarkBackground>(value, true, out var background))
+            DarkBackground = background;
     }
 
     public void SetWindowButtonMode(string value)

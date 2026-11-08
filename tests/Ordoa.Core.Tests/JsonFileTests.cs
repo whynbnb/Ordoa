@@ -41,6 +41,7 @@ public sealed class JsonFileTests
                 ListDensity = ListDensity.Compact,
                 GroupBy = GroupByMode.Modified,
                 ArchiveLegacyEncoding = ZipLegacyEncoding.Gbk,
+                DarkBackground = DarkBackground.Midnight,
                 FolderViews = new Dictionary<string, FolderViewState>
                 {
                     ["local|/tmp"] = new FolderViewState
@@ -99,6 +100,7 @@ public sealed class JsonFileTests
             Assert.Equal(ListDensity.Compact, loaded.ListDensity);
             Assert.Equal(GroupByMode.Modified, loaded.GroupBy);
             Assert.Equal(ZipLegacyEncoding.Gbk, loaded.ArchiveLegacyEncoding);
+            Assert.Equal(DarkBackground.Midnight, loaded.DarkBackground);
             Assert.Equal(120, loaded.FolderViews["local|/tmp"].ColumnWidths!["Size"]);
             Assert.Equal(2, loaded.FolderViews["local|/tmp"].ColumnOrder!.Count);
             Assert.Equal(["/home/why/Projects"], loaded.CustomSidebarPaths);

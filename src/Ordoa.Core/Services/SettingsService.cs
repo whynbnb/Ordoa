@@ -20,6 +20,17 @@ public enum AccentKind
     Violet,
 }
 
+public enum DarkBackground
+{
+    Graphite,
+    Midnight,
+    Slate,
+    Ocean,
+    Forest,
+    Warm,
+    Black,
+}
+
 public enum WindowButtonMode
 {
     Auto,
@@ -130,6 +141,7 @@ public sealed class AppSettings
     public UiLanguage Language { get; set; } = UiLanguage.System;
     public AppTheme Theme { get; set; } = AppTheme.System;
     public AccentKind Accent { get; set; } = AccentKind.Jade;
+    public DarkBackground DarkBackground { get; set; } = DarkBackground.Graphite;
     public bool CompactMode { get; set; }
     /// <summary>Collapse explanatory hints into an info icon with a tooltip.</summary>
     public bool CollapseHints { get; set; } = true;
@@ -368,6 +380,8 @@ public sealed class SettingsService
             Current.SidebarWidth = 232;
         if (!Enum.IsDefined(Current.Language))
             Current.Language = UiLanguage.System;
+        if (!Enum.IsDefined(Current.DarkBackground))
+            Current.DarkBackground = DarkBackground.Graphite;
         if (!Enum.IsDefined(Current.WindowButtonMode))
             Current.WindowButtonMode = WindowButtonMode.Auto;
         if (!Enum.IsDefined(Current.FolderOpenMode))
