@@ -54,7 +54,7 @@ A file manager should not bury everyday actions under layers of menus. Ordoa kee
 - Folder sizes are not computed while a listing loads; right-click **Calculate Folder Size** measures selected folders recursively on demand.
 - Hidden-file toggle, live name filtering, and recursive search with configurable depth and result limits.
 - Search syntax: glob, `-exclude`, `ext:`, `type:`, `size:`, `modified:`, `content:`, `tag:`, and `color:`; recent searches, named saved searches, current-folder/full-disk scope switching, and Git status on search results.
-- Optional local search index (off by default): whitelist or blacklist scopes, exclusion rules, watcher-driven incremental updates, periodic/manual rebuilds, and automatic fallback to the scan-based search for content, tag, color, or remote queries.
+- Optional local search index (off by default): whitelist mode indexes exactly the listed roots, blacklist mode indexes those roots while applying exclusion rules; watcher-driven incremental updates, periodic/manual rebuilds, and automatic fallback to the scan-based search for content, tag, color, or remote queries.
 - Bookmarks, recent locations, and session restore (tabs and split panes); the trash entry is pinned to the bottom of the sidebar and always visible.
 - Settings can show or hide each common location in the sidebar's **Places** section, with one-click reset to defaults.
 - On macOS the disk list shows the system disk and user volumes under `/Volumes` by default; Settings can disable disks, show hidden system volumes, or add arbitrary custom paths.
