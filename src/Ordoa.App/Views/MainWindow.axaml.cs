@@ -239,6 +239,8 @@ public partial class MainWindow : Window
             _viewModel.AddToast(L10n.T("启动时发生错误"), ex.Message, ToastKind.Error);
         }
 
+        _viewModel.Services.StartSearchIndex();
+
         try
         {
             await _viewModel.ResumePendingTransfersAsync();

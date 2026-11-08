@@ -30,6 +30,7 @@ public partial class SettingsWindow : Window
                 vm.SetIntegrationStatus(await services.Integration.GetStatusAsync());
 
             await vm.LoadVolumesAsync();
+            vm.RefreshSearchIndexStatus();
             vm.PropertyChanged += OnVolumeSettingsChanged;
         };
     }
@@ -71,6 +72,24 @@ public partial class SettingsWindow : Window
     {
         if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string mode })
             vm.SetWindowButtonMode(mode);
+    }
+
+    private void OnSearchIndexModeClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && sender is Button { Tag: string mode })
+            vm.SetSearchIndexMode(mode);
+    }
+
+    private async void OnAddIndexRootClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm && App.Services is { } services)
+            await vm.AddSearchIndexRootAsync(services.Dialogs);
+    }
+
+    private async void OnRebuildIndexClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+            await vm.RebuildSearchIndexAsync();
     }
 
     private void OnGridSizeClick(object? sender, RoutedEventArgs e)

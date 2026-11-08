@@ -170,6 +170,14 @@ public sealed class AppSettings
     public GridThumbnailSize GridThumbnailSize { get; set; } = GridThumbnailSize.Medium;
     public ListDensity ListDensity { get; set; } = ListDensity.Normal;
     public GroupByMode GroupBy { get; set; } = GroupByMode.None;
+    /// <summary>Enable the optional local search index. Disabled by default.</summary>
+    public bool SearchIndexEnabled { get; set; }
+    public SearchIndexMode SearchIndexMode { get; set; } = SearchIndexMode.Whitelist;
+    /// <summary>Roots included in the index. In blacklist mode these are the search roots
+    /// and <see cref="SearchIndexExcludes"/> removes sub-paths.</summary>
+    public List<string> SearchIndexRoots { get; set; } = [AppPaths.Home];
+    /// <summary>Excluded path prefixes or glob patterns.</summary>
+    public List<string> SearchIndexExcludes { get; set; } = [];
     /// <summary>Remembered sort/view settings keyed by filesystem id and path.</summary>
     public Dictionary<string, FolderViewState> FolderViews { get; set; } = [];
     /// <summary>Keep a preview panel open for the current selection.</summary>
@@ -272,6 +280,8 @@ public sealed class AppSettings
         clone.ShortcutOverrides = new Dictionary<string, string>(ShortcutOverrides, StringComparer.Ordinal);
         clone.ColumnOrder = [.. ColumnOrder];
         clone.ColumnWidths = new Dictionary<string, double>(ColumnWidths, StringComparer.Ordinal);
+        clone.SearchIndexRoots = [.. SearchIndexRoots];
+        clone.SearchIndexExcludes = [.. SearchIndexExcludes];
         clone.TerminalPreferences = (TerminalPreferences ?? [])
             .Where(preference => preference is not null)
             .Select(preference => preference.Clone())
@@ -359,6 +369,18 @@ public sealed class SettingsService
             Current.ListDensity = ListDensity.Normal;
         if (!Enum.IsDefined(Current.GroupBy))
             Current.GroupBy = GroupByMode.None;
+        if (!Enum.IsDefined(Current.SearchIndexMode))
+            Current.SearchIndexMode = SearchIndexMode.Whitelist;
+        Current.SearchIndexRoots = (Current.SearchIndexRoots ?? [])
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(path => path.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        Current.SearchIndexExcludes = (Current.SearchIndexExcludes ?? [])
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
         Current.ColumnOrder = (Current.ColumnOrder ?? [])
             .Where(value => Enum.TryParse<FileListColumn>(value, ignoreCase: true, out _))
             .Distinct(StringComparer.OrdinalIgnoreCase)

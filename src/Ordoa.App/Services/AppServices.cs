@@ -17,6 +17,7 @@ public sealed class AppServices : IAsyncDisposable
         PreviewService.CleanupStaleCache();
         Settings = new SettingsService();
         Shortcuts = new ShortcutService(Settings);
+        SearchIndex = new SearchIndexService();
         ThemeService.Apply(Settings.Current);
 
         Trash = new TrashService();
@@ -46,6 +47,7 @@ public sealed class AppServices : IAsyncDisposable
         Operations.ConflictResolver = new DialogConflictResolver(Dialogs);
         Operations.Finished += OnOperationFinishedForTags;
         Operations.Finished += OnOperationFinishedForResume;
+        Settings.Changed += OnSettingsChangedForSearchIndex;
         Undo = new UndoService(this);
     }
 
@@ -57,6 +59,7 @@ public sealed class AppServices : IAsyncDisposable
     public FileOperationService Operations { get; }
     public TransferJournal Journal { get; }
     public SearchService Search { get; }
+    public SearchIndexService SearchIndex { get; }
     public RecentService Recent { get; }
     public BookmarkService Bookmarks { get; }
     public SessionService Session { get; }
@@ -115,6 +118,60 @@ public sealed class AppServices : IAsyncDisposable
             return false;
 
         return await FileManager1.StartAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Starts loading or building the optional search index without blocking startup.</summary>
+    public void StartSearchIndex()
+    {
+        if (!Settings.Current.SearchIndexEnabled)
+            return;
+
+        var config = CreateSearchIndexConfig();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await SearchIndex.EnsureReadyAsync(config).ConfigureAwait(false);
+                if (SearchIndex.NeedsRebuild)
+                    await SearchIndex.BuildAsync(config).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("启动搜索索引失败", ex);
+            }
+        });
+    }
+
+    private SearchIndexConfig CreateSearchIndexConfig()
+    {
+        var settings = Settings.Current;
+        return new SearchIndexConfig(settings.SearchIndexMode,
+            [.. settings.SearchIndexRoots], [.. settings.SearchIndexExcludes]);
+    }
+
+    private void OnSettingsChangedForSearchIndex(object? sender, EventArgs e)
+    {
+        if (!Settings.Current.SearchIndexEnabled)
+        {
+            SearchIndex.Stop();
+            return;
+        }
+
+        var config = CreateSearchIndexConfig();
+        if (SearchIndex.IsReady && SearchIndex.Config is { } current && current.EquivalentTo(config))
+            return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await SearchIndex.EnsureReadyAsync(config).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("更新搜索索引失败", ex);
+            }
+        });
     }
 
     /// <summary>
@@ -193,6 +250,7 @@ public sealed class AppServices : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        try { SearchIndex.Dispose(); } catch { /* ignore */ }
         try { Operations.Dispose(); } catch { /* ignore */ }
         try { Thumbnails.Clear(); } catch { /* ignore */ }
         try { RemoteEdits.Dispose(); } catch { /* ignore */ }

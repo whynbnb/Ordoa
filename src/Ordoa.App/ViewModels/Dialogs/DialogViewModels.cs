@@ -502,6 +502,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         _previewPanelPlacementIndex = settings.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         _searchDepth = settings.SearchDepth;
         _maxSearchResults = settings.MaxSearchResults;
+        _searchIndexEnabled = settings.SearchIndexEnabled;
+        _searchIndexMode = settings.SearchIndexMode;
+        _searchIndexRootsText = string.Join(Environment.NewLine, settings.SearchIndexRoots);
+        _searchIndexExcludesText = string.Join(Environment.NewLine, settings.SearchIndexExcludes);
         _transferConcurrency = settings.TransferConcurrency;
         _transferSpeedLimit = settings.TransferSpeedLimitMb;
         _copyVerificationIndex = (int)settings.CopyVerification;
@@ -857,6 +861,24 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
     private decimal _maxSearchResults;
 
     [ObservableProperty]
+    private bool _searchIndexEnabled;
+
+    [ObservableProperty]
+    private SearchIndexMode _searchIndexMode = SearchIndexMode.Whitelist;
+
+    [ObservableProperty]
+    private string _searchIndexRootsText = string.Empty;
+
+    [ObservableProperty]
+    private string _searchIndexExcludesText = string.Empty;
+
+    [ObservableProperty]
+    private string _searchIndexStatus = string.Empty;
+
+    [ObservableProperty]
+    private bool _isRebuildingIndex;
+
+    [ObservableProperty]
     private decimal _transferConcurrency = 1;
 
     [ObservableProperty]
@@ -1174,6 +1196,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
             : PreviewPanelPlacement.Right;
         settings.SearchDepth = Math.Clamp((int)SearchDepth, 1, 64);
         settings.MaxSearchResults = Math.Clamp((int)MaxSearchResults, 100, 20000);
+        settings.SearchIndexEnabled = SearchIndexEnabled;
+        settings.SearchIndexMode = SearchIndexMode;
+        settings.SearchIndexRoots = SplitIndexLines(SearchIndexRootsText);
+        settings.SearchIndexExcludes = SplitIndexLines(SearchIndexExcludesText);
         settings.TransferConcurrency = Math.Clamp((int)TransferConcurrency, 1, 4);
         settings.TransferSpeedLimitMb = Math.Clamp((int)TransferSpeedLimit, 0, 100_000);
         settings.CopyVerification = (CopyVerificationMode)Math.Clamp(CopyVerificationIndex, 0, 2);
@@ -1284,6 +1310,10 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         PreviewPanelPlacementIndex = defaults.PreviewPanelPlacement == PreviewPanelPlacement.Bottom ? 1 : 0;
         SearchDepth = defaults.SearchDepth;
         MaxSearchResults = defaults.MaxSearchResults;
+        SearchIndexEnabled = defaults.SearchIndexEnabled;
+        SearchIndexMode = defaults.SearchIndexMode;
+        SearchIndexRootsText = string.Join(Environment.NewLine, defaults.SearchIndexRoots);
+        SearchIndexExcludesText = string.Join(Environment.NewLine, defaults.SearchIndexExcludes);
         TransferConcurrency = defaults.TransferConcurrency;
         TransferSpeedLimit = defaults.TransferSpeedLimitMb;
         CopyVerificationIndex = (int)defaults.CopyVerification;
@@ -1379,6 +1409,70 @@ public sealed partial class SettingsDialogViewModel : ObservableObject
         if (Enum.TryParse<GroupByMode>(value, true, out var mode))
             GroupBy = mode;
     }
+
+    public void SetSearchIndexMode(string value)
+    {
+        if (Enum.TryParse<SearchIndexMode>(value, true, out var mode))
+            SearchIndexMode = mode;
+    }
+
+    public async Task AddSearchIndexRootAsync(IDialogService dialogs)
+    {
+        var path = await dialogs.PickFolderAsync(L10n.T("选择要索引的文件夹")).ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        var roots = SplitIndexLines(SearchIndexRootsText);
+        if (!roots.Contains(path, StringComparer.OrdinalIgnoreCase))
+            roots.Add(path);
+        SearchIndexRootsText = string.Join(Environment.NewLine, roots);
+    }
+
+    public async Task RebuildSearchIndexAsync()
+    {
+        if (IsRebuildingIndex)
+            return;
+
+        var services = App.Services;
+        if (services is null)
+            return;
+
+        IsRebuildingIndex = true;
+        SearchIndexStatus = L10n.T("正在重建索引…");
+        try
+        {
+            var config = new SearchIndexConfig(SearchIndexMode,
+                SplitIndexLines(SearchIndexRootsText), SplitIndexLines(SearchIndexExcludesText));
+            var progress = new Progress<SearchIndexProgress>(value =>
+            {
+                SearchIndexStatus = L10n.Format("已索引 {0} 个文件 · {1} 个文件夹",
+                    value.Files, value.Directories);
+            });
+            await services.SearchIndex.BuildAsync(config, progress).ConfigureAwait(true);
+            SearchIndexStatus = services.SearchIndex.StatusText;
+        }
+        catch (Exception ex)
+        {
+            SearchIndexStatus = ex.Message;
+        }
+        finally
+        {
+            IsRebuildingIndex = false;
+        }
+    }
+
+    public void RefreshSearchIndexStatus()
+    {
+        var index = App.Services?.SearchIndex;
+        if (index is not null)
+            SearchIndexStatus = index.StatusText;
+    }
+
+    private static List<string> SplitIndexLines(string text)
+        => (text ?? string.Empty)
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     public void SetAccent(string value)
     {

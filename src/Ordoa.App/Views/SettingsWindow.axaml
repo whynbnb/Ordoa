@@ -339,6 +339,52 @@
 
             <Border Classes="divider" />
 
+            <TextBlock Text="{loc:Tr 搜索索引}" Classes="section" />
+            <CheckBox Content="{loc:Tr 启用本地搜索索引（默认关闭）}"
+                      IsChecked="{Binding SearchIndexEnabled, Mode=TwoWay}" />
+            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+              <TextBlock Text="{loc:Tr 范围模式}" Classes="fieldlabel" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <Button Classes="chip" Tag="Whitelist" Click="OnSearchIndexModeClick"
+                        Classes.active="{Binding SearchIndexMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Whitelist}">
+                  <TextBlock Text="{loc:Tr 白名单}" />
+                </Button>
+                <Button Classes="chip" Tag="Blacklist" Click="OnSearchIndexModeClick"
+                        Classes.active="{Binding SearchIndexMode, Converter={StaticResource EqualsConverter}, ConverterParameter=Blacklist}">
+                  <TextBlock Text="{loc:Tr 黑名单}" />
+                </Button>
+              </StackPanel>
+
+              <TextBlock Grid.Row="1" Text="{loc:Tr 索引目录}" Classes="fieldlabel" />
+              <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="5">
+                <TextBox Text="{Binding SearchIndexRootsText, Mode=TwoWay}" AcceptsReturn="True"
+                         TextWrapping="Wrap" Height="64" />
+                <Button Grid.Column="1" Content="{loc:Tr 添加文件夹…}" Classes="subtle"
+                        Margin="6,0,0,0" Click="OnAddIndexRootClick" />
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
+                           Text="{loc:Tr 每行一个目录。白名单模式只索引这些目录；黑名单模式在此基础上排除下方规则。}"
+                           Classes="fieldhint" TextWrapping="Wrap" />
+              </Grid>
+
+              <TextBlock Grid.Row="2" Text="{loc:Tr 排除规则}" Classes="fieldlabel" />
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SearchIndexExcludesText, Mode=TwoWay}"
+                       AcceptsReturn="True" TextWrapping="Wrap" Height="52" />
+
+              <TextBlock Grid.Row="3" Grid.Column="1"
+                         Text="{loc:Tr 每行一个路径前缀或 glob，例如 node_modules 或 *.tmp。}"
+                         Classes="fieldhint" TextWrapping="Wrap" />
+
+              <TextBlock Grid.Row="4" Text="{loc:Tr 索引状态}" Classes="fieldlabel" />
+              <Grid Grid.Row="4" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Text="{Binding SearchIndexStatus}" Classes="caption" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1" Content="{loc:Tr 重建索引}" Classes="subtle"
+                        Click="OnRebuildIndexClick" IsEnabled="{Binding !IsRebuildingIndex}" />
+              </Grid>
+            </Grid>
+
+            <Border Classes="divider" />
+
             <TextBlock Text="{loc:Tr 传输}" Classes="section" />
             <CheckBox Content="{loc:Tr 批量复制/移动前显示目标位置与冲突预览}"
                       IsChecked="{Binding ShowTransferPreview, Mode=TwoWay}" />

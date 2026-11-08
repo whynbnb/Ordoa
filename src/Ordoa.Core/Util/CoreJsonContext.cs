@@ -26,6 +26,7 @@ namespace Ordoa.Core.Util;
 [JsonSerializable(typeof(List<Ordoa.Core.Models.FileTagInfo>))]
 [JsonSerializable(typeof(List<SavedWorkspace>))]
 [JsonSerializable(typeof(List<Ordoa.Core.Services.PendingTransfer>))]
+[JsonSerializable(typeof(Ordoa.Core.Services.SearchIndexMetadata))]
 internal sealed partial class CoreJsonContext : JsonSerializerContext
 {
 }

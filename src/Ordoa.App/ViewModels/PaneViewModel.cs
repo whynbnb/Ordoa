@@ -3057,12 +3057,21 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
         var options = new SearchOptions(query.Trim(), ShowHidden, _services.Settings.Current.MaxSearchResults,
             _services.Settings.Current.SearchDepth, Predicate: predicate);
         var rootPath = SearchWholeDisk ? FileSystem.RootPath : CurrentPath;
+        var useIndex = SearchWholeDisk && FileSystem.IsLocal && _services.SearchIndex.IsReady &&
+                       _services.SearchIndex.EntryCount > 0 && !parsed.HasContent &&
+                       parsed.Tags.Count == 0 && parsed.Color is null;
+        if (useIndex)
+            SearchStatus = L10n.T("正在搜索索引…");
+
+        IAsyncEnumerable<FileEntry> results = useIndex
+            ? _services.SearchIndex.SearchAsync(query.Trim(), ShowHidden,
+                _services.Settings.Current.MaxSearchResults, cancellationToken)
+            : _services.Search.SearchAsync(FileSystem, rootPath, options, null, cancellationToken);
         var count = 0;
 
         try
         {
-            await foreach (var entry in _services.Search.SearchAsync(FileSystem, rootPath, options, null, cancellationToken)
-                               .ConfigureAwait(true))
+            await foreach (var entry in results.ConfigureAwait(true))
             {
                 if (cancellationToken.IsCancellationRequested)
                     break;
@@ -3080,11 +3089,17 @@ public sealed partial class PaneViewModel : ObservableObject, IDisposable
             if (!cancellationToken.IsCancellationRequested)
             {
                 SortSearchResults();
-                SearchStatus = L10n.Format("找到 {0} 个结果", count);
+                SearchStatus = useIndex
+                    ? L10n.Format("索引中找到 {0} 个结果", count)
+                    : L10n.Format("找到 {0} 个结果", count);
                 RememberSearch(query.Trim());
                 await ApplySearchGitStatusAsync(_searchResults.ToList(), cancellationToken).ConfigureAwait(true);
                 if (!cancellationToken.IsCancellationRequested)
-                    SearchStatus = L10n.Format("找到 {0} 个结果", count);
+                {
+                    SearchStatus = useIndex
+                        ? L10n.Format("索引中找到 {0} 个结果", count)
+                        : L10n.Format("找到 {0} 个结果", count);
+                }
             }
         }
         catch (OperationCanceledException)
