@@ -2,10 +2,10 @@
   <img src="src/Ordoa.App/Assets/ordoa.png" width="96" alt="Ordoa logo" />
 </p>
 
-<h1 align="center">Ordoa 安序</h1>
+<h1 align="center">Ordoa</h1>
 
 <p align="center">
-  <b>Ordoa = Ordo（秩序）+ A（Avalonia）</b><br/>
+  <b>Ordoa（安序）= Ordo（秩序）+ A（Avalonia）</b><br/>
   Linux 优先、克制而完整的文件管理器。多标签、分屏、本地与远程、键盘与命令面板。
 </p>
 

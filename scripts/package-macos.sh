@@ -54,10 +54,10 @@ package_dmg() {
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleDisplayName</key><string>Ordoa 安序</string>
+  <key>CFBundleDisplayName</key><string>Ordoa</string>
   <key>CFBundleExecutable</key><string>Ordoa</string>
   <key>CFBundleIconFile</key><string>Ordoa.icns</string>
-  <key>CFBundleIdentifier</key><string>io.github.whynbnb.ordoa</string>
+  <key>CFBundleIdentifier</key><string>me.whynbnb.Ordoa</string>
   <key>CFBundleName</key><string>Ordoa</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$version</string>

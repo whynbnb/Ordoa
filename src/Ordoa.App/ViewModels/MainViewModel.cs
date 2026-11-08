@@ -2193,7 +2193,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void UpdateWindowTitle()
     {
         var title = ActivePane?.Title;
-        WindowTitle = string.IsNullOrWhiteSpace(title) ? "Ordoa 安序" : $"{title} — Ordoa 安序";
+        WindowTitle = string.IsNullOrWhiteSpace(title) ? "Ordoa" : $"{title} — Ordoa";
         OnPropertyChanged(nameof(ActivePane));
     }
 

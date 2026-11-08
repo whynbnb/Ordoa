@@ -14,7 +14,7 @@ PORTABLE=false
 
 usage() {
     cat <<EOF
-发布 Ordoa 安序。
+发布 Ordoa。
 
 用法:
   ./scripts/publish.sh [模式] [选项]

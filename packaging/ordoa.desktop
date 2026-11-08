@@ -2,7 +2,7 @@
 Type=Application
 Version=1.0
 Name=Ordoa
-Name[zh_CN]=Ordoa 安序
+Name[zh_CN]=Ordoa
 GenericName=File Manager
 GenericName[zh_CN]=文件管理器
 Comment=A minimal, powerful file manager for Linux

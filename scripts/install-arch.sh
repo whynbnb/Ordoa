@@ -178,6 +178,6 @@ else
 fi
 
 echo
-echo "Ordoa 安序已通过 pacman 安装。"
+echo "Ordoa 已通过 pacman 安装。"
 echo "  命令: ordoa"
 echo "  菜单: /usr/share/applications/ordoa.desktop"

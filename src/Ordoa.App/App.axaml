@@ -4,6 +4,7 @@
              xmlns:views="using:Ordoa.App.Views"
              xmlns:conv="using:Ordoa.App.Converters"
              x:Class="Ordoa.App.App"
+             Name="Ordoa"
              RequestedThemeVariant="Default">
   <Application.DataTemplates>
     <DataTemplate DataType="{x:Type vm:TabViewModel}" x:DataType="vm:TabViewModel">

@@ -10,7 +10,7 @@ usage() {
     cat <<EOF
 用法: $0 [选项]
 
-安装 Ordoa 安序到当前用户（默认 ~/.local）。
+安装 Ordoa 到当前用户（默认 ~/.local）。
 
 环境变量:
   PREFIX           安装前缀，默认 \$HOME/.local
@@ -74,7 +74,7 @@ fi
 
 cat <<EOF
 
-Ordoa 安序已安装。
+Ordoa 已安装。
   程序: $PREFIX/lib/ordoa/Ordoa
   命令: $PREFIX/bin/ordoa
   菜单: $PREFIX/share/applications/ordoa.desktop

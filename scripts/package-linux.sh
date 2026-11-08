@@ -73,7 +73,7 @@ Homepage: https://github.com/whynbnb/Ordoa
 Depends: libc6, libfontconfig1, libfreetype6, zlib1g, libx11-6, libxext6, libxcb1, libwayland-client0, libffi8, libstdc++6, libgl1
 Recommends: ffmpeg, poppler-utils
 Installed-Size: $(du -sk "$stage" | awk '{print $1}')
-Description: Ordoa 安序 file manager
+Description: Ordoa file manager
  A Linux-first file manager built with Avalonia.
 EOF
 

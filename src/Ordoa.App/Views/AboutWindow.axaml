@@ -5,7 +5,7 @@
         x:DataType="vm:AboutDialogViewModel"
         x:CompileBindings="True"
         x:Class="Ordoa.App.Views.AboutWindow"
-        Title="{loc:Tr 关于 Ordoa 安序}"
+        Title="{loc:Tr 关于 Ordoa}"
         Width="700" Height="740" CanResize="False" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner" Background="{DynamicResource WindowBackgroundBrush}">
   <Window.Styles>
@@ -25,7 +25,7 @@
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
           <Image Source="/Assets/ordoa-mark.png" Width="72" Height="72" VerticalAlignment="Top" />
           <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
-            <TextBlock Text="{loc:Tr Ordoa 安序}" Classes="h1" />
+            <TextBlock Text="{loc:Tr Ordoa}" Classes="h1" />
             <TextBlock Text="{loc:Tr 有秩序的文件管理 · Linux 优先，同时兼容 macOS 与 Windows}" Classes="muted" />
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
               <TextBlock Text="{loc:Tr 版本}" Classes="tiny" />
