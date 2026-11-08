@@ -68,6 +68,7 @@ public sealed class SearchIndexService : IDisposable
     private readonly string _directory;
     private SearchIndexConfig? _config;
     private List<PreparedExclude> _preparedExcludes = [];
+    private CancellationTokenSource? _buildCts;
     private bool _disposed;
 
     public SearchIndexService(string? directory = null)
@@ -101,7 +102,7 @@ public sealed class SearchIndexService : IDisposable
         if (!TryLoadMetadata(config, out var metadata))
         {
             await BuildAsync(config, progress, cancellationToken).ConfigureAwait(false);
-            return true;
+            return IsReady;
         }
 
         EntryCount = metadata.Count;
@@ -119,6 +120,9 @@ public sealed class SearchIndexService : IDisposable
         if (IsBuilding)
             return;
 
+        _buildCts?.Dispose();
+        _buildCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cancellationToken = _buildCts.Token;
         _config = config;
         _preparedExcludes = PrepareExcludes(config);
         IsBuilding = true;
@@ -282,6 +286,8 @@ public sealed class SearchIndexService : IDisposable
             }
             catch { /* ignore */ }
             IsBuilding = false;
+            _buildCts?.Dispose();
+            _buildCts = null;
             Changed?.Invoke();
         }
     }
@@ -403,6 +409,7 @@ public sealed class SearchIndexService : IDisposable
 
     public void Stop()
     {
+        try { _buildCts?.Cancel(); } catch { /* ignore */ }
         IsReady = false;
         StopWatching();
         StatusText = L10n.T("索引未启用");

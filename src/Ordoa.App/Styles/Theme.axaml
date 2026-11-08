@@ -328,6 +328,32 @@
     <Setter Property="Width" Value="10"/>
   </Style>
 
+  <!-- Shared form and chip styles used by dialogs -->
+  <Style Selector="Button.chip">
+    <Setter Property="Padding" Value="14,6"/>
+    <Setter Property="CornerRadius" Value="7"/>
+    <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="FontSize" Value="12"/>
+  </Style>
+  <Style Selector="Button.chip.active /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+  </Style>
+  <Style Selector="Button.chip.active TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="TextBlock.fieldlabel">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="TextBlock.fieldhint">
+    <Setter Property="FontSize" Value="10.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}"/>
+    <Setter Property="Margin" Value="0,2,0,0"/>
+  </Style>
+
   <!-- Compact density -->
   <Style Selector="Window.compact ListBox.files ListBoxItem">
     <Setter Property="MinHeight" Value="27"/>

@@ -305,9 +305,11 @@ public sealed partial class ChecksumRowViewModel : ObservableObject
     public bool HasHash => !string.IsNullOrEmpty(Hash);
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasExpectedHash))]
     private string _expectedHash = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVerification))]
     private string? _verificationStatus;
 
     [ObservableProperty]
@@ -424,6 +426,12 @@ public sealed partial class ChecksumDialogViewModel : ObservableObject, IDisposa
                     row.Hash = await ChecksumService.ComputeAsync(source.FileSystem, source.Path, Algorithm,
                         source.Entry.Size, progress, cts.Token).ConfigureAwait(true);
                     row.IsDone = true;
+                    if (row.HasExpectedHash)
+                    {
+                        row.IsVerified = string.Equals(row.Hash, row.ExpectedHash,
+                            StringComparison.OrdinalIgnoreCase);
+                        row.VerificationStatus = row.IsVerified ? L10n.T("一致") : L10n.T("不一致");
+                    }
                 }
                 catch (OperationCanceledException)
                 {

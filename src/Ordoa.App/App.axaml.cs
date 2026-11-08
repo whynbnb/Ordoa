@@ -61,6 +61,7 @@ public partial class App : Application
             var services = new AppServices();
             Services = services;
             L10n.SetLanguage(services.Settings.Current.Language);
+            services.StartSearchIndex();
 
             desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
             services.Windows.AttachLifetime(desktop);

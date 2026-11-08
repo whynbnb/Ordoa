@@ -317,6 +317,7 @@ public sealed partial class FolderCompareDialogViewModel : ObservableObject, IDi
     public void Cancel()
     {
         try { _cts?.Cancel(); } catch { /* ignore */ }
+        IsScanning = false;
         Status = L10n.T("已取消");
     }
 

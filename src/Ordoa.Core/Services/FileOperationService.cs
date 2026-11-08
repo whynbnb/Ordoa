@@ -101,6 +101,7 @@ public sealed partial class FileOperationItem : ObservableObject
     }
 
     public string Id { get; } = Guid.NewGuid().ToString("N");
+    internal string? JournalId { get; set; }
     public string Title { get; }
     public string Detail { get; }
     public OperationKind Kind { get; }
@@ -323,7 +324,8 @@ public sealed class FileOperationService : IDisposable
     }
 
     public FileOperationItem Copy(IReadOnlyList<OperationSource> sources, IFileSystem destinationFileSystem,
-        string destinationDirectory, bool move, ConflictChoice? conflictChoice = null, bool journal = true)
+        string destinationDirectory, bool move, ConflictChoice? conflictChoice = null, bool journal = true,
+        string? journalId = null)
     {
         ValidateSources(sources);
         var entries = sources.Select(source => new CopyEntry(source, destinationDirectory)).ToList();
@@ -338,8 +340,9 @@ public sealed class FileOperationService : IDisposable
             : Copy(sources, destinationFileSystem, destinationDirectory, move);
         if (journal && _journal is not null)
         {
+            item.JournalId = journalId ?? item.Id;
             _journal.Add(new PendingTransfer(
-                item.Id,
+                item.JournalId,
                 sources.Select(source => new PendingTransferSource(source.FileSystem.Id, source.Path)).ToList(),
                 destinationFileSystem.Id,
                 destinationDirectory,
@@ -463,7 +466,7 @@ public sealed class FileOperationService : IDisposable
             }
             finally
             {
-                _journal?.Remove(item.Id);
+                _journal?.Remove(item.JournalId ?? item.Id);
             }
         }));
     }

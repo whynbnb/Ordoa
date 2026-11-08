@@ -46,7 +46,6 @@ public sealed class AppServices : IAsyncDisposable
         Operations = new FileOperationService(Trash, action => Dispatcher.UIThread.Post(action), Settings, Journal);
         Operations.ConflictResolver = new DialogConflictResolver(Dialogs);
         Operations.Finished += OnOperationFinishedForTags;
-        Operations.Finished += OnOperationFinishedForResume;
         Settings.Changed += OnSettingsChangedForSearchIndex;
         Undo = new UndoService(this);
     }
@@ -209,10 +208,8 @@ public sealed class AppServices : IAsyncDisposable
                     continue;
                 }
 
-                var item = Operations.Copy(sources, destination, record.DestinationPath, record.Move,
-                    ConflictChoice.ReplaceAll, journal: false);
-                lock (_resumedTransfers)
-                    _resumedTransfers[item.Id] = record.Id;
+                Operations.Copy(sources, destination, record.DestinationPath, record.Move,
+                    ConflictChoice.ReplaceAll, journal: true, journalId: record.Id);
                 resumed++;
             }
             catch (OperationCanceledException)
@@ -227,20 +224,6 @@ public sealed class AppServices : IAsyncDisposable
         }
 
         return resumed;
-    }
-
-    private readonly Dictionary<string, string> _resumedTransfers = new(StringComparer.Ordinal);
-
-    private void OnOperationFinishedForResume(object? sender, FileOperationItem item)
-    {
-        string? journalId;
-        lock (_resumedTransfers)
-        {
-            if (!_resumedTransfers.Remove(item.Id, out journalId))
-                return;
-        }
-
-        Journal.Remove(journalId);
     }
 
     private Task<IFileSystem> ResolveFileSystemAsync(string id, CancellationToken cancellationToken)
